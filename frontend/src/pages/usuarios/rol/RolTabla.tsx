@@ -14,7 +14,7 @@ export default function RolTabla({ roles, onEditar, onEliminar }: Props) {
           <tr>
             <th className="p-3 text-left">ID</th>
             <th className="p-3 text-left">Nombre</th>
-            <th className="p-3 text-left">DescripciÃƒÂ³n</th>
+            <th className="p-3 text-left">Descripcion</th>
             <th className="p-3 text-left">Acciones</th>
           </tr>
         </thead>

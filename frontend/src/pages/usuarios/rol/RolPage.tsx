@@ -101,7 +101,7 @@ export default function RolPage() {
           titulo="Eliminar rol"
           descripcion={
             rolAEliminar
-              ? `Ã‚Â¿EstÃƒÂ¡s seguro de eliminar el rol "${rolAEliminar.nombre}"? Esta acciÃƒÂ³n no se puede deshacer.`
+              ? `¿Estás seguro de eliminar el rol "${rolAEliminar.nombre}"? Esta acción no se puede deshacer.`
               : ""
           }
           onConfirmar={ejecutarEliminar}
