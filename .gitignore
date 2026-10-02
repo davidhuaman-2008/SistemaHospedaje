@@ -1,0 +1,54 @@
+# Dependencias
+node_modules/
+vendor/
+
+# Builds
+dist/
+build/
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+.phpunit.result.cache
+.php-cs-fixer.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales de Office
+~$*.docx
+~$*.doc
+~$*.xlsx
+~$*.pptx
+
+# Documentos (no van al repo)
+*.docx
+*.pdf
+*.xlsx
+*.pptx
+
+# Backups
+storage/backups_app/
+docs/backups_frontend/
+docs/backups_app/
+
+# Bases de datos locales
+*.sqlite
+
+# Archivos compilados
+*.tsbuildinfo
