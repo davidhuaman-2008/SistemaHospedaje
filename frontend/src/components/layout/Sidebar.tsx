@@ -1,4 +1,4 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   ChevronDown,
@@ -232,6 +232,10 @@ export default function Sidebar() {
                 <Link to="/configuracion/habitaciones" className={subItemClass("/configuracion/habitaciones")} onClick={cerrarMobile}>
                   <DoorOpen size={16} />
                   Habitaciones
+                </Link>
+                <Link to="/configuracion/sistema" className={subItemClass("/configuracion/sistema")} onClick={cerrarMobile}>
+                  <Settings size={16} />
+                  Config. Sistema
                 </Link>
               </div>
             )}

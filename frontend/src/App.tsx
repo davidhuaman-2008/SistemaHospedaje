@@ -17,6 +17,7 @@ import { MetodoPagoPage } from "@/pages/configuracion/metodoPago/MetodoPagoPage"
 import { CategoriaMovimientoPage } from "@/pages/configuracion/categoriaMovimiento/CategoriaMovimientoPage"
 import { ClienteNivelPage } from "@/pages/configuracion/clienteNivel/ClienteNivelPage"
 import { HabitacionPage } from "@/pages/configuracion/habitacion/HabitacionPage"
+import { ConfiguracionSistemaPage } from "@/pages/configuracion/ConfiguracionSistemaPage"
 import { CheckoutPage } from "@/pages/recepcion/CheckoutPage"
 import { RegistrarIngresoPage } from "@/pages/recepcion/RegistrarIngresoPage"
 import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
@@ -198,6 +199,14 @@ function App() {
         <Route path="/recepcion" element={<ProtectedRoute><RecepcionPage /></ProtectedRoute>} />
         <Route path="/recepcion/registrar/:idHabitacion" element={<ProtectedRoute><RegistrarIngresoPage /></ProtectedRoute>} />
         <Route path="/recepcion/checkout/:idReserva" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+        <Route
+          path="/configuracion/sistema"
+          element={
+            <ProtectedRoute>
+              <ConfiguracionSistemaPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -207,5 +216,6 @@ function App() {
 }
 
 export default App
+
 
 

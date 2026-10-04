@@ -7,6 +7,7 @@ import { reservaService } from "@/services/reservaService"
 import { mensajeDeError } from "@/lib/errores"
 import type { Reserva } from "@/types/reserva"
 import { AgregarConsumoModal } from "./AgregarConsumoModal"
+import { ModalExtensionTiempo } from "../recepcion/ModalExtensionTiempo"
 
 export function CheckoutPage() {
   const { idReserva } = useParams<{ idReserva: string }>()
@@ -15,6 +16,7 @@ export function CheckoutPage() {
   const [cargando, setCargando] = useState(true)
   const [montoFinal, setMontoFinal] = useState(0)
   const [mostrarAgregarConsumo, setMostrarAgregarConsumo] = useState(false)
+  const [mostrarExtension, setMostrarExtension] = useState(false)
 
   const cargar = async () => {
     try {
@@ -143,10 +145,16 @@ export function CheckoutPage() {
                 <span className="text-white">{horasContratadas}h</span>
               </div>
               {horasExtra > 0 && (
-                <div className="bg-yellow-900/40 border border-yellow-700 p-2 rounded">
+                <div className="bg-yellow-900/40 border border-yellow-700 p-3 rounded space-y-2">
                   <p className="text-yellow-300 text-xs">
                     ⚠️ Excedió {horasExtra} hora(s) — cobrar extra
                   </p>
+                  <button
+                    onClick={() => setMostrarExtension(true)}
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded font-medium text-sm"
+                  >
+                    ⏱️ Aplicar Extensión de Tiempo
+                  </button>
                 </div>
               )}
             </div>
@@ -212,7 +220,14 @@ export function CheckoutPage() {
             )}
             {montoHorasExtra > 0 && (
               <div className="flex justify-between border-b border-slate-700 pb-2">
-                <span className="text-slate-400">Horas extra</span>
+                <span className="text-slate-400">
+                  Horas extra
+                  {reserva.extensiones && reserva.extensiones.length > 0 && (
+                    <span className="text-slate-500 text-xs ml-1">
+                      ({reserva.extensiones.length} extensión{reserva.extensiones.length !== 1 ? "es" : ""})
+                    </span>
+                  )}
+                </span>
                 <span className="text-white">S/ {montoHorasExtra.toFixed(2)}</span>
               </div>
             )}
@@ -295,6 +310,14 @@ export function CheckoutPage() {
           idReserva={Number(idReserva)}
           onClose={() => setMostrarAgregarConsumo(false)}
           onSuccess={() => { setMostrarAgregarConsumo(false); cargar() }}
+        />
+      )}
+
+      {mostrarExtension && (
+        <ModalExtensionTiempo
+          idReserva={Number(idReserva)}
+          onClose={() => setMostrarExtension(false)}
+          onSuccess={() => { setMostrarExtension(false); cargar() }}
         />
       )}
     </AppLayout>

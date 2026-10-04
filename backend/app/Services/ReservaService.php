@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Cliente;
+use App\Models\Configuracion;
+use App\Models\ExtensionReserva;
 use App\Models\EstadoReserva;
 use App\Models\Habitacion;
 use App\Models\Limpieza;
@@ -604,4 +606,102 @@ class ReservaService
             $consumo->delete();
         });
     }
-}
+
+    /**
+     * Aplica una extensión de tiempo a la reserva.
+     */
+    public function agregarExtension(
+        int $idReserva,
+        int $horasExtra,
+        bool $cargarACuenta,
+        int $idUsuario,
+        ?int $idMetodoPago = null,
+        bool $esTurnoAdicional = false,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $horasExtra, $cargarACuenta, $idUsuario, $idMetodoPago, $esTurnoAdicional, $observaciones) {
+            $reserva = Reserva::with('tarifa')->findOrFail($idReserva);
+            $tarifa = $reserva->tarifa;
+
+            if (!$tarifa) {
+                throw new \InvalidArgumentException('La reserva no tiene tarifa asociada.');
+            }
+
+            // Calcular monto
+            $precioHora = (float) $tarifa->precio_hora_extra;
+            $precioTurno = (float) $tarifa->precio_turno_adicional;
+            $monto = $esTurnoAdicional ? $precioTurno : ($horasExtra * $precioHora);
+
+            // Tolerancia actual (para auditoría)
+            $tolerancia = Configuracion::obtener('tolerancia_extension_minutos', 30);
+
+            // Minutos de exceso real (para auditoría)
+            $entrada = Carbon::parse($reserva->fecha_entrada);
+            $ahora = Carbon::now();
+            $minutosTranscurridos = (int) round(abs($entrada->diffInMinutes($ahora)));
+            $minutosExceso = max(0, $minutosTranscurridos - ($reserva->horas_base * 60));
+
+            // Registrar extensión
+            ExtensionReserva::create([
+                'id_reserva' => $idReserva,
+                'horas_extra' => $horasExtra,
+                'monto' => $monto,
+                'es_turno_adicional' => $esTurnoAdicional,
+                'minutos_exceso' => $minutosExceso,
+                'precio_hora_extra_aplicado' => $precioHora,
+                'tolerancia_minutos' => $tolerancia,
+                'pagado_inmediato' => !$cargarACuenta && $idMetodoPago !== null,
+                'cargado_a_cuenta' => $cargarACuenta,
+                'id_metodo_pago' => $idMetodoPago,
+                'id_usuario' => $idUsuario,
+                'fecha_extension' => now(),
+                'observaciones' => $observaciones,
+            ]);
+
+            // Actualizar la reserva
+            $reserva->monto_horas_extra = (float) $reserva->monto_horas_extra + $monto;
+
+            if ($esTurnoAdicional) {
+                // Turno adicional extiende las horas base
+                $horasExtraTurno = $tarifa->horas;
+                $reserva->horas_extra = (int) $reserva->horas_extra + $horasExtraTurno;
+                $reserva->horas_totales = (int) $reserva->horas_totales + $horasExtraTurno;
+                $reserva->fecha_salida_prevista = Carbon::parse($reserva->fecha_salida_prevista)->addHours($horasExtraTurno);
+            } else {
+                $reserva->horas_extra = (int) $reserva->horas_extra + $horasExtra;
+                $reserva->horas_totales = (int) $reserva->horas_totales + $horasExtra;
+                $reserva->fecha_salida_prevista = Carbon::parse($reserva->fecha_salida_prevista)->addHours($horasExtra);
+            }
+
+            // Si NO se carga a cuenta → es pago inmediato
+            if (!$cargarACuenta && $idMetodoPago) {
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $monto,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'Extensión de tiempo: ' . ($esTurnoAdicional ? 'Turno adicional' : "{$horasExtra}h extra"),
+                ]);
+
+                $reserva->pagado = (float) $reserva->pagado + $monto;
+            }
+
+            $reserva->recalcularTotal();
+            $reserva->save();
+
+            return $reserva->fresh(['cliente', 'habitacion', 'tarifa', 'estado', 'extensiones']);
+        });
+    }
+
+    /**
+     * Lista las extensiones de una reserva.
+     */
+    public function listarExtensiones(int $idReserva): \Illuminate\Support\Collection
+    {
+        return ExtensionReserva::with(['metodoPago', 'usuario'])
+            ->where('id_reserva', $idReserva)
+            ->orderByDesc('id_extension')
+            ->get();
+    }}

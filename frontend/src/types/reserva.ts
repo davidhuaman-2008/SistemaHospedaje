@@ -176,3 +176,93 @@ export interface PagoReserva {
   anulado: boolean
   metodo_pago?: MetodoPago
 }
+
+// ============================================================================
+// EXTENSIONES DE TIEMPO
+// ============================================================================
+
+export interface OpcionExtension {
+  horas: number
+  monto: number
+  es_turno_adicional: boolean
+  label: string
+  sugerida: boolean
+  advertencia?: boolean
+}
+
+export interface CalculoExtension {
+  // Tiempo base
+  horas_base: number
+  minutos_transcurridos: number
+  minutos_base: number
+
+  // Exceso total
+  minutos_exceso_total: number
+  horas_exceso_total: number
+
+  // Extensiones ya aplicadas
+  horas_extra_ya_aplicadas: number
+  monto_ya_aplicado: number
+  monto_ya_pagado: number
+  monto_cargado_a_cuenta: number
+  turnos_adicionales_aplicados: number
+
+  // Pendiente
+  minutos_exceso_pendiente: number
+  minutos_ya_cubiertos: number
+  horas_extra_sugeridas_nuevas: number
+  monto_sugerido_nuevo: number
+
+  // Config
+  tolerancia_minutos: number
+  dentro_tolerancia: boolean
+  excede_maximo: boolean
+  max_horas_extra: number
+  precio_hora_extra: number
+  precio_turno_adicional: number
+
+  // Opciones nuevas
+  opciones: OpcionExtension[]
+}
+
+export interface AgregarExtensionRequest {
+  horas_extra: number
+  cargar_a_cuenta: boolean
+  id_metodo_pago?: number | null
+  es_turno_adicional?: boolean
+  observaciones?: string | null
+}
+
+export interface ExtensionReserva {
+  id_extension: number
+  id_reserva: number
+  horas_extra: number
+  monto: number
+  es_turno_adicional: boolean
+  minutos_exceso: number
+  precio_hora_extra_aplicado: number
+  tolerancia_minutos: number
+  pagado_inmediato: boolean
+  cargado_a_cuenta: boolean
+  id_metodo_pago: number | null
+  id_usuario: number
+  fecha_extension: string
+  observaciones: string | null
+  metodo_pago?: MetodoPago
+  usuario?: { id: number; nombre: string }
+}
+
+// ============================================================================
+// CONFIGURACIONES
+// ============================================================================
+
+export interface Configuracion {
+  id_configuracion: number
+  clave: string
+  valor: string
+  tipo: "INT" | "DECIMAL" | "STRING" | "BOOLEAN"
+  descripcion: string | null
+  grupo: string
+  created_at?: string
+  updated_at?: string
+}

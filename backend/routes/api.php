@@ -20,6 +20,7 @@ use App\Http\Controllers\EstadoReservaController;
 use App\Http\Controllers\EstadoHabitacionController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\LimpiezaController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\TipoHabitacionController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\MetodoPagoController;
@@ -349,4 +350,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('limpieza/pendientes', [LimpiezaController::class, 'pendientes']);
     Route::patch('limpieza/{id}/iniciar', [LimpiezaController::class, 'iniciar']);
     Route::patch('limpieza/{id}/finalizar', [LimpiezaController::class, 'finalizar']);
+});
+
+// ============================================================================
+// CONFIGURACIONES DEL SISTEMA
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('configuraciones', [ConfiguracionController::class, 'index']);
+    Route::get('configuraciones/grupo/{grupo}', [ConfiguracionController::class, 'porGrupo']);
+    Route::put('configuraciones/{clave}', [ConfiguracionController::class, 'update']);
+});
+
+// ============================================================================
+// EXTENSIONES DE RESERVA
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('reservas/{id}/calculo-extension', [ReservaController::class, 'calculoExtension']);
+    Route::get('reservas/{id}/extensiones', [ReservaController::class, 'listarExtensiones']);
+    Route::post('reservas/{id}/extensiones', [ReservaController::class, 'agregarExtension']);
 });

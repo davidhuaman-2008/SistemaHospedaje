@@ -2,7 +2,8 @@ import api from './api'
 import type {
   Reserva, ReservaRequest, WalkInRequest,
   EstadoReserva, HabitacionMapa,
-  AgregarConsumoRequest, CambiarHabitacionRequest
+  AgregarConsumoRequest, CambiarHabitacionRequest,
+  CalculoExtension, AgregarExtensionRequest, ExtensionReserva
 } from '@/types/reserva'
 
 export const reservaService = {
@@ -60,6 +61,21 @@ export const reservaService = {
 
   eliminarConsumo: async (idReserva: number, idConsumo: number): Promise<void> => {
     await api.delete(`/reservas/${idReserva}/consumos/${idConsumo}`)
+  },
+
+  calculoExtension: async (id: number): Promise<CalculoExtension> => {
+    const { data } = await api.get(`/reservas/${id}/calculo-extension`)
+    return data
+  },
+
+  agregarExtension: async (id: number, datos: AgregarExtensionRequest): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/extensiones`, datos)
+    return data.data
+  },
+
+  listarExtensiones: async (id: number): Promise<ExtensionReserva[]> => {
+    const { data } = await api.get(`/reservas/${id}/extensiones`)
+    return data
   },
 }
 

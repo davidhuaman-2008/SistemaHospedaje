@@ -195,4 +195,44 @@ class ReservaController extends Controller
             return response()->json(['mensaje' => $e->getMessage()], 422);
         }
     }
-}
+
+    public function calculoExtension(int $id): JsonResponse
+    {
+        $reserva = $this->service->obtener($id);
+        $service = app(\App\Services\ExtensionService::class);
+        return response()->json($service->calcular($reserva));
+    }
+
+    public function agregarExtension(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'horas_extra' => 'required|integer|min:0',
+            'cargar_a_cuenta' => 'boolean',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'es_turno_adicional' => 'boolean',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        try {
+            $reserva = $this->service->agregarExtension(
+                $id,
+                $datos['horas_extra'],
+                $datos['cargar_a_cuenta'] ?? true,
+                Auth::id(),
+                $datos['id_metodo_pago'] ?? null,
+                $datos['es_turno_adicional'] ?? false,
+                $datos['observaciones'] ?? null
+            );
+            return response()->json([
+                'mensaje' => 'Extensión aplicada',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function listarExtensiones(int $id): JsonResponse
+    {
+        return response()->json($this->service->listarExtensiones($id));
+    }}

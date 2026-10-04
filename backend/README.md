@@ -1354,3 +1354,659 @@ Proyecto privado — Sistema de Hospedaje.
 **Después te armo el README del frontend completo.** 🚀
 
 **¿Dale?**
+¡Perfecto! 🎯 Vamos a documentar **TODO** lo nuevo del Módulo 09C (extensiones) + limpieza pendiente + seeder de prueba en el README backend.
+
+---
+
+## 📄 Bloque para AGREGAR al README del backend
+
+**Abrí `backend/README.md` en VS Code** y:
+
+1. **Buscá** la sección `## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)`
+2. **Buscá** donde termina la sección (antes de `## 🎯 Reglas de negocio globales`)
+3. **Pegá TODO el bloque de abajo JUSTO ANTES de `## 🎯 Reglas de negocio globales`**
+
+---
+
+## 📝 BLOQUE PARA PEGAR
+
+```markdown
+## 🕐 Módulo 09C — EXTENSIONES DE TIEMPO (✅ CERRADO)
+
+### Visión general
+
+Sistema que detecta automáticamente cuando un cliente **excede el tiempo contratado** y ofrece opciones para cobrar las horas extra con **múltiples formas de pago**, **historial de extensiones**, y **tolerancia configurable**.
+
+### Tablas
+
+#### `configuraciones`
+Tabla de configuraciones globales del sistema (NO hardcodeadas).
+
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_configuracion | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| clave | VARCHAR(100) | UNIQUE, NOT NULL |
+| valor | VARCHAR(255) | NOT NULL |
+| tipo | VARCHAR(20) | INT/DECIMAL/STRING/BOOLEAN, default 'INT' |
+| descripcion | VARCHAR(255) | NULL |
+| grupo | VARCHAR(50) | default 'general' |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Datos semilla (5 filas):**
+| clave | valor | tipo | grupo | descripción |
+|-------|-------|------|-------|-------------|
+| tolerancia_extension_minutos | 30 | INT | reservas | Minutos de tolerancia antes de cobrar hora extra |
+| buffer_limpieza_minutos | 30 | INT | reservas | Buffer entre reservas |
+| tolerancia_no_show_minutos | 60 | INT | reservas | Tiempo para marcar No-Show |
+| igv_porcentaje | 18 | DECIMAL | comprobantes | IGV aplicado a comprobantes |
+| moneda_simbolo | S/ | STRING | general | Símbolo de moneda |
+
+**⚠️ Regla importante:** la tolerancia y otros parámetros se leen desde aquí, NO se hardcodean. Si la dueña cambia el valor, el sistema lo aplica al instante.
+
+#### `extensiones_reserva`
+Registra cada extensión de tiempo aplicada a una reserva.
+
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_extension | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_reserva | BIGINT FK | → reservas, onDelete cascade |
+| horas_extra | INT | Cantidad de horas cobradas |
+| monto | DECIMAL(10,2) | monto = horas × precio |
+| es_turno_adicional | BOOLEAN | true si fue turno completo |
+| minutos_exceso | INT | minutos reales de exceso (auditoría) |
+| precio_hora_extra_aplicado | DECIMAL(10,2) | snapshot del precio al momento |
+| tolerancia_minutos | INT | snapshot de la tolerancia al momento |
+| pagado_inmediato | BOOLEAN | true si se pagó al momento |
+| cargado_a_cuenta | BOOLEAN | true si se cargó al vuelto/saldo |
+| id_metodo_pago | BIGINT FK NULL | → metodos_pago (solo si pagó) |
+| id_usuario | BIGINT FK | → usuarios |
+| fecha_extension | DATETIME | cuándo se aplicó |
+| observaciones | TEXT | NULL |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Índices:** `id_reserva`, `fecha_extension`.
+
+### Lógica de cálculo (ExtensionService)
+
+**Fórmula completa:**
+
+```
+minutos_transcurridos = ahora - fecha_entrada
+minutos_base = horas_base × 60
+minutos_exceso_total = minutos_transcurridos - minutos_base
+
+// Extensiones ya aplicadas
+horas_extra_ya_aplicadas = SUM(extensiones.horas_extra)
+minutos_ya_cubiertos = horas_extra_ya_aplicadas × 60
+
+// Pendiente
+minutos_exceso_pendiente = minutos_exceso_total - minutos_ya_cubiertos
+
+// ¿Dentro de tolerancia?
+dentro_tolerancia = minutos_exceso_pendiente <= tolerancia_minutos
+
+// Horas sugeridas NUEVAS
+si !dentro_tolerancia:
+    minutos_a_cobrar = minutos_exceso_pendiente - tolerancia_minutos
+    horas_extra_sugeridas_nuevas = ceil(minutos_a_cobrar / 60)
+
+// Monto
+monto = horas_extra_sugeridas_nuevas × precio_hora_extra
+```
+
+**Ejemplo concreto:**
+```
+Base: 8h (480 min)
+Entrada: 8:00 AM
+Ahora: 10:15 AM → minutos_transcurridos = 135 min (2h 15m)
+minutos_exceso_total = 135 - 480 = -345 → no hay exceso todavía
+```
+
+**Otro ejemplo (con exceso):**
+```
+Base: 8h
+Entrada: 8:00 AM
+Ahora: 8:20 PM → minutos_transcurridos = 740 min (12h 20m)
+minutos_exceso_total = 740 - 480 = 260 min (4h 20m)
+
+Tolerancia: 30 min
+minutos_a_cobrar = 260 - 30 = 230 min
+horas_extra_sugeridas = ceil(230/60) = 4h
+```
+
+### Regla de tolerancia (RG-Extensión)
+
+**RG-E1:** El sistema da una **tolerancia de 30 minutos** (configurable en `configuraciones.tolerancia_extension_minutos`) antes de empezar a cobrar.
+
+**Ejemplo:**
+```
+Base: 8h
+Cliente lleva: 8h 20m → exceso 20m
+Tolerancia: 30 min → DENTRO → NO se cobra nada
+
+Base: 8h
+Cliente lleva: 8h 45m → exceso 45m
+Tolerancia: 30 min → FUERA
+minutos_a_cobrar = 45 - 30 = 15 min
+horas_extra = ceil(15/60) = 1 hora
+```
+
+**RG-E2:** El sistema calcula automáticamente las horas a cobrar con la fórmula:
+```
+horas_extra = ceil((minutos_exceso_pendiente - tolerancia) / 60)
+```
+
+**RG-E3:** El recepcionista puede:
+- Cobrar la extensión **sugerida** por el sistema
+- Cobrar **más horas** (voluntad del cliente)
+- Cobrar **menos** (con observación obligatoria)
+- **No cobrar** (con observación obligatoria)
+- Aplicar **turno adicional completo** (si excede máximo)
+
+**RG-E4:** Formas de pago:
+- **Cargar a la cuenta** → suma a `total`, descuenta del vuelto
+- **Pagar ahora** → registra `pago_reserva` + `movimiento_caja` (si `es_de_caja = true`, R39)
+
+**RG-E5:** Si el cliente paga con Yape Dueña → NO entra a caja (R39).
+
+**RG-E6:** Cada extensión se registra en `extensiones_reserva` para auditoría.
+
+**RG-E7:** Los valores (`precio_hora_extra`, `max_horas_extra`, `precio_turno_adicional`) vienen de `tarifas`. Si la dueña los cambia, el próximo cálculo usa los nuevos valores.
+
+**RG-E8:** La `tolerancia_minutos` viene de `configuraciones`. Si la dueña la cambia, se aplica al instante.
+
+**RG-E9:** **Múltiples extensiones por reserva están permitidas.** Cada vez que el recepcionista aplica una extensión, se registra una fila nueva. El sistema lleva el historial completo.
+
+**RG-E10:** **Detección de "extensiones ya aplicadas".** El cálculo del pendiente resta las horas ya cobradas:
+```
+minutos_exceso_pendiente = minutos_exceso_total - (horas_ya_aplicadas × 60)
+```
+
+**RG-E11:** Si excede el máximo (`max_horas_extra`, default 3h):
+- El sistema avisa: "Excede máximo"
+- Ofrece opciones especiales:
+  - Cobrar las horas reales (aunque exceda)
+  - Cobrar turno adicional completo (recomendado)
+
+### Endpoints Módulo 09C
+
+**Configuraciones (3):**
+```
+GET    /api/configuraciones                          → todas
+GET    /api/configuraciones/grupo/{grupo}            → por grupo (reservas, comprobantes, general)
+PUT    /api/configuraciones/{clave}                  → editar valor
+```
+
+**Extensiones (3):**
+```
+GET    /api/reservas/{id}/calculo-extension          → previsualizar
+GET    /api/reservas/{id}/extensiones                → historial de extensiones
+POST   /api/reservas/{id}/extensiones                → aplicar extensión
+```
+
+**Response de `GET /api/reservas/{id}/calculo-extension`:**
+```json
+{
+    "horas_base": 8,
+    "minutos_transcurridos": 620,
+    "minutos_base": 480,
+    "minutos_exceso_total": 140,
+    "horas_exceso_total": 2.33,
+    "horas_extra_ya_aplicadas": 0,
+    "monto_ya_aplicado": 0,
+    "monto_ya_pagado": 0,
+    "monto_cargado_a_cuenta": 0,
+    "turnos_adicionales_aplicados": 0,
+    "minutos_exceso_pendiente": 140,
+    "minutos_ya_cubiertos": 0,
+    "horas_extra_sugeridas_nuevas": 2,
+    "monto_sugerido_nuevo": 20.00,
+    "tolerancia_minutos": 30,
+    "dentro_tolerancia": false,
+    "excede_maximo": false,
+    "max_horas_extra": 3,
+    "precio_hora_extra": 10.00,
+    "precio_turno_adicional": 70.00,
+    "opciones": [
+        { "horas": 0, "monto": 0, "label": "No cobrar (con observación)", "sugerida": false },
+        { "horas": 1, "monto": 10, "label": "1 hora extra", "sugerida": false },
+        { "horas": 2, "monto": 20, "label": "2 horas extra", "sugerida": true },
+        { "horas": 3, "monto": 30, "label": "3 horas extra (máximo)", "sugerida": false }
+    ]
+}
+```
+
+**Con extensiones ya aplicadas:**
+```json
+{
+    "minutos_exceso_total": 260,
+    "horas_extra_ya_aplicadas": 2,
+    "monto_ya_aplicado": 30.00,
+    "monto_ya_pagado": 10.00,
+    "monto_cargado_a_cuenta": 20.00,
+    "minutos_exceso_pendiente": 140,
+    "horas_extra_sugeridas_nuevas": 2,
+    "monto_sugerido_nuevo": 20.00
+}
+```
+
+**POST /api/reservas/{id}/extensiones:**
+```json
+{
+    "horas_extra": 2,
+    "cargar_a_cuenta": true,
+    "id_metodo_pago": null,
+    "es_turno_adicional": false,
+    "observaciones": "Cliente pidió 2 horas más"
+}
+```
+
+### Servicios del Módulo 09C
+
+#### `ExtensionService`
+- `calcular(Reserva $reserva): array` → devuelve el cálculo completo con historial + pendiente + opciones.
+
+#### `ReservaService::agregarExtension(...)`
+- Crea `extensiones_reserva`
+- Suma `monto_horas_extra` a la reserva
+- Actualiza `horas_extra` y `horas_totales`
+- Extiende `fecha_salida_prevista`
+- Si `cargar_a_cuenta = false` → registra `pago_reserva` + `movimiento_caja` (si aplica R39)
+- Recalcula `total` y `saldo`
+
+#### `ReservaService::listarExtensiones(int $idReserva)`
+- Devuelve historial completo de extensiones de una reserva.
+
+---
+
+## 🧹 Módulo 14 — LIMPIEZA (backend listo, frontend pendiente)
+
+### Tablas
+
+#### `limpieza`
+Cola de tareas de limpieza por habitación.
+
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_limpieza | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_habitacion | BIGINT FK | → habitaciones, onDelete cascade |
+| id_reserva | BIGINT FK NULL | → reservas, onDelete set null |
+| id_usuario_asignado | BIGINT FK NULL | → usuarios, onDelete set null |
+| estado | ENUM('PENDIENTE','EN_PROCESO','COMPLETADA') | default PENDIENTE |
+| tipo | ENUM('NORMAL','PROFUNDA') | default NORMAL |
+| fecha_solicitud | DATETIME | cuándo se pidió |
+| fecha_inicio | DATETIME NULL | cuándo empezó |
+| fecha_fin | DATETIME NULL | cuándo terminó |
+| observaciones | TEXT | NULL |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Índices:** `id_habitacion`, `estado`.
+
+### Cuándo se crea la limpieza (automático)
+
+1. **Al hacer check-out** → INSERT en `limpieza` (PENDIENTE)
+2. **Al cambiar de habitación** → INSERT en `limpieza` para la habitación VIEJA
+3. **Al finalizar mantenimiento** → INSERT en `limpieza` (futuro)
+
+### Estados y transiciones
+
+```
+PENDIENTE  →  EN_PROCESO  →  COMPLETADA
+```
+
+- **PENDIENTE:** recién creada, esperando que el personal la tome
+- **EN_PROCESO:** el personal está limpiando
+- **COMPLETADA:** terminó → habitación vuelve a **Disponible**
+
+### Endpoints Módulo 14 (backend listo)
+
+```
+GET    /api/limpieza                          → todas las limpiezas
+GET    /api/limpieza/pendientes               → solo PENDIENTE + EN_PROCESO
+PATCH  /api/limpieza/{id}/iniciar             → PENDIENTE → EN_PROCESO
+PATCH  /api/limpieza/{id}/finalizar           → EN_PROCESO → COMPLETADA
+```
+
+**Response de `GET /api/limpieza/pendientes`:**
+```json
+[
+    {
+        "id_limpieza": 1,
+        "id_habitacion": 3,
+        "estado": "PENDIENTE",
+        "tipo": "NORMAL",
+        "fecha_solicitud": "2026-10-04T07:30:00.000000Z",
+        "habitacion": {
+            "id_habitacion": 3,
+            "numero": "101",
+            "piso": { "nombre": "Piso 1" }
+        }
+    }
+]
+```
+
+### Integración con `EstadoHabitacionService`
+
+El `EstadoHabitacionService` **ya considera la limpieza** en su cálculo:
+- Si hay una limpieza PENDIENTE o EN_PROCESO → estado = **Limpieza** (celeste #06b6d4)
+- Al finalizar la limpieza → habitación vuelve a **Disponible**
+
+### Frontend pendiente (Módulo 14)
+
+**Vistas a crear:**
+- `/limpieza` → cola de tareas pendientes
+- Componentes: `LimpiezaPage.tsx`, `LimpiezaTabla.tsx`
+- Botones: Iniciar / Finalizar
+- Filtro por piso
+
+**Reglas UX:**
+- El personal de limpieza lo ve desde su celular
+- Ordenado por antigüedad (más antigua primero)
+- Al finalizar → toast + recarga automática
+
+---
+
+## 🌱 Seeder de Prueba — ReservaTestSeeder
+
+### Descripción
+
+Crea **10 reservas de prueba** con diferentes estados de tiempo para testear el sistema completo.
+
+**IMPORTANTE:** 
+- **NO toca** las habitaciones ocupadas (103, 308)
+- **NO toca** las habitaciones en limpieza (101, 102)
+- **NO toca** la 208 (inactiva)
+- Solo usa habitaciones disponibles
+
+### Cómo funciona
+
+```php
+php artisan db:seed --class=ReservaTestSeeder
+```
+
+**Lógica:**
+1. Detecta habitaciones ocupadas (query `ocupacion_habitacion` estado ACTIVA)
+2. Detecta habitaciones en limpieza (query `limpieza` estado PENDIENTE/EN_PROCESO)
+3. Detecta habitaciones inactivas (`activo = false`)
+4. Calcula disponibles = activas - ocupadas - limpieza - inactivas
+5. Crea 10 reservas en las primeras 10 disponibles
+
+### Los 10 escenarios
+
+| # | Hab | Horas Base | Tiempo | Estado Visual |
+|---|-----|-----------|--------|---------------|
+| 1 | x | 4h | 30m | 🔴 Ocupada (apenas entró) |
+| 2 | x | 6h | 1h 30m | 🔴 Ocupada (normal temprano) |
+| 3 | x | 8h | 4h | 🔴 Ocupada (normal medio) |
+| 4 | x | 8h | 7h 30m | 🔴 Ocupada (normal avanzada) |
+| 5 | x | 8h | 7h 50m | 🟡 **Por vencer** (faltan 10m) |
+| 6 | x | 6h | 6h 5m | 🔴 Excedido 5m (dentro de tolerancia) |
+| 7 | x | 4h | 4h 30m | 🔴 Excedido 30m (en el límite) |
+| 8 | x | 8h | 10h 20m | 🔴 **Vencida** (excedido 2h 20m) |
+| 9 | x | 4h | 5h | 🔴 **Vencida** (excedido 1h) |
+| 10 | x | 6h | 9h | 🔴 **Vencida** (excedido 3h → turno adicional) |
+
+### Aviso importante
+
+**Este seeder es SOLO para desarrollo/test.** NO se debe correr en producción.
+
+**Para limpiar todo después:**
+```php
+DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+DB::table('pagos_reserva')->truncate();
+DB::table('registros_estadia')->truncate();
+DB::table('ocupacion_habitacion')->truncate();
+DB::table('extensiones_reserva')->truncate();
+DB::table('reserva_consumos')->truncate();
+DB::table('reserva_ajustes')->truncate();
+DB::table('limpieza')->truncate();
+DB::table('cliente_visitas')->truncate();
+DB::table('reservas')->truncate();
+DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+```
+
+---
+
+## 🆕 REGLAS DE NEGOCIO AGREGADAS (R54+)
+
+### Extensiones de tiempo (RG-Extensión)
+
+- **R54** Tolerancia antes de cobrar hora extra: **configurable** (default 30 min)
+- **R55** Horas extra = `ceil((exceso - tolerancia) / 60)` redondeando arriba
+- **R56** El precio de hora extra viene de `tarifas.precio_hora_extra` (NO hardcodeado)
+- **R57** El máximo de horas extra viene de `tarifas.max_horas_extra` (default 3)
+- **R58** Si excede el máximo → ofrecer turno adicional completo
+- **R59** Cada extensión se registra en `extensiones_reserva` (auditoría)
+- **R60** Múltiples extensiones por reserva permitidas
+- **R61** El cálculo resta las extensiones ya aplicadas (evita doble cobro)
+- **R62** Formas de pago: cargar a cuenta (descuenta del vuelto) o pagar ahora (entra a caja)
+- **R63** Se puede "no cobrar" con observación obligatoria
+- **R64** Los precios y tolerancia son configurables y NO se hardcodean
+
+### Configuraciones del sistema
+
+- **R65** Los parámetros globales viven en tabla `configuraciones` (NO en código)
+- **R66** Cambiar una configuración aplica al instante (sin redeploy)
+- **R67** Los parámetros iniciales: tolerancia, buffer limpieza, tolerancia no-show, IGV, moneda
+
+### Limpieza
+
+- **R68** Al check-out se crea limpieza automática
+- **R69** Al cambiar habitación, la vieja va a limpieza
+- **R70** La habitación vuelve a Disponible solo cuando se completa la limpieza
+- **R71** El estado Limpieza tiene prioridad sobre Disponible en el cálculo
+
+---
+
+## 📊 Tablas agregadas desde la última actualización
+
+| Tabla | Filas iniciales | Módulo |
+|-------|-----------------|--------|
+| `configuraciones` | 5 | 09C |
+| `extensiones_reserva` | 0 | 09C |
+| `limpieza` | 0 (se llena al usar) | 09A |
+
+**Total acumulado:** ~35 tablas creadas.
+
+---
+
+## 🎯 Estado actualizado del roadmap
+
+| # | Módulo | Backend | Frontend | Estado |
+|---|--------|---------|----------|--------|
+| 01-08 | AUTH, CONFIG, TARIFAS, CLIENTES, PRODUCTOS, PROMOCIONES, DECORACIÓN, HABITACIONES | ✅ | ✅ | CERRADOS |
+| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
+| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Backend listo |
+| **09C** | **EXTENSIONES DE TIEMPO** | ✅ | ✅ | **CERRADO** |
+| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
+| 11 | CAJA | ⏳ | ⏳ | Pendiente |
+| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
+| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
+| **14** | **LIMPIEZA (pantalla)** | ✅ | ⏳ | **Backend listo** |
+| 15 | MANTENIMIENTO | ⏳ | ⏳ | Pendiente |
+| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
+| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
+| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
+| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
+| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
+| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
+
+---
+
+## 🎯 Próximos módulos (detalle)
+
+### Módulo 09B — RESERVAS FUTURAS (frontend pendiente)
+
+**Backend:** listo (`POST /reservas`, `PATCH /reservas/{id}/check-in`).
+
+**Frontend pendiente:**
+- `/reservas` (listado con filtros)
+- `/reservas/nueva` (form con fecha futura)
+- `/reservas/:id` (detalle con opción check-in)
+
+**Reglas:**
+- Reserva pendiente/confirmada bloquea el rango en `ocupacion_habitacion`
+- Al llegar el cliente → check-in convierte a `estado = Activa`
+- Si no llega en 60 min → No-Show
+
+### Módulo 10 — DECORACIONES APLICADAS
+
+**Tabla `decoraciones`:**
+```
+id_decoracion, id_reserva (FK), id_cliente (FK), id_habitacion (FK),
+id_paquete (FK → paquetes_decoracion), id_proveedor (FK),
+fecha_inicio, fecha_fin, monto, ganancia_local, ganancia_proveedor,
+adelanto, saldo, frase, musica,
+estado ENUM('Programada','En proceso','Finalizada','Cancelada'),
+observaciones, created_at (sin updated_at)
+```
+
+**R11:** Al crear reserva con decoración → crear CuentaPagar al proveedor.
+
+### Módulo 11 — CAJA
+
+**Tablas:**
+- `cajas`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `devoluciones`
+
+**Reglas R17-R23, R39.**
+
+### Módulo 12 — INVENTARIO / KARDEX
+
+**Tablas:**
+- `kardex`, `inventario_fisico`, `inventario_detalle`
+
+### Módulo 13 — CUENTAS POR PAGAR
+
+**Tablas:**
+- `cuentas_por_pagar`, `pagos_proveedor`
+
+### Módulo 14 — LIMPIEZA (pantalla)
+
+**Backend listo.** Falta el frontend:
+- `/limpieza` (cola de tareas)
+- Botones: Iniciar / Finalizar
+- Filtro por piso
+
+### Módulo 15 — MANTENIMIENTO
+
+**Tabla `mantenimiento`.**
+
+### Módulo 16 — COMPROBANTES SUNAT
+
+**Tablas:** `tipos_comprobante`, `series_comprobante`, `facturas`, `facturas_detalle`, `notas_credito`
+
+### Módulo 17 — ALERTAS
+
+**Tablas:** `alertas`, `reglas_alerta`, `canales_alerta`
+
+### Módulo 18 — REPORTES
+
+Sin tablas nuevas. Consultas sobre tablas existentes.
+
+### Módulo 19 — AUDITORÍA
+
+**Tablas:** `auditoria`, `auditoria_cambios`
+
+### Módulo 20 — ASISTENCIA PERSONAL
+
+**Tablas:** `asistencia`, `horas_extra`
+
+### Módulo 21 — RENIEC
+
+Sin tablas. Solo `ReniecService::consultar($dni)` en producción.
+
+---
+
+## 🎯 Casos de uso reales (Módulo 09C)
+
+### Caso 1 — Cliente se pasa 20 min
+
+```
+Base: 8h
+Lleva: 8h 20m
+Exceso: 20 min
+Tolerancia: 30 min
+→ DENTRO DE TOLERANCIA → no se cobra nada
+```
+
+### Caso 2 — Cliente se pasa 45 min
+
+```
+Base: 8h
+Lleva: 8h 45m
+Exceso: 45 min
+Tolerancia: 30 min
+minutos_a_cobrar = 45 - 30 = 15
+horas_extra = ceil(15/60) = 1 hora
+Monto = S/ 10
+```
+
+### Caso 3 — Cliente se pasa 2h 15m
+
+```
+Base: 8h
+Lleva: 10h 15m
+Exceso: 2h 15m = 135 min
+Tolerancia: 30 min
+minutos_a_cobrar = 135 - 30 = 105
+horas_extra = ceil(105/60) = 2 horas
+Monto = S/ 20
+```
+
+### Caso 4 — Cliente se pasa 2h 20m, ya tenía 2h aplicadas
+
+```
+Base: 8h
+Lleva: 10h 20m
+Exceso total: 2h 20m = 140 min
+Extensiones previas: 2h = 120 min
+Exceso pendiente: 140 - 120 = 20 min
+Tolerancia: 30 min
+→ DENTRO DE TOLERANCIA → no se cobra más
+```
+
+### Caso 5 — Cliente se pasa 4h 30m (excede máximo)
+
+```
+Base: 8h
+Lleva: 12h 30m
+Exceso: 4h 30m
+Tolerancia: 30 min
+minutos_a_cobrar = 4h 30m - 30 = 4h
+horas_extra = 4h → excede el máximo (3h)
+
+Opciones:
+○ 3 horas extra (máximo): S/ 30
+○ 4 horas extra (excede): S/ 40
+● Turno adicional completo: S/ 70 (recomendado)
+```
+
+---
+
+## 🚨 Bugs resueltos (histórico actualizado)
+
+8. **Bug extensiones 500 "Class not found"** → faltaba `use App\Models\ExtensionReserva;` y `use App\Models\Configuracion;` en `ReservaService.php`.
+
+9. **Bug historial de extensiones** → el cálculo no restaba las extensiones ya aplicadas, causando doble cobro. Fix: `minutos_exceso_pendiente = minutos_exceso_total - minutos_ya_cubiertos`.
+
+10. **Bug wording "ya cobrado"** → era ambiguo. Ahora es "ya aplicado" (con desglose pagado/cargado a cuenta).
+
+11. **Bug cálculo de horas extra** → no respetaba la tolerancia. Fix: `ceil((exceso - tolerancia) / 60)`.
+
+---
+
+**Última actualización:** 04/10/2026
+**Módulos completados:** 9 de 21 (09C agregado)
+```
+
+---
+
+## 📸 Pegame
+
+1. **Screenshot del README.md** con la sección nueva
+2. **¿Guardaste?**
+3. **¿Seguimos con el módulo de observaciones del cliente o algún otro?**
+
+**Con eso cerramos la documentación del Módulo 09C + Limpieza.** 🚀
+
+**¿Dale?**

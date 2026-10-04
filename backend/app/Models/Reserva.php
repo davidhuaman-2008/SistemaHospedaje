@@ -92,6 +92,11 @@ class Reserva extends Model
         return $this->hasOne(RegistroEstadia::class, 'id_reserva', 'id_reserva');
     }
 
+    public function extensiones(): HasMany
+    {
+        return $this->hasMany(ExtensionReserva::class, 'id_reserva', 'id_reserva');
+    }
+
     public function consumos(): HasMany
     {
         return $this->hasMany(ReservaConsumo::class, 'id_reserva', 'id_reserva');
