@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\PromocionClienteController;
+use App\Http\Controllers\PaqueteDecoracionController;
 use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\CategoriaPromocionController;
 use App\Http\Controllers\ProveedorController;
@@ -14,6 +15,11 @@ use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
 
 use App\Http\Controllers\PisoController;
+use App\Http\Controllers\HabitacionController;
+use App\Http\Controllers\EstadoReservaController;
+use App\Http\Controllers\EstadoHabitacionController;
+use App\Http\Controllers\ReservaController;
+use App\Http\Controllers\LimpiezaController;
 use App\Http\Controllers\TipoHabitacionController;
 use App\Http\Controllers\TipoDocumentoController;
 use App\Http\Controllers\MetodoPagoController;
@@ -267,4 +273,80 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('promociones-cliente', [PromocionClienteController::class, 'store']);
     Route::patch('promociones-cliente/{id}/usar', [PromocionClienteController::class, 'marcarUsado']);
     Route::delete('promociones-cliente/{id}', [PromocionClienteController::class, 'destroy']);
+});
+
+// ============================================================================
+// DECORACIONES — Categorías de Paquete + Paquetes
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+
+    // --- Paquetes de Decoración ---
+    Route::get('paquetes-decoracion', [PaqueteDecoracionController::class, 'index']);
+    Route::get('paquetes-decoracion/activos', [PaqueteDecoracionController::class, 'activos']);
+    Route::get('paquetes-decoracion/por-tipo-habitacion/{idTipo}', [PaqueteDecoracionController::class, 'porTipoHabitacion']);
+    Route::get('paquetes-decoracion/{id}', [PaqueteDecoracionController::class, 'show']);
+    Route::post('paquetes-decoracion', [PaqueteDecoracionController::class, 'store']);
+    Route::put('paquetes-decoracion/{id}', [PaqueteDecoracionController::class, 'update']);
+    Route::patch('paquetes-decoracion/{id}/desactivar', [PaqueteDecoracionController::class, 'desactivar']);
+    Route::patch('paquetes-decoracion/{id}/reactivar', [PaqueteDecoracionController::class, 'reactivar']);
+    Route::delete('paquetes-decoracion/{id}', [PaqueteDecoracionController::class, 'destroy']);
+});
+
+// ============================================================================
+// HABITACIONES
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('habitaciones', [HabitacionController::class, 'index']);
+    Route::get('habitaciones/activas', [HabitacionController::class, 'activas']);
+    Route::get('habitaciones/por-piso/{idPiso}', [HabitacionController::class, 'porPiso']);
+    Route::get('habitaciones/por-tipo/{idTipo}', [HabitacionController::class, 'porTipo']);
+    Route::get('habitaciones/{id}', [HabitacionController::class, 'show']);
+    Route::post('habitaciones', [HabitacionController::class, 'store']);
+    Route::put('habitaciones/{id}', [HabitacionController::class, 'update']);
+    Route::patch('habitaciones/{id}/desactivar', [HabitacionController::class, 'desactivar']);
+    Route::patch('habitaciones/{id}/reactivar', [HabitacionController::class, 'reactivar']);
+    Route::delete('habitaciones/{id}', [HabitacionController::class, 'destroy']);
+});
+
+// ============================================================================
+// RESERVAS (Módulo 09)
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // --- Estados de Reserva ---
+    Route::get('estados-reserva', [EstadoReservaController::class, 'index']);
+    Route::get('estados-reserva/activos', [EstadoReservaController::class, 'activos']);
+
+    // --- Mapa de Habitaciones (estado en vivo) ---
+    Route::get('habitaciones-mapa', [EstadoHabitacionController::class, 'mapa']);
+    Route::get('habitaciones-mapa/{id}', [EstadoHabitacionController::class, 'show']);
+
+    // --- Reservas ---
+    Route::get('reservas', [ReservaController::class, 'index']);
+    Route::get('reservas/{id}', [ReservaController::class, 'show']);
+    Route::post('reservas/walk-in', [ReservaController::class, 'walkIn']);
+    Route::post('reservas', [ReservaController::class, 'store']);
+    Route::patch('reservas/{id}/check-in', [ReservaController::class, 'checkIn']);
+    Route::patch('reservas/{id}/check-out', [ReservaController::class, 'checkOut']);
+    Route::patch('reservas/{id}/cancelar', [ReservaController::class, 'cancelar']);
+    Route::patch('reservas/{id}/anular', [ReservaController::class, 'anular']);
+    Route::patch('reservas/{id}/cambiar-habitacion', [ReservaController::class, 'cambiarHabitacion']);
+    Route::post('reservas/{id}/consumos', [ReservaController::class, 'agregarConsumo']);
+    Route::delete('reservas/{id}/consumos/{idConsumo}', [ReservaController::class, 'eliminarConsumo']);
+});
+
+// ============================================================================
+// LIMPIEZA
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('limpieza', [LimpiezaController::class, 'index']);
+    Route::get('limpieza/pendientes', [LimpiezaController::class, 'pendientes']);
+    Route::patch('limpieza/{id}/iniciar', [LimpiezaController::class, 'iniciar']);
+    Route::patch('limpieza/{id}/finalizar', [LimpiezaController::class, 'finalizar']);
 });

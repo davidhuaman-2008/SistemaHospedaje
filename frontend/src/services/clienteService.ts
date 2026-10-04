@@ -1,13 +1,5 @@
 import api from './api'
-import type {
-  Cliente,
-  ClienteRequest,
-  ClienteVisita,
-  ClienteVisitaRequest,
-  ClienteObservacion,
-  ClienteObservacionRequest,
-  BuscarClienteResponse,
-} from '@/types/cliente'
+import type { Cliente, ClienteRequest } from '@/types/cliente'
 
 export const clienteService = {
   listar: async (): Promise<Cliente[]> => {
@@ -20,9 +12,17 @@ export const clienteService = {
     return data
   },
 
-  buscarPorDni: async (dni: string): Promise<BuscarClienteResponse> => {
-    const { data } = await api.get(`/clientes/buscar?dni=${encodeURIComponent(dni)}`)
-    return data
+  /**
+   * Busca un cliente por DNI.
+   * El backend devuelve: { existe: boolean, cliente: Cliente | null }
+   * Este método devuelve solo el cliente (o null).
+   */
+  buscarPorDni: async (dni: string): Promise<Cliente | null> => {
+    const { data } = await api.get('/clientes/buscar', { params: { dni } })
+    if (data && data.existe && data.cliente) {
+      return data.cliente
+    }
+    return null
   },
 
   obtener: async (id: number): Promise<Cliente> => {
@@ -54,32 +54,13 @@ export const clienteService = {
     await api.delete(`/clientes/${id}`)
   },
 
-  listarVisitas: async (idCliente: number): Promise<ClienteVisita[]> => {
+  listarVisitas: async (idCliente: number) => {
     const { data } = await api.get(`/clientes/${idCliente}/visitas`)
     return data
   },
 
-  crearVisita: async (idCliente: number, datos: ClienteVisitaRequest): Promise<ClienteVisita> => {
+  crearVisita: async (idCliente: number, datos: any) => {
     const { data } = await api.post(`/clientes/${idCliente}/visitas`, datos)
     return data.data
-  },
-
-  listarObservaciones: async (idCliente: number): Promise<ClienteObservacion[]> => {
-    const { data } = await api.get(`/clientes/${idCliente}/observaciones`)
-    return data
-  },
-
-  crearObservacion: async (idCliente: number, datos: ClienteObservacionRequest): Promise<ClienteObservacion> => {
-    const { data } = await api.post(`/clientes/${idCliente}/observaciones`, datos)
-    return data.data
-  },
-
-  resolverObservacion: async (id: number): Promise<ClienteObservacion> => {
-    const { data } = await api.patch(`/cliente-observaciones/${id}/resolver`)
-    return data.data
-  },
-
-  eliminarObservacion: async (id: number): Promise<void> => {
-    await api.delete(`/cliente-observaciones/${id}`)
   },
 }

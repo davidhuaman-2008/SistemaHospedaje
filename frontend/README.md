@@ -1,8 +1,16 @@
-# 📘 README.md completo del Frontend — Solo para pegar en el archivo
+¡Perfecto! 🎯 Ahora sí, el **README del frontend COMPLETO** con todo el contexto actualizado hasta el Módulo 09.
 
-**Copiá TODO lo que está dentro del bloque de abajo y pegalo en tu `frontend/README.md`** (reemplazando el contenido actual).
+---
 
-```markdown
+## 📄 README.md frontend — COMPLETO PARA COPIAR Y PEGAR
+
+**Abrí `frontend/README.md` en VS Code:**
+1. **Ctrl+A** (seleccionar todo)
+2. **Delete** (borrar)
+3. **Pegar TODO lo de abajo**
+4. **Ctrl+S** (guardar)
+
+````markdown
 # Frontend — Sistema de Hospedaje
 
 **Framework:** React 19 + TypeScript 6
@@ -14,7 +22,7 @@
 **HTTP:** Axios 1.20
 **Notificaciones:** Sonner 2
 **Iconos:** Lucide React 1.49
-**Estado global:** Módulos 01-04 completados
+**Estado global:** Módulos 01-09 completados
 
 ---
 
@@ -24,11 +32,12 @@ SPA (Single Page Application) para gestión completa de un hospedaje de rotació
 
 **Arquitectura:**
 - Componentes por página (Page/Form/Tabla)
-- Cada `Page.tsx` incluye `<Sidebar />` (Layout a nivel de página)
+- Cada `Page.tsx` incluye `<AppLayout>` (que contiene `<Sidebar />`)
 - Servicios para llamadas API (axios)
 - Zustand para estado de autenticación
 - Sidebar con dropdowns por módulo
 - Rutas protegidas con guard
+- **Sistema en tiempo real:** auto-refresh cada 15s en el mapa de Recepción
 
 ---
 
@@ -38,12 +47,64 @@ SPA (Single Page Application) para gestión completa de un hospedaje de rotació
 Todo sale de la BD. Si puede cambiar sin tocar código → va a BD.
 Los datos de estado, tipos, categorías, métodos de pago, etc. vienen del backend.
 
+**Ejemplo:** El select de "Categoría de Paquete" en `PaqueteDecoracionForm` carga desde `categoriaPaqueteService.listarActivos()`, NO tiene categorías hardcodeadas.
+
 ### R2 — Poco código por archivo
 100 archivos de 30 líneas > 10 archivos de 300 líneas.
 1 archivo = 1 responsabilidad.
 
 ### R3 — Funcional > Elegante
 Si algo es "elegante pero confuso" → simplificar.
+
+### R4 — Componentes reutilizables
+- `<IconPicker />` → selector visual de íconos Lucide con buscador
+- `<IconoDinamico />` → renderiza un ícono Lucide por nombre
+- `<ConfirmDialog />` → modal de confirmación
+- `<ProtectedRoute />` → guard de rutas autenticadas
+
+### R5 — Servicios: GET vs POST/PUT
+- **GET** → devuelve `data` directo
+- **POST/PUT/PATCH** → devuelve `data.data` (porque el backend anida `{ mensaje, data }`)
+- **DELETE** → solo el mensaje
+
+### R6 — Estado de formularios
+Cuando un formulario se abre para EDITAR, debe cargar los datos del item:
+- **useState** inicializado con `inicial?.campo`
+- Si necesita sincronizar al cambiar props → **useEffect**
+- **NUNCA hardcodear valores** en el estado inicial (excepto placeholders)
+
+### R7 — Fechas ISO
+El backend devuelve fechas como `2026-10-03T05:00:00.000000Z`. Siempre normalizar:
+```ts
+function normalizarFecha(valor: string | null): string {
+  if (!valor) return ""
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor
+  return valor.substring(0, 10)  // "2026-10-03"
+}
+```
+
+### R8 — Z-index para modales anidados
+- Modal principal: `z-50`
+- Submodales (anidados): `z-[60]`
+- **NUNCA** renderizar submodal dentro del modal principal. Usar `if (mostrarSubmodal) return <Submodal />` ANTES del return principal.
+
+### R9 — El backend es la fuente de verdad
+- Validaciones en backend (frontend es solo UX)
+- Cálculos de dinero (totales, saldos) vienen del backend
+- El frontend solo muestra y captura
+
+### R10 — Paleta de colores de estados
+| Estado | Color | Hex |
+|--------|-------|-----|
+| Disponible | 🟢 Verde | `#10b981` |
+| Ocupada | 🔴 Rojo | `#ef4444` |
+| Por vencer | 🟡 Amarillo | `#f59e0b` |
+| Vencida | 🔴 Rojo oscuro | `#dc2626` |
+| Limpieza | 🔵 Celeste | `#06b6d4` |
+| Reservada | 🟣 Morado | `#7c3aed` |
+| Inactiva | ⚫ Gris | `#475569` |
+
+**Los colores vienen del BACKEND** (`EstadoHabitacionService`), el frontend solo los aplica con `style={{ background: color }}`.
 
 ---
 
@@ -52,11 +113,11 @@ Si algo es "elegante pero confuso" → simplificar.
 ```
 frontend/
 ├── public/
-│   └── (vacío)
 ├── src/
 │   ├── components/
 │   │   ├── layout/
-│   │   │   └── Sidebar.tsx               (menú lateral con 3 dropdowns)
+│   │   │   ├── Sidebar.tsx               (menú lateral con dropdowns)
+│   │   │   └── AppLayout.tsx             (Sidebar + main content)
 │   │   ├── ui/                            (componentes shadcn)
 │   │   │   ├── alert-dialog.tsx
 │   │   │   ├── button.tsx
@@ -64,13 +125,16 @@ frontend/
 │   │   │   ├── input.tsx
 │   │   │   └── label.tsx
 │   │   ├── ConfirmDialog.tsx              (modal reutilizable)
-│   │   └── ProtectedRoute.tsx             (guard de rutas autenticadas)
+│   │   ├── ProtectedRoute.tsx             (guard de rutas autenticadas)
+│   │   ├── IconPicker.tsx                 (selector visual de íconos)
+│   │   └── IconoDinamico.tsx              (render dinámico de íconos)
 │   │
 │   ├── hooks/
 │   │   └── useAuth.ts                     (Zustand + persist)
 │   │
 │   ├── lib/
-│   │   └── utils.ts                       (helper cn de shadcn)
+│   │   ├── utils.ts                       (helper cn de shadcn)
+│   │   └── errores.ts                     (mensajeDeError)
 │   │
 │   ├── pages/
 │   │   ├── LoginPage.tsx
@@ -78,63 +142,55 @@ frontend/
 │   │   │
 │   │   ├── usuarios/                      (Módulo 01)
 │   │   │   ├── usuario/
-│   │   │   │   ├── UsuarioPage.tsx
-│   │   │   │   ├── UsuarioForm.tsx
-│   │   │   │   └── UsuarioTabla.tsx
 │   │   │   ├── turno/
-│   │   │   │   ├── TurnoPage.tsx
-│   │   │   │   ├── TurnoForm.tsx
-│   │   │   │   └── TurnoTabla.tsx
 │   │   │   └── rol/
-│   │   │       ├── RolPage.tsx
-│   │   │       ├── RolForm.tsx
-│   │   │       └── RolTabla.tsx
 │   │   │
-│   │   ├── configuracion/                 (Módulos 02 y 03)
+│   │   ├── configuracion/                 (Módulos 02, 03 y 08)
 │   │   │   ├── piso/
-│   │   │   │   ├── PisoPage.tsx
-│   │   │   │   ├── PisoForm.tsx
-│   │   │   │   └── PisoTabla.tsx
 │   │   │   ├── tipoHabitacion/
-│   │   │   │   ├── TipoHabitacionPage.tsx
-│   │   │   │   ├── TipoHabitacionForm.tsx
-│   │   │   │   └── TipoHabitacionTabla.tsx
 │   │   │   ├── tipoDocumento/
-│   │   │   │   ├── TipoDocumentoPage.tsx
-│   │   │   │   ├── TipoDocumentoForm.tsx
-│   │   │   │   └── TipoDocumentoTabla.tsx
 │   │   │   ├── metodoPago/
-│   │   │   │   ├── MetodoPagoPage.tsx
-│   │   │   │   ├── MetodoPagoForm.tsx
-│   │   │   │   └── MetodoPagoTabla.tsx
 │   │   │   ├── categoriaMovimiento/
-│   │   │   │   ├── CategoriaMovimientoPage.tsx
-│   │   │   │   ├── CategoriaMovimientoForm.tsx
-│   │   │   │   └── CategoriaMovimientoTabla.tsx
 │   │   │   ├── clienteNivel/
-│   │   │   │   ├── ClienteNivelPage.tsx
-│   │   │   │   ├── ClienteNivelForm.tsx
-│   │   │   │   └── ClienteNivelTabla.tsx
-│   │   │   └── tarifa/
-│   │   │       ├── TarifaPage.tsx
-│   │   │       ├── TarifaForm.tsx
-│   │   │       └── TarifaTabla.tsx
+│   │   │   ├── tarifa/
+│   │   │   └── habitacion/                (Módulo 08)
+│   │   │       ├── HabitacionPage.tsx
+│   │   │       ├── HabitacionForm.tsx
+│   │   │       └── HabitacionTabla.tsx
 │   │   │
-│   │   └── clientes/                      (Módulo 04)
-│   │       ├── tipoObservacion/
-│   │       │   ├── TipoObservacionPage.tsx
-│   │       │   ├── TipoObservacionForm.tsx
-│   │       │   └── TipoObservacionTabla.tsx
-│   │       ├── gravedadObservacion/
-│   │       │   ├── GravedadObservacionPage.tsx
-│   │       │   ├── GravedadObservacionForm.tsx
-│   │       │   └── GravedadObservacionTabla.tsx
-│   │       └── cliente/
-│   │           ├── ClientePage.tsx
-│   │           ├── ClienteForm.tsx
-│   │           ├── ClienteTabla.tsx
-│   │           ├── ClienteHistorial.tsx
-│   │           └── ClienteVisitaDialog.tsx
+│   │   ├── clientes/                      (Módulo 04)
+│   │   │   ├── tipoObservacion/
+│   │   │   ├── gravedadObservacion/
+│   │   │   └── cliente/
+│   │   │       ├── ClientePage.tsx
+│   │   │       ├── ClienteForm.tsx
+│   │   │       ├── ClienteTabla.tsx
+│   │   │       ├── ClienteHistorial.tsx
+│   │   │       └── ClienteVisitaDialog.tsx
+│   │   │
+│   │   ├── productos/                     (Módulo 05)
+│   │   │   ├── categoriaProducto/
+│   │   │   ├── proveedor/
+│   │   │   └── producto/
+│   │   │
+│   │   ├── promociones/                   (Módulo 06)
+│   │   │   ├── categoriaPromocion/
+│   │   │   ├── promocion/
+│   │   │   └── promocionCliente/
+│   │   │
+│   │   ├── decoraciones/                  (Módulo 07)
+│   │   │   ├── categoriaPaquete/
+│   │   │   └── paqueteDecoracion/
+│   │   │
+│   │   └── recepcion/                     (Módulo 09)
+│   │       ├── RecepcionPage.tsx          (mapa visual)
+│   │       ├── TarjetaHabitacion.tsx      (tarjeta con tiempo)
+│   │       ├── ModalHabitacionOcupada.tsx (modal principal)
+│   │       ├── RegistrarIngresoPage.tsx   (walk-in)
+│   │       ├── CheckoutPage.tsx           (check-out + consumos)
+│   │       ├── CambiarHabitacionModal.tsx (cambio con dinero)
+│   │       ├── AnularReservaModal.tsx     (anular)
+│   │       └── AgregarConsumoModal.tsx    (agregar productos)
 │   │
 │   ├── services/
 │   │   ├── api.ts
@@ -151,19 +207,35 @@ frontend/
 │   │   ├── tarifaService.ts
 │   │   ├── tipoObservacionService.ts
 │   │   ├── gravedadObservacionService.ts
-│   │   └── clienteService.ts
+│   │   ├── clienteService.ts
+│   │   ├── categoriaProductoService.ts
+│   │   ├── proveedorService.ts
+│   │   ├── productoService.ts
+│   │   ├── categoriaPromocionService.ts
+│   │   ├── promocionService.ts
+│   │   ├── promocionClienteService.ts
+│   │   ├── categoriaPaqueteService.ts
+│   │   ├── paqueteDecoracionService.ts
+│   │   ├── habitacionService.ts
+│   │   └── reservaService.ts
 │   │
 │   ├── types/
-│   │   ├── index.ts                       (tipos Módulo 01)
-│   │   ├── configuracion.ts               (tipos Módulo 02)
-│   │   ├── tarifa.ts                      (tipos Módulo 03)
-│   │   ├── tipoObservacion.ts             (tipos Módulo 04)
-│   │   ├── gravedadObservacion.ts         (tipos Módulo 04)
-│   │   └── cliente.ts                     (tipos Módulo 04)
+│   │   ├── index.ts
+│   │   ├── configuracion.ts
+│   │   ├── tarifa.ts
+│   │   ├── tipoObservacion.ts
+│   │   ├── gravedadObservacion.ts
+│   │   ├── cliente.ts
+│   │   ├── producto.ts
+│   │   ├── promocion.ts
+│   │   ├── categoriaPaquete.ts
+│   │   ├── paqueteDecoracion.ts
+│   │   ├── habitacion.ts
+│   │   └── reserva.ts
 │   │
-│   ├── App.tsx                            (router principal + Toaster)
-│   ├── main.tsx                           (entry point)
-│   └── index.css                          (Tailwind + variables shadcn)
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
 │
 ├── .gitignore
 ├── components.json
@@ -283,13 +355,26 @@ export default defineConfig({
 | `/configuracion/categorias-movimiento` | CategoriaMovimientoPage | Sí |
 | `/configuracion/clientes-niveles` | ClienteNivelPage | Sí |
 | `/configuracion/tarifas` | TarifaPage | Sí |
+| `/configuracion/habitaciones` | HabitacionPage | Sí |
 | `/clientes` | ClientePage | Sí |
 | `/clientes/tipos-observacion` | TipoObservacionPage | Sí |
 | `/clientes/gravedades-observacion` | GravedadObservacionPage | Sí |
+| `/productos` | ProductoPage | Sí |
+| `/productos/categorias` | CategoriaProductoPage | Sí |
+| `/productos/proveedores` | ProveedorPage | Sí |
+| `/promociones` | PromocionPage | Sí |
+| `/promociones/categorias` | CategoriaPromocionPage | Sí |
+| `/promociones/asignadas` | PromocionClientePage | Sí |
+| `/decoraciones/paquetes` | PaqueteDecoracionPage | Sí |
+| `/recepcion` | RecepcionPage | Sí |
+| `/recepcion/registrar/:idHabitacion` | RegistrarIngresoPage | Sí |
+| `/recepcion/checkout/:idReserva` | CheckoutPage | Sí |
 | `/` | Redirect → `/dashboard` | — |
 | `*` | Redirect → `/dashboard` | — |
 
 **Toaster global:** Sonner con `theme="dark"`, `position="top-right"`, `richColors`, `closeButton`.
+
+**Auto-refresh:** El mapa de Recepción refresca cada 15s automáticamente.
 
 ---
 
@@ -298,179 +383,397 @@ export default defineConfig({
 ```
 🏨 Hospedaje
 ├── Dashboard (link directo)
+├── Recepción (dropdown)
+│   └── Mapa                    → /recepcion
 ├── Usuarios (dropdown)
-│   ├── Usuarios
-│   ├── Roles
-│   └── Turnos
+│   ├── Usuarios                → /usuarios
+│   ├── Roles                   → /roles
+│   └── Turnos                  → /turnos
 ├── Configuración (dropdown)
-│   ├── Pisos
-│   ├── Tipos de Habitación
-│   ├── Tipos de Documento
-│   ├── Métodos de Pago
-│   ├── Categorías Movimiento
-│   ├── Niveles de Cliente
-│   └── Tarifas
-└── Clientes (dropdown)
-    ├── Clientes
-    ├── Tipos Observación
-    └── Gravedades
+│   ├── Pisos                   → /configuracion/pisos
+│   ├── Tipos de Habitación     → /configuracion/tipos-habitacion
+│   ├── Tipos de Documento      → /configuracion/tipos-documento
+│   ├── Métodos de Pago         → /configuracion/metodos-pago
+│   ├── Categorías Movimiento   → /configuracion/categorias-movimiento
+│   ├── Niveles de Cliente      → /configuracion/clientes-niveles
+│   ├── Tarifas                 → /configuracion/tarifas
+│   └── Habitaciones            → /configuracion/habitaciones
+├── Clientes (dropdown)
+│   ├── Clientes                → /clientes
+│   ├── Tipos Observación       → /clientes/tipos-observacion
+│   └── Gravedades              → /clientes/gravedades-observacion
+├── Productos (dropdown)
+│   ├── Productos               → /productos
+│   ├── Categorías              → /productos/categorias
+│   └── Proveedores             → /productos/proveedores
+├── Promociones (dropdown)
+│   ├── Promociones             → /promociones
+│   ├── Categorías              → /promociones/categorias
+│   └── Asignadas               → /promociones/asignadas
+└── Decoraciones (dropdown)
+    └── Paquetes                → /decoraciones/paquetes
 ```
 
-**Iconos de Lucide:** ChevronDown, Users, Shield, Clock, LayoutDashboard, Settings, Building2, BedDouble, FileText, Wallet, TrendingUp, Award, DollarSign, UserPlus, AlertOctagon, ShieldAlert.
+**Iconos de Lucide:** ChevronDown, Users, Shield, Clock, LayoutDashboard, Settings, Building2, BedDouble, FileText, Wallet, TrendingUp, Award, DollarSign, UserPlus, AlertOctagon, ShieldAlert, Package, Tag, Percent, Sparkles, Gift, Truck, DoorOpen, Hotel, Menu, X.
 
 **Comportamiento de dropdowns:**
 - Cada dropdown tiene su `useState` inicializado según la ruta actual
 - Se abre automáticamente si estás en una ruta de ese grupo
 - Se cierra/abre con click
+- Al clickear un item, se cierra el menú mobile (si aplica)
 
 ---
 
-## 📄 Módulo 01 — AUTH
+## 🎨 Componentes reutilizables
 
-### `LoginPage.tsx`
-- Input usuario, input password
-- Botón "Ingresar" (deshabilitado mientras carga)
-- Toast de éxito: "Bienvenido, {nombre}"
-- Toast de error: mensaje del backend
+### `<IconPicker />`
 
-**Credenciales de prueba:** `nancy` / `admin123`
+Selector visual de íconos Lucide.
 
-### `DashboardPage.tsx`
-- Saludo: "Bienvenido, {nombre}"
-- Rol + turno del usuario
-- Card con datos de sesión
-- **Incluye `<Sidebar />`**
+**Uso:**
+```tsx
+<IconPicker valor={icono} onChange={setIcono} />
+```
 
-### `UsuarioPage.tsx`, `TurnoPage.tsx`, `RolPage.tsx`
-- CRUD completo con Page/Form/Tabla
-- Toasts verde/rojo
-- **Cada uno incluye `<Sidebar />`**
+**Características:**
+- Popover con grilla de 6 columnas
+- Buscador por nombre (ej: "cake", "heart")
+- Preview del ícono actual en el botón
+- Lista curada de ~60 íconos útiles
+- Click fuera → cierra
+
+**⚠️ REGLA:** Todos los CRUDs que tengan campo `icono` **DEBEN usar `<IconPicker />`**, NO un `<input>` de texto.
+
+### `<IconoDinamico />`
+
+Renderiza un ícono Lucide por su nombre (string).
+
+**Uso:**
+```tsx
+<IconoDinamico nombre={item.icono} size={20} style={{ color: item.color }} />
+```
+
+**Características:**
+- Convierte `"arrow-right"` → `<ArrowRight />`
+- Fallback a `<Tag />` si el ícono no existe
+- Retorna `null` si `nombre` es null
+
+**⚠️ REGLA:** Todas las tablas que tengan columna `icono` **DEBEN usar `<IconoDinamico />`**.
+
+### `<ConfirmDialog />`
+
+Modal de confirmación.
+
+**Uso:**
+```tsx
+<ConfirmDialog
+  titulo="¿Eliminar?"
+  descripcion="Esta acción no se puede deshacer"
+  onConfirm={eliminar}
+/>
+```
+
+**⚠️ REGLA:** Nunca usar `window.confirm()`. Siempre `<ConfirmDialog />`.
 
 ---
 
-## 📄 Módulo 02 — CONFIG-BASE (6 CRUDs)
+## 📄 Módulo 01 — AUTH (✅ CERRADO)
 
-**Cada uno con el mismo patrón:**
+### Componentes
+- `LoginPage.tsx` → login
+- `DashboardPage.tsx` → datos de sesión
+- `usuario/UsuarioPage.tsx` → CRUD usuarios
+- `usuario/UsuarioForm.tsx`, `UsuarioTabla.tsx`
+- `rol/RolPage.tsx` → CRUD roles
+- `turno/TurnoPage.tsx` → CRUD turnos
 
+### Reglas
+- Login por `nombre_usuario`
+- Token en `localStorage.token`
+- Persistencia con Zustand en `auth-storage`
+
+---
+
+## ⚙️ Módulo 02 — CONFIG-BASE (✅ CERRADO)
+
+### 6 CRUDs
+- `piso/` — Pisos
+- `tipoHabitacion/` — Tipos de Habitación
+- `tipoDocumento/` — Tipos de Documento
+- `metodoPago/` — Métodos de Pago (con badge CAJA/DUEÑA)
+- `categoriaMovimiento/` — Categorías Movimiento
+- `clienteNivel/` — Niveles de Cliente (con IconPicker)
+
+### Patrón de cada CRUD
 ```
 src/pages/configuracion/xxx/
-├── XxxPage.tsx         (orquesta + Sidebar + carga datos)
-├── XxxForm.tsx         (formulario con validación)
-└── XxxTabla.tsx        (tabla con acciones)
+├── XxxPage.tsx
+├── XxxForm.tsx
+└── XxxTabla.tsx
 ```
 
-**CRUDs:**
-1. `piso/` — Pisos
-2. `tipoHabitacion/` — Tipos de Habitación
-3. `tipoDocumento/` — Tipos de Documento
-4. `metodoPago/` — Métodos de Pago (con badges CAJA/DUEÑA)
-5. `categoriaMovimiento/` — Categorías Movimiento
-6. `clienteNivel/` — Niveles de Cliente
-
-**Patrón de cada Page:**
-
-```tsx
-export function XxxPage() {
-  const [items, setItems] = useState<Xxx[]>([])
-  const [editando, setEditando] = useState<Xxx | null>(null)
-  const [mostrarForm, setMostrarForm] = useState(false)
-  const [cargando, setCargando] = useState(true)
-
-  const cargar = async () => { ... }
-  useEffect(() => { cargar() }, [])
-
-  const guardar = async (datos) => { ... }
-  const cambiarEstado = async (item) => { ... }
-  const eliminar = async (item) => { ... }
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Xxx</h1>
-          <button className="bg-green-600 ...">+ Nuevo</button>
-        </div>
-        {mostrarForm && <XxxForm ... />}
-        {cargando ? <p>Cargando...</p> : <XxxTabla ... />}
-      </main>
-    </div>
-  )
-}
-```
-
-**⚠️ IMPORTANTE:** Cada `Page.tsx` **incluye `<Sidebar />`** adentro. El Layout se hace a nivel de página, no a nivel de App.tsx.
+### Reglas
+- Todos usan `<AppLayout>` (contiene `<Sidebar />`)
+- Todos los formularios de Nivel, Categoría, etc. usan `<IconPicker />` si tienen campo ícono
+- Las tablas con ícono usan `<IconoDinamico />`
 
 ---
 
-## 📄 Módulo 03 — TARIFAS
+## 💰 Módulo 03 — TARIFAS (✅ CERRADO)
 
-### `TarifaPage.tsx`
-- Carga tarifas + tipos de habitación (`Promise.all`)
-- Formulario con selector de tipo + horas + montos
-- Tabla con: ID, Tipo, Horas, Monto, Hora Extra, Máx Extra, Turno Adic., Estado, Acciones
-- **Incluye `<Sidebar />`**
+### Componentes
+- `tarifa/TarifaPage.tsx`
+- `tarifa/TarifaForm.tsx`
+- `tarifa/TarifaTabla.tsx`
 
-### `TarifaForm.tsx`
-- Select de tipo de habitación
-- Input horas
-- Input monto
-- Input precio hora extra
-- Input max horas extra
-- Input precio turno adicional
-
-### `TarifaTabla.tsx`
-- Muestra todos los campos formateados con "S/ X.XX"
+### Reglas
+- Carga tipos de habitación con `Promise.all`
+- Selector de tipo + horas + montos
 
 ---
 
-## 📄 Módulo 04 — CLIENTES
+## 👤 Módulo 04 — CLIENTES (✅ CERRADO)
 
-### `cliente/ClientePage.tsx`
-- Lista de clientes con búsqueda por nombre/DNI/celular
-- Botón "+ Nuevo Cliente"
-- Maneja 3 estados:
-  - `editando` (editar existente)
-  - `idExistente` (buscó DNI que ya existe → cambia a modo Editar)
-  - Ninguno (crear nuevo)
-- Modales: `ClienteHistorial` + `ClienteVisitaDialog`
+### Componentes
+- `cliente/ClientePage.tsx` — con búsqueda
+- `cliente/ClienteForm.tsx` — buscador por DNI
+- `cliente/ClienteTabla.tsx` — 5 botones por fila
+- `cliente/ClienteHistorial.tsx` — modal visitas
+- `cliente/ClienteVisitaDialog.tsx` — registrar visita
+- `tipoObservacion/TipoObservacionPage.tsx`
+- `gravedadObservacion/GravedadObservacionPage.tsx`
 
-### `cliente/ClienteForm.tsx`
-- **Buscador por DNI** (botón cyan "Buscar")
-  - Si existe → autocompleta + cambia a modo Editar + muestra aviso cyan "Este cliente ya existe con X visitas"
-  - Si no existe → mensaje "Cliente nuevo. Complete los datos."
-- Campos: DNI, Nombre, Apellido, Celular, Email, Fecha Nacimiento, Dirección
-- Botón cambia entre "Crear" / "Actualizar datos"
+### Reglas
+- Buscar por DNI → si existe, cambiar a modo Editar automáticamente
+- `normalizarFecha()` para `<input type="date">`
+- `formatearFecha()` para mostrar `DD/MM/YYYY`
 
-**Función `normalizarFecha()`**: convierte ISO (`2026-10-02T00:00:00.000000Z`) a `YYYY-MM-DD` para el `<input type="date">`.
+---
 
-### `cliente/ClienteTabla.tsx`
-- Columnas: ID, Nombre, Documento, Celular, F. Nac., Visitas, Nivel, Estado, Acciones
-- 5 botones por fila:
-  - **Editar** (amarillo)
-  - **+ Visita** (verde) → abre `ClienteVisitaDialog`
-  - **Historial** (purple) → abre `ClienteHistorial`
-  - **Desactivar/Activar** (azul)
-  - **Eliminar** (rojo)
-- `formatearFecha()`: convierte `YYYY-MM-DD` a `DD/MM/YYYY`
+## 📦 Módulo 05 — PRODUCTOS Fase 1 (✅ CERRADO)
 
-### `cliente/ClienteHistorial.tsx`
-- Modal con lista de visitas del cliente
-- Muestra: Visitas totales, Total gastado, tabla con ID/Entrada/Salida/Monto
+### Componentes
+- `producto/ProductoPage.tsx`
+- `producto/ProductoForm.tsx`
+- `producto/ProductoTabla.tsx`
+- `categoriaProducto/CategoriaProductoPage.tsx` (con IconPicker)
+- `proveedor/ProveedorPage.tsx`
 
-### `cliente/ClienteVisitaDialog.tsx`
-- Modal para registrar visita manual (simula check-in)
-- Input monto gastado (opcional)
-- Input observación (opcional)
-- Info box explicando qué hace al guardar (incrementa visitas, actualiza fecha, suma total, recalcula nivel)
+### Reglas
+- ProductoPage carga SOLO productos al inicio (optimización)
+- Categorías/proveedores se cargan AL ABRIR el formulario (lazy loading)
+- Stock coloreado: verde normal, rojo si ≤ `stock_minimo`
+- Categorías con ícono → `<IconPicker />` + `<IconoDinamico />`
 
-### `tipoObservacion/TipoObservacionPage.tsx`
-- CRUD de tipos de observación
-- Campos: nombre, slug, icono, color, descripción, orden
+---
 
-### `gravedadObservacion/GravedadObservacionPage.tsx`
-- CRUD de gravedades
-- Campos: nombre, slug, color, prioridad
+## 🎉 Módulo 06 — PROMOCIONES (✅ CERRADO)
+
+### Componentes
+- `promocion/PromocionPage.tsx`
+- `promocion/PromocionForm.tsx`
+- `promocion/PromocionTabla.tsx`
+- `categoriaPromocion/CategoriaPromocionPage.tsx` (con IconPicker)
+- `promocionCliente/PromocionClientePage.tsx`
+
+### Reglas
+- Fechas formateadas con `formatearFecha()` → `DD/MM/YYYY`
+- Badges de categoría con fondo suave (opacidad 20%) + borde del color
+- Fórmula de promociones visible
+
+---
+
+## 🎨 Módulo 07 — PAQUETES DE DECORACIÓN (✅ CERRADO)
+
+### Componentes
+- `paqueteDecoracion/PaqueteDecoracionPage.tsx`
+- `paqueteDecoracion/PaqueteDecoracionForm.tsx`
+- `paqueteDecoracion/PaqueteDecoracionTabla.tsx`
+
+### Reglas
+- **Fórmula validada en tiempo real:** `precio_total = ganancia_local + ganancia_proveedor`
+- Barra verde si la fórmula cuadra, roja si no
+- Botón "Crear" deshabilitado si la fórmula no cuadra
+- Select de **Tipo de Habitación** (NO categoría, rediseñado)
+- Tabla muestra Tipo de Habitación, incluye emojis (🛁 jacuzzi, 🍷 vino, etc.)
+
+---
+
+## 🏨 Módulo 08 — HABITACIONES (✅ CERRADO)
+
+### Componentes
+- `habitacion/HabitacionPage.tsx` — con filtro por piso
+- `habitacion/HabitacionForm.tsx`
+- `habitacion/HabitacionTabla.tsx`
+
+### Reglas
+- La tabla muestra datos **heredados del tipo**:
+  - Capacidad, Camas, Jacuzzi → vienen de `tipos_habitacion`
+- La 208 aparece como "Inactiva"
+- Filtro por piso en la parte superior
+
+---
+
+## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)
+
+### Componentes
+
+| Componente | Ruta | Función |
+|------------|------|---------|
+| `RecepcionPage.tsx` | `/recepcion` | Mapa visual de las 32 habitaciones |
+| `TarjetaHabitacion.tsx` | — | Tarjeta con tiempo transcurrido |
+| `ModalHabitacionOcupada.tsx` | — | Modal con 3 acciones |
+| `RegistrarIngresoPage.tsx` | `/recepcion/registrar/:id` | Walk-in (cliente actual) |
+| `CheckoutPage.tsx` | `/recepcion/checkout/:id` | Check-out + consumos |
+| `CambiarHabitacionModal.tsx` | — | Cambio con lógica de dinero |
+| `AnularReservaModal.tsx` | — | Anular registro |
+| `AgregarConsumoModal.tsx` | — | Agregar productos a la cuenta |
+
+### Vistas del Módulo 09
+
+#### 1. `RecepcionPage.tsx` — Mapa Visual
+
+**Ruta:** `/recepcion`
+
+**Funcionalidad:**
+- Muestra las 32 habitaciones agrupadas por piso
+- Cada tarjeta muestra color según estado (viene del backend)
+- Auto-refresh cada 15 segundos
+- Header con contadores: `X disponibles · Y ocupadas · Z en limpieza`
+- Click en habitación:
+  - **Disponible** → va a `/recepcion/registrar/{id}`
+  - **Ocupada/Por vencer/Vencida** → abre `<ModalHabitacionOcupada>`
+  - **Reservada** → toast informativo
+  - **Limpieza** → toast informativo
+  - **Inactiva** → toast de error
+
+#### 2. `TarjetaHabitacion.tsx` — Tarjeta con Tiempo
+
+**Muestra para habitaciones ocupadas:**
+```
+┌────────────────────────┐
+│ 🔴 OCUPADO: 102        │
+│ DAVID EFRAIN           │
+│ ⏱️ 2h 15m / 8h         │
+│ ████░░░░░░░░░░░░░      │  ← barra progreso
+└────────────────────────┘
+```
+
+**Muestra para habitaciones por vencer:**
+```
+┌────────────────────────┐
+│ 🟡 POR VENCER: 102     │
+│ DAVID EFRAIN           │
+│ ⏱️ 7h 45m / 8h         │
+│ ████████████████░      │
+│ ⚠️ Quedan 15m          │
+└────────────────────────┘
+```
+
+**Muestra para vencidas:**
+```
+┌────────────────────────┐
+│ 🔴 OCUPADO: 102  +45m  │
+│ DAVID EFRAIN           │
+│ ⏱️ 8h 45m / 8h         │
+│ 🔴 Excedido 45m        │
+└────────────────────────┘
+```
+
+**⚠️ IMPORTANTE:** El tiempo viene del backend (`minutos_transcurridos`, `minutos_totales`, etc.). El frontend SOLO formatea con `formatearTiempo()`.
+
+#### 3. `ModalHabitacionOcupada.tsx`
+
+**3 acciones:**
+- 📋 **Ir a Pre-Cuenta** → navega a `/recepcion/checkout/{idReserva}`
+- 🔄 **Cambiar Habitación** → abre `<CambiarHabitacionModal>`
+- ❌ **Anular Registro** → abre `<AnularReservaModal>`
+
+**⚠️ REGLA R8:** Cuando se abre un submodal, el modal principal **se desmonta** (return temprano). NO renderiza ambos al mismo tiempo.
+
+#### 4. `RegistrarIngresoPage.tsx` — Walk-in
+
+**Formulario:**
+- **Datos del Cliente:**
+  - DNI + botón buscar
+  - Si existe → muestra verde con datos
+  - Si NO existe → form de cliente nuevo (nombre, apellido, fecha nacimiento, email)
+  - Cantidad de personas
+  - Teléfono
+- **Datos del Alquiler:**
+  - Tarifa (select dinámico según tipo de habitación)
+  - Total (precio base)
+  - Adelanto
+  - Método de pago
+  - **Resumen:** Total, Adelanto, Vuelto / Saldo pendiente
+  - Notas
+
+**Regla de oro:** El cliente DEBE pagar el total de la habitación. El campo adelanto debe ser >= total. Salvo que sea cambio de habitación.
+
+#### 5. `CheckoutPage.tsx` — Check-out + Consumos
+
+**Layout:**
+- **Izquierda:** Info del cliente + lista de consumos + botón "Agregar Consumo"
+- **Derecha:** Resumen de pago con:
+  - Habitación
+  - Consumos
+  - Horas extra
+  - Ajustes
+  - Descuento
+  - **Total**
+  - Pagado
+  - **💵 Vuelto final a entregar** (o 🔴 Cliente debe)
+  - Input monto final a cobrar
+  - Botón "Finalizar Check-out"
+
+**Reglas:**
+- El vuelto final se calcula como `pagado - total`
+- Si es positivo → vuelto al cliente
+- Si es negativo → cliente debe pagar
+- Al finalizar → crea limpieza automática
+
+#### 6. `CambiarHabitacionModal.tsx`
+
+**Muestra:**
+- Comparación actual vs nueva
+- Cálculo de diferencia de precio
+- **3 modos:**
+  - Si sube: cobrar ahora / sumar al saldo final
+  - Si baja: devolver ahora / saldo a favor
+- Método de pago (si cobrar ahora)
+- ⚠️ Si la nueva no tiene tarifa con las horas base → aviso "se ajusta a Xh"
+
+**Reglas:**
+- Al cambiar → la habitación VIEJA va a LIMPIEZA
+- El tiempo NO se resetea
+- Se crea `reserva_ajuste` en el backend
+
+#### 7. `AnularReservaModal.tsx`
+
+- Advertencia: "Esta acción anula el registro completamente"
+- Pide motivo obligatorio
+- Al confirmar → no cuenta para SUNAT, no afecta caja
+
+#### 8. `AgregarConsumoModal.tsx`
+
+**Buscador de productos:**
+- Input con buscador (nombre o código de barras)
+- Lista scrolleable de productos
+- Click en producto → se selecciona
+
+**Selector de cantidad:**
+- + / - para ajustar
+- Input de cantidad
+- Subtotal en vivo
+
+**Forma de pago:**
+- 🅰️ "Agregar a la cuenta (paga al retirarse)" → `pagado = false`
+- 🅱️ "Pagar ahora" → `pagado = true` + método de pago
+
+**Reglas:**
+- El stock se descuenta automáticamente
+- Si el producto no tiene stock → no se puede agregar
+- Si paga ahora → se registra pago + no afecta `monto_consumos`
 
 ---
 
@@ -499,7 +802,10 @@ interface AuthState {
 Instancia de axios con:
 - `baseURL: "/api"` (proxy a Laravel)
 - Interceptor request: agrega `Authorization: Bearer {token}` desde `localStorage.token`
-- Interceptor response: si 401 → limpia `localStorage` y redirige a `/login`; si 404 → NO muestra toast (lo maneja el consumidor)
+- Interceptor response:
+  - Si 401 → limpia `localStorage` y redirige a `/login`
+  - Si 404 → NO muestra toast (lo maneja el consumidor)
+  - Otros → muestra toast de error automático
 
 ### Patrón de cada Service
 
@@ -545,20 +851,36 @@ export const xxxService = {
 
 ### Servicios especiales
 
-**`clienteService`** incluye:
-- `buscarPorDni(dni)` → `GET /clientes/buscar?dni=X`
+**`clienteService`:**
+- `buscarPorDni(dni)` → `GET /clientes/buscar?dni=X` → devuelve `{ existe, cliente }`
 - `listarVisitas(idCliente)` → `GET /clientes/{id}/visitas`
 - `crearVisita(idCliente, datos)` → `POST /clientes/{id}/visitas`
-- `listarObservaciones(idCliente)` → `GET /clientes/{id}/observaciones`
-- `crearObservacion(idCliente, datos)` → `POST /clientes/{id}/observaciones`
-- `resolverObservacion(id)` → `PATCH /cliente-observaciones/{id}/resolver`
 
-**`metodoPagoService`** incluye:
+**`metodoPagoService`:**
 - `listarDeCaja()` → solo métodos con `es_de_caja = true`
 - `listarDeDuenia()` → solo métodos con `es_de_caja = false`
 
-**`tarifaService`** incluye:
+**`tarifaService`:**
 - `listarPorTipo(idTipo)` → tarifas de un tipo específico
+
+**`reservaService`:**
+- `crearWalkIn(datos)` → `POST /reservas/walk-in`
+- `crearReserva(datos)` → `POST /reservas`
+- `checkIn(id)` → `PATCH /reservas/{id}/check-in`
+- `checkOut(id, montoFinal)` → `PATCH /reservas/{id}/check-out`
+- `cancelar(id, motivo)` → `PATCH /reservas/{id}/cancelar`
+- `anular(id, motivo)` → `PATCH /reservas/{id}/anular`
+- `cambiarHabitacion(id, datos)` → `PATCH /reservas/{id}/cambiar-habitacion`
+- `agregarConsumo(id, datos)` → `POST /reservas/{id}/consumos`
+- `eliminarConsumo(idReserva, idConsumo)` → `DELETE /reservas/{id}/consumos/{idConsumo}`
+
+**`habitacionMapaService`:**
+- `listar()` → `GET /habitaciones-mapa` → devuelve las 32 con estado calculado
+- `obtener(id)` → `GET /habitaciones-mapa/{id}`
+
+**`estadoReservaService`:**
+- `listar()` → `GET /estados-reserva`
+- `listarActivos()` → `GET /estados-reserva/activos`
 
 ---
 
@@ -573,12 +895,15 @@ export const xxxService = {
 - Rojo (`bg-red-600`) → eliminar, desactivar
 - Cyan (`bg-cyan-600`) → buscar por DNI
 - Purple (`bg-purple-600`) → historial
+- Rojo oscuro (`bg-red-700`) → anular
 
 **Badges de estado:**
 - `bg-green-900 text-green-300` → CAJA / Activo / Ingreso
-- `bg-yellow-900 text-yellow-300` → DUEÑA
-- `bg-red-900 text-red-300` → Egreso / Inactivo
+- `bg-yellow-900 text-yellow-300` → DUEÑA / Por vencer
+- `bg-red-900 text-red-300` → Egreso / Inactivo / Vencida
+- `bg-blue-900 text-blue-300` → Pre-cuenta
 - Colores dinámicos de `clientes_niveles.color` → Nivel del cliente
+- Colores dinámicos del backend → Estado de habitación
 
 **Toasts (Sonner):**
 - Verde con `richColors` → éxito
@@ -630,7 +955,7 @@ export const xxxService = { listar, listarActivos, obtener, crear, actualizar, d
 
 ```
 src/pages/xxx/xxx/
-├── XxxPage.tsx       (incluye Sidebar + orquesta)
+├── XxxPage.tsx       (incluye AppLayout + orquesta)
 ├── XxxForm.tsx       (formulario)
 └── XxxTabla.tsx      (tabla)
 ```
@@ -654,15 +979,12 @@ Agregar al dropdown correspondiente (Configuración, Clientes, o nuevo grupo).
 **Solución:** Usar `Write-Utf8NoBom` (función PowerShell del script).
 
 ### Error 2 — Página no aparece dentro del Dashboard
-**Causa:** El `Page.tsx` no incluye `<Sidebar />`.
+**Causa:** El `Page.tsx` no incluye `<AppLayout>`.
 **Solución:** Cada `Page.tsx` debe retornar:
 ```tsx
-<div className="min-h-screen bg-slate-950 text-white flex">
-  <Sidebar />
-  <main className="flex-1 p-8">
-    {/* contenido */}
-  </main>
-</div>
+<AppLayout>
+  {/* contenido */}
+</AppLayout>
 ```
 
 ### Error 3 — Servicios devuelven `undefined` en `.data.data`
@@ -691,7 +1013,7 @@ Agregar al dropdown correspondiente (Configuración, Clientes, o nuevo grupo).
 
 ### Error 7 — Tipos `any` en catch
 **Causa:** TypeScript estricto no permite `any` implícito.
-**Solución:** Usar `catch (e: any)` o `catch (e: unknown)` + type guard.
+**Solución:** Usar `catch (e: unknown)` + type guard.
 
 ### Error 8 — Sidebar no despliega dropdown
 **Causa:** El estado `useState` no se inicializa según la ruta actual.
@@ -705,9 +1027,10 @@ const [abierto, setAbierto] = useState(
 ### Error 9 — Fecha ISO con `T` no se muestra en `<input type="date">`
 **Causa:** El backend devuelve `2026-10-02T00:00:00.000000Z` (con T y Z).
 **Solución:** Normalizar con `valor.substring(0, 10)` para obtener `YYYY-MM-DD`.
+
 ```ts
 function normalizarFecha(valor: string | null): string {
-  if (!valor) return ''
+  if (!valor) return ""
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor
   return valor.substring(0, 10)
 }
@@ -715,9 +1038,39 @@ function normalizarFecha(valor: string | null): string {
 
 ### Error 10 — `validation.unique` al crear cliente con DNI existente
 **Causa:** El form permite crear, pero el DNI ya existe.
-**Solución:** Al buscar por DNI, si existe → cambiar a modo Editar:
-- Guardar `idExistente` en estado
-- `onGuardar(datos, idExistente)` → hace PUT en vez de POST
+**Solución:** Al buscar por DNI, si existe → cambiar a modo Editar.
+
+### Error 11 — Modal que no se cierra / submodal que no abre
+**Causa:** El modal principal tiene `onClick={onClose}` en el overlay. Al renderizar un submodal DENTRO del modal principal, los clicks en el submodal burbujean y cierran todo.
+**Solución:** Usar **early return**:
+```tsx
+if (mostrarSubmodal) {
+  return <Submodal onClose={() => setMostrarSubmodal(false)} />
+}
+return <div className="modal-principal">...</div>
+```
+
+### Error 12 — Números decimales gigantes en la UI
+**Causa:** El backend devuelve minutos con decimales (`10.1775866666`).
+**Solución:** Redondear en el frontend antes de mostrar:
+```ts
+function formatearTiempo(minutos: number): string {
+  const total = Math.floor(Math.abs(minutos))
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+```
+
+### Error 13 — 422 Unprocessable Entity en cambio de habitación
+**Causa:** La nueva habitación no tiene tarifa con las mismas horas.
+**Solución:** Mostrar el mensaje exacto del backend (ya viene con `mensaje`).
+
+### Error 14 — Ruta no encontrada (404 en backend)
+**Causa:** PowerShell regex falló silenciosamente al agregar la ruta.
+**Solución:** Verificar con `php artisan route:list --path=api/xxx` en el backend.
 
 ---
 
@@ -755,17 +1108,22 @@ npx shadcn@latest add [componente]
 | Tipos | TypeScript estricto (nunca `any`) |
 | Iconos | lucide-react |
 | Toasts | sonner (nunca `alert()`) |
-| Confirmaciones | `ConfirmDialog` |
+| Confirmaciones | `ConfirmDialog` (nunca `window.confirm`) |
 | Tema | Oscuro (slate-950, slate-900) |
-| Layout | Cada `Page.tsx` incluye `<Sidebar />` |
+| Layout | Cada `Page.tsx` incluye `<AppLayout>` |
+| Modales anidados | Early return, no renderizar en paralelo |
+| Fechas | Normalizar ISO → `YYYY-MM-DD` |
+| Tiempo | Formatear minutos con `formatearTiempo()` |
 
 ### Estructura de capas
 - `pages/` → una página por ruta. Si >100 líneas → dividir en Page/Form/Tabla
 - `components/ui/` → shadcn (NO modificar)
-- `components/layout/` → Sidebar
+- `components/layout/` → Sidebar, AppLayout
+- `components/` → componentes reutilizables (IconPicker, IconoDinamico, ConfirmDialog)
 - `services/` → llamadas HTTP (nunca lógica en componentes)
 - `hooks/` → estado global (Zustand)
 - `types/` → interfaces TypeScript
+- `lib/` → utilidades (utils.ts, errores.ts)
 
 ### Convenciones
 - Componentes: `PascalCase.tsx`
@@ -780,46 +1138,162 @@ npx shadcn@latest add [componente]
 
 | # | Módulo | Backend | Frontend | Estado |
 |---|--------|---------|----------|--------|
-| 01 | AUTH (usuarios, roles, turnos) | ✅ | ✅ | ✅ CERRADO |
-| 02 | CONFIG-BASE (6 tablas) | ✅ | ✅ | ✅ CERRADO |
-| 03 | TARIFAS | ✅ | ✅ | ✅ CERRADO |
-| 04 | CLIENTES (5 tablas) | ✅ | ✅ | ✅ CERRADO |
-| 05 | HABITACIONES | ⏳ | ⏳ | ⏳ Pendiente |
-| 06 | RESERVAS | ⏳ | ⏳ | ⏳ Pendiente |
-| 07 | CAJA | ⏳ | ⏳ | ⏳ Pendiente |
-| 08 | LIMPIEZA | ⏳ | ⏳ | ⏳ Pendiente |
-| 09 | MANTENIMIENTO | ⏳ | ⏳ | ⏳ Pendiente |
-| 10 | INVENTARIO / KARDEX | ⏳ | ⏳ | ⏳ Pendiente |
-| 11 | PROVEEDORES | ⏳ | ⏳ | ⏳ Pendiente |
-| 12 | PROMOCIONES | ⏳ | ⏳ | ⏳ Pendiente |
-| 13 | COMPROBANTES (IGV/SUNAT) | ⏳ | ⏳ | ⏳ Pendiente |
-| 14 | ALERTAS | ⏳ | ⏳ | ⏳ Pendiente |
-| 15 | REPORTES | ⏳ | ⏳ | ⏳ Pendiente |
-| 16 | AUDITORÍA | ⏳ | ⏳ | ⏳ Pendiente |
-| 17 | ASISTENCIA DE PERSONAL | ⏳ | ⏳ | ⏳ Pendiente |
-| 18 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | ⏳ Pendiente |
+| 01 | AUTH | ✅ | ✅ | CERRADO |
+| 02 | CONFIG-BASE | ✅ | ✅ | CERRADO |
+| 03 | TARIFAS | ✅ | ✅ | CERRADO |
+| 04 | CLIENTES | ✅ | ✅ | CERRADO |
+| 05 | PRODUCTOS Fase 1 | ✅ | ✅ | CERRADO |
+| 06 | PROMOCIONES | ✅ | ✅ | CERRADO |
+| 07 | PAQUETES DECORACIÓN | ✅ | ✅ | CERRADO |
+| 08 | HABITACIONES | ✅ | ✅ | CERRADO |
+| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
+| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Pendiente frontend |
+| 09C | EXTENSIONES / HUÉSPEDES | ⏳ | ⏳ | Pendiente |
+| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
+| 11 | CAJA | ⏳ | ⏳ | Pendiente |
+| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
+| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
+| 14 | LIMPIEZA (pantalla) | ✅ | ⏳ | Backend listo |
+| 15 | MANTENIMIENTO | ⏳ | ⏳ | Pendiente |
+| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
+| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
+| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
+| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
+| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
+| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
 
 ---
 
-## 🎯 Rutas planeadas para próximos módulos
+## 🎯 Módulos pendientes — detalle frontend
 
-```
-/habitaciones                    → CRUD habitaciones + mapa visual
-/reservas                        → listado + creación
-/reservas/:id                    → detalle (check-in/out, pagos, consumos)
-/caja                            → caja actual + movimientos
-/caja/historial                  → historial de cajas cerradas
-/limpieza                        → cola de limpieza
-/mantenimiento                   → reportes y reparaciones
-/inventario                      → productos + kardex
-/proveedores                     → CRUD proveedores + cuentas por pagar
-/promociones                     → CRUD promociones
-/comprobantes                    → facturas y boletas
-/alertas                         → panel de alertas en vivo
-/reportes                        → dashboards y exportaciones
-/auditoria                       → log de acciones
-/asistencia                      → asistencia de personal
-```
+### Módulo 09B — RESERVAS FUTURAS
+
+**Vistas a crear:**
+- `/reservas` (listado de reservas con filtros)
+- `/reservas/nueva` (form con fecha futura)
+- `/reservas/:id` (detalle con opción check-in)
+
+**Componentes:**
+- `ReservasPage.tsx`
+- `ReservasTabla.tsx`
+- `NuevaReservaPage.tsx`
+- `DetalleReservaPage.tsx`
+
+**Backend listo:**
+- `POST /reservas` (crear reserva futura)
+- `PATCH /reservas/{id}/check-in` (activar)
+- `PATCH /reservas/{id}/cancelar`
+- `PATCH /reservas/{id}/anular`
+
+**Notas:**
+- El form es similar al walk-in, pero con fecha futura
+- Selector de fecha/hora de entrada
+- Validación de disponibilidad automática
+
+### Módulo 14 — PANTALLA DE LIMPIEZA
+
+**Vista a crear:** `/limpieza`
+
+**Componentes:**
+- `LimpiezaPage.tsx`
+- `LimpiezaTabla.tsx`
+
+**Backend listo:**
+- `GET /limpieza` (todas)
+- `GET /limpieza/pendientes` (pendientes + en proceso)
+- `PATCH /limpieza/{id}/iniciar`
+- `PATCH /limpieza/{id}/finalizar`
+
+**Reglas:**
+- Lista de tareas pendientes ordenadas por antigüedad
+- Botón "Iniciar" (PENDIENTE → EN_PROCESO)
+- Botón "Finalizar" (EN_PROCESO → COMPLETADA)
+- Al finalizar → habitación vuelve a Disponible automáticamente
+- Personal de limpieza ve esta pantalla desde su celular
+
+### Módulo 11 — CAJA
+
+**Vistas a crear:**
+- `/caja` (caja actual abierta)
+- `/caja/historial` (cajas cerradas)
+
+**Backend a crear:**
+- `cajas`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `devoluciones`
+
+**Reglas R17-R23, R39.**
+
+### Módulo 12 — INVENTARIO / KARDEX
+
+**Vistas a crear:**
+- `/inventario/kardex` (movimientos)
+- `/inventario/fisico` (conteos)
+
+**Backend a crear:**
+- `kardex`, `inventario_fisico`, `inventario_detalle`
+
+### Módulo 13 — CUENTAS POR PAGAR
+
+**Vistas a crear:**
+- `/cuentas-por-pagar`
+- `/cuentas-por-pagar/:id`
+
+**Backend a crear:**
+- `cuentas_por_pagar`, `pagos_proveedor`
+
+### Módulo 15 — MANTENIMIENTO
+
+**Vistas a crear:**
+- `/mantenimiento` (lista de reportes)
+- `/mantenimiento/nuevo` (crear reporte)
+
+**Backend a crear:**
+- `mantenimiento`
+
+### Módulo 16 — COMPROBANTES SUNAT
+
+**Vistas a crear:**
+- `/comprobantes`
+- `/comprobantes/:id`
+
+**Backend a crear:**
+- `tipos_comprobante`, `series_comprobante`, `facturas`, `facturas_detalle`, `notas_credito`
+
+### Módulo 17 — ALERTAS
+
+**Vistas a crear:**
+- `/alertas` (panel en vivo)
+
+**Backend a crear:**
+- `alertas`, `reglas_alerta`, `canales_alerta`
+
+### Módulo 18 — REPORTES
+
+**Vistas a crear:**
+- `/reportes` (dashboard)
+- `/reportes/ocupacion`
+- `/reportes/ingresos`
+- `/reportes/clientes-frecuentes`
+
+### Módulo 19 — AUDITORÍA
+
+**Vistas a crear:**
+- `/auditoria`
+
+**Backend a crear:**
+- `auditoria`, `auditoria_cambios`
+
+### Módulo 20 — ASISTENCIA
+
+**Vistas a crear:**
+- `/asistencia`
+- `/asistencia/horas-extra`
+
+**Backend a crear:**
+- `asistencia`, `horas_extra`
+
+### Módulo 21 — RENIEC
+
+**Sin vistas nuevas.** Se integra en `RegistrarIngresoPage` y `ClienteForm` cuando el backend lo active (solo producción).
 
 ---
 
@@ -827,7 +1301,7 @@ npx shadcn@latest add [componente]
 
 | # | Decisión | Razón |
 |---|----------|-------|
-| D1 | Cada `Page.tsx` incluye `<Sidebar />` | Página autocontenida |
+| D1 | Cada `Page.tsx` incluye `<AppLayout>` | Página autocontenida |
 | D2 | Los services devuelven `data.data` en POST/PUT | Backend anida respuesta |
 | D3 | Guardar token en `localStorage.token` | Interceptor axios lo lee |
 | D4 | Interceptor NO muestra toast para 404 | El consumidor maneja 404 |
@@ -837,6 +1311,16 @@ npx shadcn@latest add [componente]
 | D8 | ConfirmDialog en vez de `window.confirm()` | UX consistente |
 | D9 | Normalizar fechas ISO a YYYY-MM-DD en forms | Compatibilidad `<input type="date">` |
 | D10 | Modo Editar automático si DNI existe | Evita error `validation.unique` |
+| D11 | ProductoPage carga SOLO productos al inicio | Optimización: categorías/proveedores se cargan al abrir el form |
+| D12 | Stock coloreado dinámicamente | Verde normal, rojo si ≤ stock_minimo |
+| D13 | `IconPicker` para campos de ícono | UX visual, no input de texto |
+| D14 | `IconoDinamico` para mostrar íconos | Renderiza cualquier ícono Lucide por nombre |
+| D15 | Modales anidados con early return | Evita conflictos de z-index y propagation |
+| D16 | Mapa auto-refresh cada 15s | Sistema en tiempo real |
+| D17 | Colores de estado vienen del backend | R1: nada hardcodeado |
+| D18 | El vuelto final se muestra en CheckoutPage | Se calcula como `pagado - total` |
+| D19 | Formatear tiempo con `formatearTiempo()` | Evita decimales gigantes |
+| D20 | Cálculo de diferencia en cambio habitación se hace en frontend + confirmación en backend | UX ágil + seguridad backend |
 
 ---
 
@@ -849,6 +1333,9 @@ npx shadcn@latest add [componente]
 - **Sin archivos >100 líneas:** si pasa, dividir en Page/Form/Tabla
 - **Componentes "tontos":** Form y Tabla reciben datos por props
 - **Páginas "inteligentes":** Page tiene el estado, hace llamadas API, maneja eventos
+- **Nada hardcodeado:** todos los catálogos vienen de la BD
+- **Componentes reutilizables:** IconPicker, IconoDinamico, ConfirmDialog
+- **Sistema en tiempo real:** auto-refresh donde sea necesario
 
 ---
 
@@ -866,144 +1353,18 @@ Proyecto privado — Sistema de Hospedaje.
 
 ---
 
-**Última actualización:** 02/10/2026
-**Módulos completados:** 4 de 18
-```
-
----
-
-## 📌 Cómo usarlo
-
-1. **Abrí `frontend/README.md`** en VS Code
-2. **Seleccioná TODO** el contenido actual (`Ctrl+A`)
-3. **Borralo** (`Delete` o `Backspace`)
-4. **Pegá TODO el bloque de arriba** (desde `# Frontend — Sistema de Hospedaje` hasta el final)
-5. **Guardá** (`Ctrl+S`)
-
----
-
-## 🎯 Después de pegar
-
-**Cuando quieras subirlo a GitHub:**
-
-```bash
-cd /c/Users/David/Desktop/hospedaje
-git add frontend/README.md
-git commit -m "docs: actualizo README frontend con módulos 01-04"
-git push
-```
-
-**¿Dale?** 🚀
-FRONTEND (frontend/README.md)
-🔹 Qué agregar (6 puntos)
-1. Actualizar el título "Estado global"
-
-Buscar:
-
-text
-**Estado global:** Módulos 01-04 completados
-Reemplazar por:
-
-text
-**Estado global:** Módulos 01-05 completados
-2. Actualizar la estructura de carpetas
-
-Agregar dentro de src/pages/:
-
-text
-│   │   └── productos/                     (Módulo 05)
-│   │       ├── categoriaProducto/
-│   │       │   ├── CategoriaProductoPage.tsx
-│   │       │   ├── CategoriaProductoForm.tsx
-│   │       │   └── CategoriaProductoTabla.tsx
-│   │       ├── proveedor/
-│   │       │   ├── ProveedorPage.tsx
-│   │       │   ├── ProveedorForm.tsx
-│   │       │   └── ProveedorTabla.tsx
-│   │       └── producto/
-│   │           ├── ProductoPage.tsx
-│   │           ├── ProductoForm.tsx
-│   │           └── ProductoTabla.tsx
-Y en services/:
-
-text
-│   │   ├── categoriaProductoService.ts
-│   │   ├── proveedorService.ts
-│   │   └── productoService.ts
-Y en types/:
-
-text
-│   │   └── producto.ts
-3. Actualizar la sección "🧭 Rutas"
-
-Agregar 3 rutas al final de la tabla:
-
-markdown
-| `/productos` | ProductoPage | Sí |
-| `/productos/categorias` | CategoriaProductoPage | Sí |
-| `/productos/proveedores` | ProveedorPage | Sí |
-4. Agregar sección "📄 Módulo 05 — PRODUCTOS (Fase 1)"
-
-Insertar después de la sección del Módulo 04 (antes de "🧠 Estado global"):
-
-markdown
-## 📄 Módulo 05 — PRODUCTOS (Fase 1)
-
-### `producto/ProductoPage.tsx`
-- Lista de productos con búsqueda por nombre/código de barras
-- Botón "+ Nuevo Producto"
-- Carga inicial: solo productos (1 petición)
-- Categorías y proveedores se cargan AL ABRIR el formulario (lazy loading)
-- Tabla con stock coloreado (verde normal, rojo si ≤ mínimo)
-- **Incluye `<Sidebar />`** (vía AppLayout)
-
-### `producto/ProductoForm.tsx`
-- Campos: nombre, categoría (select), proveedor (select), código de barras, precio compra, precio venta, stock actual, stock mínimo, unidad de medida, descripción
-- Selects de categoría y proveedor cargados dinámicamente
-- Validación local
-
-### `producto/ProductoTabla.tsx`
-- Columnas: ID, Nombre, Categoría (badge con color), P. Compra, P. Venta, Stock (coloreado), Mín., Unidad, Estado, Acciones
-- Stock en rojo si ≤ stock_minimo
-
-### `categoriaProducto/CategoriaProductoPage.tsx`
-- CRUD de categorías de producto
-- Campos: nombre, slug, descripción, ícono, color, orden
-
-### `proveedor/ProveedorPage.tsx`
-- CRUD de proveedores
-- Campos: razón social, nombre comercial, RUC, teléfono, email, dirección, contacto, tipo, notas
-5. Agregar en la sección "📝 Decisiones técnicas tomadas"
-
-Agregar al final:
-
-markdown
-| D11 | ProductoPage carga SOLO productos al inicio | Optimización: categorías/proveedores se cargan al abrir el form |
-| D12 | Stock coloreado dinámicamente | Verde normal, rojo si ≤ stock_minimo |
-6. Actualizar la última línea
-
-Buscar:
-
-text
-**Última actualización:** 02/10/2026
-**Módulos completados:** 4 de 18
-Reemplazar por:
-
-text
 **Última actualización:** 03/10/2026
-**Módulos completados:** 5 de 18
-🎯 Resumen de cambios
-Archivo	Cambios
-backend/README.md	+1 sección (Módulo 05) + ajustes en tablas, roadmap y contador
-frontend/README.md	+1 sección (Módulo 05) + ajustes en estructura, rutas y contador
-Total: ~100 líneas nuevas en cada README.
+**Módulos completados:** 9 de 21
+````
 
-📌 ¿Cómo hacerlo?
-Opción A — Aplicarlo vos manualmente
-Buscá los textos que te marqué y reemplazalos / agregá las secciones.
+---
 
-Opción B — Te armo un bloque PowerShell
-Que reemplace ambas secciones (título + estructura + sección Módulo 05 + roadmap + contador final).
+## 📸 Pegame
 
-¿Cuál querés?
+1. **Salida del commit + push** (los 2 READMEs)
+2. **¿Seguimos con algún módulo nuevo?** (09B reservas futuras, 14 limpieza, 11 caja)
+3. **¿O paramos acá y hacemos commit?**
 
+**Con eso cerramos la documentación completa y seguimos con lo que elijas.** 🚀
+
+**¿Dale?**

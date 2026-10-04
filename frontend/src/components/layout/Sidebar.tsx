@@ -1,4 +1,4 @@
-﻿import { useState } from "react"
+import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   ChevronDown,
@@ -20,8 +20,11 @@ import {
   Package,
   Tag,
   Percent,
+  Sparkles,
   Gift,
   Truck,
+  DoorOpen,
+  Hotel,
   Menu,
   X,
 } from "lucide-react"
@@ -33,6 +36,10 @@ export default function Sidebar() {
   const logout = useAuth((s) => s.logout)
 
   const [mobileAbierto, setMobileAbierto] = useState(false)
+
+  const [recepcionAbierto, setRecepcionAbierto] = useState(
+    location.pathname.startsWith("/recepcion")
+  )
 
   const [usuariosAbierto, setUsuariosAbierto] = useState(
     location.pathname.startsWith("/usuarios") ||
@@ -54,6 +61,10 @@ export default function Sidebar() {
 
   const [promocionesAbierto, setPromocionesAbierto] = useState(
     location.pathname.startsWith("/promociones")
+  )
+
+  const [decoracionesAbierto, setDecoracionesAbierto] = useState(
+    location.pathname.startsWith("/decoraciones")
   )
 
   const itemClass = (path: string) =>
@@ -130,6 +141,26 @@ export default function Sidebar() {
             Dashboard
           </Link>
 
+          {/* RECEPCIÓN */}
+          <div>
+            <button onClick={() => setRecepcionAbierto(!recepcionAbierto)} className={dropdownButtonClass(recepcionAbierto)}>
+              <span className="flex items-center gap-3">
+                <Hotel size={18} />
+                Recepción
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${recepcionAbierto ? "rotate-180" : ""}`} />
+            </button>
+
+            {recepcionAbierto && (
+              <div className="mt-1 space-y-1">
+                <Link to="/recepcion" className={subItemClass("/recepcion")} onClick={cerrarMobile}>
+                  <Hotel size={16} />
+                  Mapa
+                </Link>
+              </div>
+            )}
+          </div>
+
           {/* USUARIOS */}
           <div>
             <button onClick={() => setUsuariosAbierto(!usuariosAbierto)} className={dropdownButtonClass(usuariosAbierto)}>
@@ -197,6 +228,10 @@ export default function Sidebar() {
                 <Link to="/configuracion/tarifas" className={subItemClass("/configuracion/tarifas")} onClick={cerrarMobile}>
                   <DollarSign size={16} />
                   Tarifas
+                </Link>
+                <Link to="/configuracion/habitaciones" className={subItemClass("/configuracion/habitaciones")} onClick={cerrarMobile}>
+                  <DoorOpen size={16} />
+                  Habitaciones
                 </Link>
               </div>
             )}
@@ -281,6 +316,26 @@ export default function Sidebar() {
                 <Link to="/promociones/asignadas" className={subItemClass("/promociones/asignadas")} onClick={cerrarMobile}>
                   <Gift size={16} />
                   Asignadas
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* DECORACIONES */}
+          <div>
+            <button onClick={() => setDecoracionesAbierto(!decoracionesAbierto)} className={dropdownButtonClass(decoracionesAbierto)}>
+              <span className="flex items-center gap-3">
+                <Sparkles size={18} />
+                Decoraciones
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${decoracionesAbierto ? "rotate-180" : ""}`} />
+            </button>
+
+            {decoracionesAbierto && (
+              <div className="mt-1 space-y-1">
+                <Link to="/decoraciones/paquetes" className={subItemClass("/decoraciones/paquetes")} onClick={cerrarMobile}>
+                  <Gift size={16} />
+                  Paquetes
                 </Link>
               </div>
             )}

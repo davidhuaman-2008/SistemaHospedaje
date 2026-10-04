@@ -8,7 +8,7 @@ import TurnoPage from "@/pages/usuarios/turno/TurnoPage"
 import RolPage from "@/pages/usuarios/rol/RolPage"
 
 // ============================================================================
-// CONFIGURACIÃ“N BASE
+// CONFIGURACIÓN BASE
 // ============================================================================
 import { PisoPage } from "@/pages/configuracion/piso/PisoPage"
 import { TipoHabitacionPage } from "@/pages/configuracion/tipoHabitacion/TipoHabitacionPage"
@@ -16,6 +16,10 @@ import { TipoDocumentoPage } from "@/pages/configuracion/tipoDocumento/TipoDocum
 import { MetodoPagoPage } from "@/pages/configuracion/metodoPago/MetodoPagoPage"
 import { CategoriaMovimientoPage } from "@/pages/configuracion/categoriaMovimiento/CategoriaMovimientoPage"
 import { ClienteNivelPage } from "@/pages/configuracion/clienteNivel/ClienteNivelPage"
+import { HabitacionPage } from "@/pages/configuracion/habitacion/HabitacionPage"
+import { CheckoutPage } from "@/pages/recepcion/CheckoutPage"
+import { RegistrarIngresoPage } from "@/pages/recepcion/RegistrarIngresoPage"
+import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
 
 import ProtectedRoute from "@/components/ProtectedRoute"
 
@@ -27,8 +31,10 @@ import { ProductoPage } from "@/pages/productos/producto/ProductoPage"
 import { PromocionClientePage } from "@/pages/promociones/promocionCliente/PromocionClientePage"
 import { CategoriaPromocionPage } from "@/pages/promociones/categoriaPromocion/CategoriaPromocionPage"
 import { PromocionPage } from "@/pages/promociones/promocion/PromocionPage"
+import { PaqueteDecoracionPage } from "@/pages/decoraciones/paqueteDecoracion/PaqueteDecoracionPage"
 import { GravedadObservacionPage } from "@/pages/clientes/gravedadObservacion/GravedadObservacionPage"
 import { TipoObservacionPage } from "@/pages/clientes/tipoObservacion/TipoObservacionPage"
+
 function App() {
   return (
     <BrowserRouter>
@@ -52,7 +58,7 @@ function App() {
         />
 
         {/* ============================================================== */}
-        {/* USUARIOS (MÃ³dulo 01)                                           */}
+        {/* USUARIOS (Módulo 01)                                           */}
         {/* ============================================================== */}
         <Route
           path="/usuarios"
@@ -82,7 +88,7 @@ function App() {
         />
 
         {/* ============================================================== */}
-        {/* CONFIGURACIÃ“N BASE (MÃ³dulo 02)                                 */}
+        {/* CONFIGURACIÓN BASE (Módulo 02)                                 */}
         {/* ============================================================== */}
 
         <Route
@@ -138,15 +144,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
-  path="/configuracion/tarifas"
-  element={
-    <ProtectedRoute>
-      <TarifaPage />
-    </ProtectedRoute>
-  }
-/>
-        {/* ============================================================== */}
+          path="/configuracion/tarifas"
+          element={
+            <ProtectedRoute>
+              <TarifaPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* ============================================================== */}
         {/* CLIENTES (Módulo 04)                                           */}
         {/* ============================================================== */}
@@ -154,6 +161,7 @@ function App() {
         <Route path="/clientes" element={<ProtectedRoute><ClientePage /></ProtectedRoute>} />
         <Route path="/clientes/tipos-observacion" element={<ProtectedRoute><TipoObservacionPage /></ProtectedRoute>} />
         <Route path="/clientes/gravedades-observacion" element={<ProtectedRoute><GravedadObservacionPage /></ProtectedRoute>} />
+
         {/* ============================================================== */}
         {/* PRODUCTOS (Módulo 05 Fase 1)                                   */}
         {/* ============================================================== */}
@@ -161,6 +169,7 @@ function App() {
         <Route path="/productos" element={<ProtectedRoute><ProductoPage /></ProtectedRoute>} />
         <Route path="/productos/categorias" element={<ProtectedRoute><CategoriaProductoPage /></ProtectedRoute>} />
         <Route path="/productos/proveedores" element={<ProtectedRoute><ProveedorPage /></ProtectedRoute>} />
+
         {/* ============================================================== */}
         {/* PROMOCIONES (Módulo 06)                                        */}
         {/* ============================================================== */}
@@ -169,8 +178,26 @@ function App() {
         <Route path="/promociones/categorias" element={<ProtectedRoute><CategoriaPromocionPage /></ProtectedRoute>} />
         <Route path="/promociones/asignadas" element={<ProtectedRoute><PromocionClientePage /></ProtectedRoute>} />
 
+        {/* ============================================================== */}
+        {/* DECORACIONES (Módulo 07)                                       */}
+        {/* ============================================================== */}
 
+        <Route path="/decoraciones/paquetes" element={<ProtectedRoute><PaqueteDecoracionPage /></ProtectedRoute>} />
+        <Route
+          path="/configuracion/habitaciones"
+          element={
+            <ProtectedRoute>
+              <HabitacionPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* ============================================================== */}
+        {/* RECEPCIÓN (Módulo 09)                                          */}
+        {/* ============================================================== */}
 
+        <Route path="/recepcion" element={<ProtectedRoute><RecepcionPage /></ProtectedRoute>} />
+        <Route path="/recepcion/registrar/:idHabitacion" element={<ProtectedRoute><RegistrarIngresoPage /></ProtectedRoute>} />
+        <Route path="/recepcion/checkout/:idReserva" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

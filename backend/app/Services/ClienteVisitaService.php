@@ -2,62 +2,47 @@
 
 namespace App\Services;
 
-use App\Models\ClienteVisita;
 use App\Models\Cliente;
 use App\Models\ClienteNivel;
-use Illuminate\Support\Collection;
+use App\Models\ClienteVisita;
+use Carbon\Carbon;
 
 class ClienteVisitaService
 {
-    public function listarPorCliente(int $idCliente): Collection
+    /**
+     * Registra la visita de un cliente.
+     * - Incrementa visitas
+     * - Actualiza ultima_visita
+     * - Suma total_gastado
+     * - Recalcula nivel (R34)
+     */
+    public function registrar(int $idCliente, ?int $idReserva, ?int $idHabitacion, float $monto): void
     {
-        return ClienteVisita::where('id_cliente', $idCliente)
-            ->orderByDesc('fecha_entrada')
-            ->get();
-    }
+        // 1. Crear fila en cliente_visitas
+        ClienteVisita::create([
+            'id_cliente' => $idCliente,
+            'id_reserva' => $idReserva,
+            'id_habitacion' => $idHabitacion,
+            'fecha_entrada' => Carbon::now(),
+            'monto_gastado' => $monto,
+        ]);
 
-    public function obtener(int $id): ClienteVisita
-    {
-        return ClienteVisita::findOrFail($id);
-    }
+        // 2. Actualizar cliente
+        $cliente = Cliente::findOrFail($idCliente);
+        $cliente->visitas = $cliente->visitas + 1;
+        $cliente->ultima_visita = Carbon::now()->toDateString();
+        $cliente->total_gastado = $cliente->total_gastado + $monto;
+        $cliente->save();
 
-    public function crear(array $datos): ClienteVisita
-    {
-        $visita = ClienteVisita::create($datos);
-
-        // Actualizar contadores del cliente
-        $cliente = Cliente::find($datos['id_cliente']);
-        if ($cliente) {
-            $monto = (float) ($datos['monto_gastado'] ?? 0);
-            $cliente->visitas = $cliente->visitas + 1;
-            $cliente->ultima_visita = now()->toDateString();
-            $cliente->total_gastado = $cliente->total_gastado + $monto;
-            $cliente->save();
-
-            // Recalcular nivel de fidelización
-            $this->recalcularNivel($cliente);
-        }
-
-        return $visita;
-    }
-
-    public function actualizar(int $id, array $datos): ClienteVisita
-    {
-        $item = ClienteVisita::findOrFail($id);
-        $item->update($datos);
-        return $item->fresh();
-    }
-
-    public function eliminar(int $id): void
-    {
-        ClienteVisita::findOrFail($id)->delete();
+        // 3. Recalcular nivel
+        $this->recalcularNivel($cliente);
     }
 
     /**
-     * Recalcula el nivel de fidelización del cliente según sus visitas.
+     * Recalcula el nivel según las visitas actuales (R34).
      * Bronce: 0-4, Plata: 5-9, Oro: 10-19, VIP: 20+
      */
-    private function recalcularNivel(Cliente $cliente): void
+    public function recalcularNivel(Cliente $cliente): void
     {
         $nivel = ClienteNivel::where('activo', true)
             ->where('visitas_min', '<=', $cliente->visitas)
@@ -69,7 +54,8 @@ class ClienteVisitaService
             ->first();
 
         if ($nivel && $cliente->id_nivel !== $nivel->id_nivel) {
-            $cliente->update(['id_nivel' => $nivel->id_nivel]);
+            $cliente->id_nivel = $nivel->id_nivel;
+            $cliente->save();
         }
     }
 }
