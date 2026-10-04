@@ -1,41 +1,21 @@
-# 📘 README completo del Backend
+# 📘 README.md completo del Backend — Solo para pegar en el archivo
 
-**Copiá TODO este bloque y pegalo en la terminal (`backend/`). Enter.**
+**Copiá TODO lo que está dentro del bloque de abajo y pegalo en tu `backend/README.md`** (reemplazando el contenido actual).
 
-```powershell
-# ============================================================================
-# README COMPLETO DEL BACKEND — Sistema de Hospedaje
-# ============================================================================
-
-$ErrorActionPreference = "Stop"
-
-if (-not (Test-Path "artisan")) {
-    Write-Host "✗ No estás en backend" -ForegroundColor Red
-    exit 1
-}
-
-function Write-Utf8NoBom {
-    param([string]$Path, [string]$Content)
-    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
-    $dir = Split-Path $full -Parent
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
-}
-
-$readme = @'
+```markdown
 # Backend — Sistema de Hospedaje
 
 **Framework:** Laravel 12
 **PHP:** 8.2.12
 **Base de datos:** MySQL 8 (MariaDB 10.4)
 **Autenticación:** Laravel Sanctum (Bearer tokens)
-**Estado global:** Módulo 02 completado (Backend + Frontend)
+**Estado global:** Módulos 01-04 completados
 
 ---
 
 ## 📌 Descripción
 
-API REST para gestión completa de un hospedaje de rotación rápida (por horas / corta estadía). Cubre autenticación, usuarios, roles, turnos, configuración base, clientes con fidelización, habitaciones, reservas, caja, inventario, promociones, comprobantes, alertas y reportes.
+API REST para gestión completa de un hospedaje de rotación rápida (por horas / corta estadía). Cubre autenticación, usuarios, roles, turnos, configuración base, tarifas, clientes con fidelización, habitaciones, reservas, caja, inventario, promociones, comprobantes, alertas y reportes.
 
 **Arquitectura:** Controllers delgados + Services (CRUD) + Reglas (lógica de negocio compleja) + Models Eloquent.
 
@@ -72,7 +52,13 @@ backend/
 │   │       ├── TipoDocumentoController.php
 │   │       ├── MetodoPagoController.php
 │   │       ├── CategoriaMovimientoController.php
-│   │       └── ClienteNivelController.php
+│   │       ├── ClienteNivelController.php
+│   │       ├── TarifaController.php
+│   │       ├── TipoObservacionController.php
+│   │       ├── GravedadObservacionController.php
+│   │       ├── ClienteController.php
+│   │       ├── ClienteVisitaController.php
+│   │       └── ClienteObservacionController.php
 │   ├── Models/
 │   │   ├── Usuario.php
 │   │   ├── Rol.php
@@ -82,7 +68,13 @@ backend/
 │   │   ├── TipoDocumento.php
 │   │   ├── MetodoPago.php
 │   │   ├── CategoriaMovimiento.php
-│   │   └── ClienteNivel.php
+│   │   ├── ClienteNivel.php
+│   │   ├── Tarifa.php
+│   │   ├── TipoObservacion.php
+│   │   ├── GravedadObservacion.php
+│   │   ├── Cliente.php
+│   │   ├── ClienteVisita.php
+│   │   └── ClienteObservacion.php
 │   ├── Services/
 │   │   ├── AuthService.php
 │   │   ├── UsuarioService.php
@@ -93,7 +85,13 @@ backend/
 │   │   ├── TipoDocumentoService.php
 │   │   ├── MetodoPagoService.php
 │   │   ├── CategoriaMovimientoService.php
-│   │   └── ClienteNivelService.php
+│   │   ├── ClienteNivelService.php
+│   │   ├── TarifaService.php
+│   │   ├── TipoObservacionService.php
+│   │   ├── GravedadObservacionService.php
+│   │   ├── ClienteService.php
+│   │   ├── ClienteVisitaService.php
+│   │   └── ClienteObservacionService.php
 │   ├── Reglas/                    (lógica de negocio compleja - futura)
 │   │   └── .gitkeep
 │   └── Providers/
@@ -103,21 +101,7 @@ backend/
 ├── config/                         (configuración Laravel)
 ├── database/
 │   ├── migrations/
-│   │   ├── 0001_01_01_000001_create_cache_table.php
-│   │   ├── 0001_01_01_000002_create_jobs_table.php
-│   │   ├── 2026_10_01_130753_create_personal_access_tokens_table.php
-│   │   ├── 2026_10_01_130952_create_roles_table.php
-│   │   ├── 2026_10_01_130953_create_turnos_table.php
-│   │   ├── 2026_10_01_130953_create_usuarios_table.php
-│   │   ├── 2026_10_02_200001_create_pisos_table.php
-│   │   ├── 2026_10_02_200002_create_tipos_habitacion_table.php
-│   │   ├── 2026_10_02_200003_create_tipos_documento_table.php
-│   │   ├── 2026_10_02_200004_create_metodos_pago_table.php
-│   │   ├── 2026_10_02_200005_create_categorias_movimiento_table.php
-│   │   └── 2026_10_02_200006_create_clientes_niveles_table.php
 │   └── seeders/
-│       ├── DatabaseSeeder.php
-│       └── ConfiguracionBaseSeeder.php
 ├── public/
 │   └── index.php
 ├── resources/
@@ -140,7 +124,7 @@ backend/
 
 ## 🗄️ Base de datos — Estado actual
 
-### Tablas creadas (Módulo 01 + Módulo 02)
+### Tablas creadas (Módulos 01-04)
 
 | Tabla | Filas | Módulo | Propósito |
 |-------|-------|--------|-----------|
@@ -150,10 +134,16 @@ backend/
 | `personal_access_tokens` | 0 | 01 | Tokens Sanctum |
 | `pisos` | 4 | 02 | Pisos del hospedaje |
 | `tipos_habitacion` | 8 | 02 | Tipos de habitación |
-| `tipos_documento` | 4 | 02 | DNI, RUC, CE, Pasaporte |
+| `tipos_documento` | 5 | 02 | DNI, RUC, CE, Pasaporte, LIC |
 | `metodos_pago` | 10 | 02 | Métodos de pago |
 | `categorias_movimiento` | 23 | 02 | Categorías ingreso/egreso |
 | `clientes_niveles` | 4 | 02 | Niveles de fidelización |
+| `tarifas` | 15 | 03 | Precios por tipo y horas |
+| `tipos_observacion` | 5 | 04 | Tipos de observación cliente |
+| `gravedades_observacion` | 4 | 04 | Gravedades (baja/media/alta/crítica) |
+| `clientes` | 0 | 04 | Clientes del hospedaje |
+| `cliente_visitas` | 0 | 04 | Historial de visitas |
+| `cliente_observaciones` | 0 | 04 | Alertas por cliente |
 
 ### Tablas de Laravel
 - `cache` — caché de la aplicación
@@ -252,7 +242,7 @@ DELETE /api/turnos/{id}               → eliminar
 
 ---
 
-## 🔷 Módulo 02 — CONFIG-BASE (🔨 Backend + Frontend listos)
+## 🔷 Módulo 02 — CONFIG-BASE (✅ CERRADO)
 
 ### Tablas
 
@@ -283,7 +273,7 @@ DELETE /api/turnos/{id}               → eliminar
 
 **Datos semilla:** Simple, Estándar, Premium, Safari, Marina, Romántica, Jacuzzi VIP, Jacuzzi Estelar.
 
-#### `tipos_documento` (4 filas)
+#### `tipos_documento` (5 filas)
 | Campo | Tipo | Restricciones |
 |-------|------|---------------|
 | id_documento | BIGINT UNSIGNED PK | AUTO_INCREMENT |
@@ -293,7 +283,7 @@ DELETE /api/turnos/{id}               → eliminar
 | activo | BOOLEAN | DEFAULT true |
 | created_at, updated_at | TIMESTAMP | NULL |
 
-**Datos semilla:** DNI (8), RUC (11), Carné de Extranjería (12), Pasaporte (NULL).
+**Datos semilla:** DNI (8), RUC (11), Carné de Extranjería (12), Pasaporte (NULL), Licencia de Conducir (8).
 
 #### `metodos_pago` (10 filas)
 | Campo | Tipo | Restricciones |
@@ -353,7 +343,13 @@ DELETE /api/turnos/{id}               → eliminar
 | activo | BOOLEAN | DEFAULT true |
 | created_at, updated_at | TIMESTAMP | NULL |
 
-**Datos semilla:** Bronce (0-4, 0%), Plata (5-9, 5%), Oro (10-19, 10%), VIP (20+, 15%).
+**Datos semilla:**
+| id | nombre | visitas_min | visitas_max | descuento |
+|----|--------|-------------|-------------|-----------|
+| 1 | Bronce | 0 | 4 | 0% |
+| 2 | Plata | 5 | 9 | 5% |
+| 3 | Oro | 10 | 19 | 10% |
+| 4 | VIP | 20 | NULL | 15% |
 
 ### Endpoints Módulo 02
 
@@ -381,16 +377,254 @@ DELETE /api/{recurso}/{id}               → eliminar
 ```
 GET /api/metodos-pago/de-caja      → solo es_de_caja = true
 GET /api/metodos-pago/de-duenia    → solo es_de_caja = false
-GET /api/categorias-movimiento?tipo=Ingreso  → filtrar por tipo
-GET /api/categorias-movimiento?tipo=Egreso   → filtrar por tipo
+GET /api/categorias-movimiento?tipo=Ingreso
+GET /api/categorias-movimiento?tipo=Egreso
 ```
 
 ### Reglas de negocio Módulo 02
 - Todos los catálogos son CRUD (nada hardcodeado)
-- Se puede crear/editar/desactivar cualquier ítem
-- Soft delete vía `activo = false` (no se borra físicamente)
+- Soft delete vía `activo = false`
 - `metodos_pago.es_de_caja` define si un pago entra a caja o va a la dueña
-- Cada cambio queda en auditoría (futuro)
+
+---
+
+## 🔷 Módulo 03 — TARIFAS (✅ CERRADO)
+
+### Tabla
+
+#### `tarifas` (15 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_tarifa | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_tipo | BIGINT FK | → tipos_habitacion.id_tipo, onDelete restrict |
+| horas | INT | NOT NULL |
+| monto | DECIMAL(10,2) | Precio con IGV |
+| precio_hora_extra | DECIMAL(10,2) | S/ 5 o S/ 10 |
+| max_horas_extra | INT | DEFAULT 3 |
+| precio_turno_adicional | DECIMAL(10,2) | Bloque completo |
+| activo | BOOLEAN | DEFAULT true |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**UNIQUE:** (id_tipo, horas).
+
+**Datos semilla:**
+| id | Tipo | Horas | Monto | Hora extra | Turno adic. |
+|----|------|-------|-------|-----------|-------------|
+| 1 | Simple | 4 | 25 | 5 | 25 |
+| 2 | Estándar | 6 | 40 | 5 | 40 |
+| 3 | Estándar | 12 | 45 | 5 | 45 |
+| 4 | Premium | 8 | 55 | 5 | 55 |
+| 5 | Premium | 12 | 70 | 5 | 70 |
+| 6 | Safari | 8 | 70 | 10 | 70 |
+| 7 | Safari | 12 | 90 | 10 | 90 |
+| 8 | Marina | 8 | 60 | 10 | 60 |
+| 9 | Marina | 12 | 80 | 10 | 80 |
+| 10 | Romántica | 8 | 60 | 10 | 60 |
+| 11 | Romántica | 12 | 80 | 10 | 80 |
+| 12 | Jacuzzi VIP | 8 | 100 | 10 | 100 |
+| 13 | Jacuzzi VIP | 12 | 135 | 10 | 135 |
+| 14 | Jacuzzi Estelar | 8 | 135 | 10 | 135 |
+| 15 | Jacuzzi Estelar | 12 | 165 | 10 | 165 |
+
+**⚠️ NO todas las combinaciones existen.** Matriz:
+| Tipo | 4h | 6h | 8h | 12h |
+|------|----|----|----|----|
+| Simple | ✅ | ❌ | ❌ | ❌ |
+| Estándar | ❌ | ✅ | ❌ | ✅ |
+| Premium | ❌ | ❌ | ✅ | ✅ |
+| Safari | ❌ | ❌ | ✅ | ✅ |
+| Marina | ❌ | ❌ | ✅ | ✅ |
+| Romántica | ❌ | ❌ | ✅ | ✅ |
+| Jacuzzi VIP | ❌ | ❌ | ✅ | ✅ |
+| Jacuzzi Estelar | ❌ | ❌ | ✅ | ✅ |
+
+### Endpoints Módulo 03
+
+```
+GET    /api/tarifas                        → listar
+GET    /api/tarifas/activos                → solo activos
+GET    /api/tarifas/por-tipo/{idTipo}      → tarifas de un tipo
+GET    /api/tarifas/{id}                   → detalle
+POST   /api/tarifas                        → crear
+PUT    /api/tarifas/{id}                   → editar
+PATCH  /api/tarifas/{id}/desactivar        → activo = false
+PATCH  /api/tarifas/{id}/reactivar         → activo = true
+DELETE /api/tarifas/{id}                   → eliminar
+```
+
+### Reglas de negocio Módulo 03
+- Cada tarifa = (tipo habitación, horas) → precio
+- Precio hora extra: S/ 5 (Simple/Estándar/Premium) o S/ 10 (resto)
+- Máximo 3 horas extra → después se cobra turno adicional
+- Turno adicional = precio del bloque completo
+- La lógica de extensión se implementa en Módulo 06 (Reservas)
+
+---
+
+## 🔷 Módulo 04 — CLIENTES (✅ CERRADO)
+
+### Tablas
+
+#### `tipos_observacion` (5 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_tipo_observacion | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| nombre | VARCHAR(50) | UNIQUE, NOT NULL |
+| slug | VARCHAR(50) | UNIQUE, NOT NULL |
+| icono | VARCHAR(50) | NULL |
+| color | VARCHAR(20) | NULL |
+| descripcion | VARCHAR(255) | NULL |
+| orden | INT | DEFAULT 0 |
+| activo | BOOLEAN | DEFAULT true |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Datos semilla:** Deuda, Daño a la habitación, Mal comportamiento, Documento falso, Bloqueo permanente.
+
+#### `gravedades_observacion` (4 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_gravedad | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| nombre | VARCHAR(30) | UNIQUE, NOT NULL |
+| slug | VARCHAR(30) | UNIQUE, NOT NULL |
+| color | VARCHAR(20) | NULL |
+| prioridad | INT | DEFAULT 0 |
+| activo | BOOLEAN | DEFAULT true |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Datos semilla:** Baja (1), Media (2), Alta (3), Crítica (4).
+
+#### `clientes`
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_cliente | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| nombre | VARCHAR(100) | NOT NULL |
+| apellido | VARCHAR(100) | NULL |
+| id_tipo_documento | BIGINT FK NULL | → tipos_documento, onDelete set null |
+| numero_documento | VARCHAR(30) | UNIQUE, NULL |
+| celular | VARCHAR(20) | NULL |
+| email | VARCHAR(150) | NULL |
+| fecha_nacimiento | DATE | NULL |
+| fecha_aniversario | DATE | NULL |
+| direccion | VARCHAR(255) | NULL |
+| visitas | INT | DEFAULT 0 |
+| ultima_visita | DATE | NULL |
+| total_gastado | DECIMAL(10,2) | DEFAULT 0 |
+| id_nivel | BIGINT FK NULL | → clientes_niveles, onDelete set null |
+| activo | BOOLEAN | DEFAULT true |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Índices:** `numero_documento`, `id_nivel`.
+
+#### `cliente_visitas`
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_visita | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_cliente | BIGINT FK | → clientes, onDelete cascade |
+| id_reserva | BIGINT NULL | (futuro, Módulo 06) |
+| id_habitacion | BIGINT NULL | (futuro, Módulo 05) |
+| fecha_entrada | DATETIME | NOT NULL |
+| fecha_salida | DATETIME | NULL |
+| monto_gastado | DECIMAL(10,2) | DEFAULT 0 |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+#### `cliente_observaciones`
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_observacion | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_cliente | BIGINT FK | → clientes, onDelete cascade |
+| id_tipo_observacion | BIGINT FK | → tipos_observacion, onDelete restrict |
+| id_gravedad | BIGINT FK | → gravedades_observacion, onDelete restrict |
+| motivo | VARCHAR(255) | NOT NULL |
+| monto_deuda | DECIMAL(10,2) | NULL |
+| resuelto | BOOLEAN | DEFAULT false |
+| fecha_resolucion | DATETIME | NULL |
+| id_usuario_creacion | BIGINT FK | → usuarios, onDelete restrict |
+| created_at, updated_at | TIMESTAMP | NULL |
+
+**Índices:** `id_cliente`, `resuelto`.
+
+### Endpoints Módulo 04
+
+**Tipos de Observación (8):**
+```
+GET    /api/tipos-observacion
+GET    /api/tipos-observacion/activos
+GET    /api/tipos-observacion/{id}
+POST   /api/tipos-observacion
+PUT    /api/tipos-observacion/{id}
+PATCH  /api/tipos-observacion/{id}/desactivar
+PATCH  /api/tipos-observacion/{id}/reactivar
+DELETE /api/tipos-observacion/{id}
+```
+
+**Gravedades (8):**
+```
+GET    /api/gravedades-observacion
+GET    /api/gravedades-observacion/activos
+GET    /api/gravedades-observacion/{id}
+POST   /api/gravedades-observacion
+PUT    /api/gravedades-observacion/{id}
+PATCH  /api/gravedades-observacion/{id}/desactivar
+PATCH  /api/gravedades-observacion/{id}/reactivar
+DELETE /api/gravedades-observacion/{id}
+```
+
+**Clientes (10):**
+```
+GET    /api/clientes
+GET    /api/clientes/activos
+GET    /api/clientes/buscar?dni=X
+GET    /api/clientes/{id}
+POST   /api/clientes
+PUT    /api/clientes/{id}
+PATCH  /api/clientes/{id}/desactivar
+PATCH  /api/clientes/{id}/reactivar
+DELETE /api/clientes/{id}
+GET    /api/clientes/{id}/visitas
+```
+
+**Visitas (5):**
+```
+GET    /api/clientes/{idCliente}/visitas
+GET    /api/cliente-visitas/{id}
+POST   /api/clientes/{idCliente}/visitas
+PUT    /api/cliente-visitas/{id}
+DELETE /api/cliente-visitas/{id}
+```
+
+**Observaciones (6):**
+```
+GET    /api/cliente-observaciones
+GET    /api/clientes/{idCliente}/observaciones
+GET    /api/cliente-observaciones/{id}
+POST   /api/clientes/{idCliente}/observaciones
+PATCH  /api/cliente-observaciones/{id}/resolver
+DELETE /api/cliente-observaciones/{id}
+```
+
+### Reglas de negocio Módulo 04
+
+- **R-CLI-1:** Buscar cliente por DNI primero en BD local
+- **R-CLI-2:** Si existe, NO se consulta RENIEC (cuando se active)
+- **R-CLI-3:** Al registrar visita → incrementar `visitas`, actualizar `ultima_visita`, sumar `total_gastado`
+- **R-CLI-4:** Al recalcular visitas → actualizar automáticamente el `nivel` (Bronce/Plata/Oro/VIP)
+- **R-CLI-5:** Cliente con observación pendiente → mostrar alerta al buscar por DNI
+- **R-CLI-6:** Los tipos de observación y gravedades son dinámicos (CRUD)
+
+### Lógica de visitas (automática)
+
+**`ClienteVisitaService::crear()`:**
+1. Crea fila en `cliente_visitas`
+2. Incrementa `clientes.visitas` en 1
+3. Actualiza `clientes.ultima_visita = now()`
+4. Suma `clientes.total_gastado += monto_gastado`
+5. Recalcula nivel (`recalcularNivel()`)
+   - Bronce: 0-4 visitas
+   - Plata: 5-9 visitas
+   - Oro: 10-19 visitas
+   - VIP: 20+ visitas
+
+**Este servicio va a ser llamado desde el Módulo 06 (Reservas → Check-in).**
 
 ---
 
@@ -407,128 +641,6 @@ GET /api/categorias-movimiento?tipo=Egreso   → filtrar por tipo
 3. Token se devuelve en JSON
 4. Cliente guarda token y lo manda: `Authorization: Bearer {token}`
 5. Token inválido → 401 Unauthorized
-
----
-
-## 📋 Validaciones por endpoint
-
-### POST `/login`
-| Campo | Regla |
-|-------|-------|
-| nombre_usuario | required, string |
-| password | required, string |
-
-### POST/PUT `/usuarios`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:100 |
-| apellido | required, string, max:100 |
-| nombre_usuario | required, string, max:50, unique:usuarios |
-| password | required, string, min:6 |
-| id_rol | required, exists:roles,id |
-| id_turno | nullable, exists:turnos,id |
-| activo | boolean |
-
-### POST/PUT `/roles`
-| Campo | Regla |
-|-------|-------|
-| nombre | required (POST) / sometimes (PUT), string, max:50, unique:roles |
-| descripcion | nullable, string, max:255 |
-| activo | sometimes, boolean |
-
-### POST/PUT `/turnos`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50 |
-| hora_inicio | required |
-| hora_fin | required |
-| descripcion | nullable, string, max:255 |
-| activo | sometimes, boolean |
-
-### POST/PUT `/pisos`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50, unique:pisos |
-| descripcion | nullable, string, max:255 |
-| orden | nullable, integer |
-| activo | boolean |
-
-### POST/PUT `/tipos-habitacion`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50, unique |
-| slug | required, string, max:50, unique |
-| descripcion | nullable, string, max:255 |
-| capacidad | nullable, integer, min:1 |
-| camas | nullable, integer, min:1 |
-| tiene_jacuzzi | boolean |
-| activo | boolean |
-
-### POST/PUT `/tipos-documento`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50, unique |
-| abreviatura | required, string, max:10, unique |
-| longitud | nullable, integer, min:1 |
-| activo | boolean |
-
-### POST/PUT `/metodos-pago`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50, unique |
-| descripcion | nullable, string, max:255 |
-| es_de_caja | required, boolean |
-| icono | nullable, string, max:50 |
-| color | nullable, string, max:20 |
-| orden | nullable, integer |
-| activo | boolean |
-
-### POST/PUT `/categorias-movimiento`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50 |
-| tipo | required, in:Ingreso,Egreso |
-| descripcion | nullable, string, max:255 |
-| orden | nullable, integer |
-| activo | boolean |
-
-### POST/PUT `/clientes-niveles`
-| Campo | Regla |
-|-------|-------|
-| nombre | required, string, max:50, unique |
-| visitas_min | required, integer, min:0 |
-| visitas_max | nullable, integer, min:0 |
-| descuento | required, numeric, min:0, max:100 |
-| color | nullable, string, max:20 |
-| icono | nullable, string, max:50 |
-| beneficios | nullable, string |
-| activo | boolean |
-
----
-
-## 🧬 Modelos y sus relaciones
-
-### Módulo 01
-
-```
-usuarios.id_rol   → roles.id       (belongsTo)
-usuarios.id_turno → turnos.id      (belongsTo)
-roles.usuarios    → hasMany
-turnos.usuarios   → hasMany
-```
-
-### Módulo 02 (relaciones futuras)
-
-```
-clientes.id_tipo_documento → tipos_documento.id_documento
-clientes.id_nivel          → clientes_niveles.id_nivel
-habitaciones.id_piso       → pisos.id_piso
-habitaciones.id_tipo       → tipos_habitacion.id_tipo
-tarifas.id_tipo            → tipos_habitacion.id_tipo
-pagos_reserva.id_metodo    → metodos_pago.id_metodo
-movimientos_caja.id_metodo → metodos_pago.id_metodo
-movimientos_caja.id_categoria → categorias_movimiento.id_categoria
-```
 
 ---
 
@@ -585,7 +697,7 @@ movimientos_caja.id_categoria → categorias_movimiento.id_categoria
 - **R36** Por defecto se aplica la mejor promo
 - **R37** Solo acumulables se suman
 - **R38** Uso se registra en `promociones_aplicadas`
-- **R39** ⚠️ **Yape/Plin/Depósito/Transferencia Dueña NO entran a caja** (van a cuenta personal)
+- **R39** ⚠️ **Yape/Plin/Depósito/Transferencia Dueña NO entran a caja**
 
 ### Inventario
 - **R40** Cada movimiento → kardex
@@ -609,21 +721,14 @@ movimientos_caja.id_categoria → categorias_movimiento.id_categoria
 ## 🧪 Cómo probar
 
 ### Con PowerShell
-
 ```powershell
 # Login
 $body = @{ nombre_usuario = "nancy"; password = "admin123" } | ConvertTo-Json
 $resp = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/login" -Method POST -Body $body -ContentType "application/json"
 $token = $resp.token
 
-# Listar usuarios
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/usuarios" -Headers @{ Authorization = "Bearer $token" }
-
 # Listar pisos
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/pisos" -Headers @{ Authorization = "Bearer $token" }
-
-# Métodos de pago de caja
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/metodos-pago/de-caja" -Headers @{ Authorization = "Bearer $token" }
 ```
 
 ### Con Postman / Thunder Client
@@ -668,6 +773,9 @@ php artisan key:generate
 php artisan migrate
 php artisan db:seed
 php artisan db:seed --class=ConfiguracionBaseSeeder
+php artisan db:seed --class=TarifaSeeder
+php artisan db:seed --class=TiposObservacionSeeder
+php artisan db:seed --class=GravedadesObservacionSeeder
 
 # 7. Levantar servidor
 php artisan serve
@@ -690,6 +798,7 @@ php artisan migrate:fresh --seed
 php artisan tinker
 
 # Limpiar cachés
+php artisan optimize:clear
 php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
@@ -706,8 +815,8 @@ Get-Content storage\logs\laravel.log -Tail 50
 |---|--------|---------|----------|--------|
 | 01 | AUTH (usuarios, roles, turnos) | ✅ | ✅ | ✅ CERRADO |
 | 02 | CONFIG-BASE (6 tablas) | ✅ | ✅ | ✅ CERRADO |
-| 03 | TARIFAS | ⏳ | ⏳ | ⏳ Pendiente |
-| 04 | CLIENTES (+ RENIEC) | ⏳ | ⏳ | ⏳ Pendiente |
+| 03 | TARIFAS | ✅ | ✅ | ✅ CERRADO |
+| 04 | CLIENTES (5 tablas) | ✅ | ✅ | ✅ CERRADO |
 | 05 | HABITACIONES | ⏳ | ⏳ | ⏳ Pendiente |
 | 06 | RESERVAS | ⏳ | ⏳ | ⏳ Pendiente |
 | 07 | CAJA | ⏳ | ⏳ | ⏳ Pendiente |
@@ -721,37 +830,25 @@ Get-Content storage\logs\laravel.log -Tail 50
 | 15 | REPORTES | ⏳ | ⏳ | ⏳ Pendiente |
 | 16 | AUDITORÍA | ⏳ | ⏳ | ⏳ Pendiente |
 | 17 | ASISTENCIA DE PERSONAL | ⏳ | ⏳ | ⏳ Pendiente |
-| 18 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | ⏳ Pendiente (solo producción) |
+| 18 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | ⏳ Pendiente (producción) |
 
 ---
 
-## 📝 Detalle del roadmap
-
-### Módulo 03 — TARIFAS
-**Tabla:** `tarifas` (15 filas)
-- id_tarifa, id_tipo FK, horas, monto, precio_hora_extra, max_horas_extra, precio_turno_adicional
-- UNIQUE (id_tipo, horas)
-- Se relaciona con `tipos_habitacion`
-
-### Módulo 04 — CLIENTES
-**Tablas:** `clientes`, `cliente_visitas`, `cliente_observaciones`
-- Cliente se identifica por DNI (UNIQUE)
-- Búsqueda local primero → si no existe, RENIEC (futuro)
-- Contador de visitas se incrementa en check-in
-- Observaciones: deuda, daño, mal comportamiento, bloqueo
-- Nivel se recalcula automáticamente
+## 📝 Detalle de módulos futuros
 
 ### Módulo 05 — HABITACIONES
-**Tabla:** `habitaciones` (32 filas)
-- 4 pisos × 8 habitaciones
-- La 208 está inactiva (es almacén)
+**Tabla:** `habitaciones` (32 filas: piso 1 = 7 habs, piso 2 = 8 habs activas + 1 inactiva, piso 3 = 8 habs, piso 4 = 8 habs)
 - Se relaciona con `pisos` y `tipos_habitacion`
+- El estado NO se guarda (se calcula en vivo)
+- La 208 está inactiva (almacén)
 
 ### Módulo 06 — RESERVAS
 **Tablas:** `reservas`, `estados_reserva`, `ocupacion_habitacion`, `registros_estadia`, `extensiones_reserva`, `huespedes_adicionales`, `intentos_contacto`
 - Tabla central del sistema
 - Bloqueo real en `ocupacion_habitacion` (no en `reservas`)
 - Buffer de limpieza configurable
+- Al hacer check-in: llamar a `ClienteVisitaService::crear()` (ya está listo)
+- Extensión: máximo 3h → después turno adicional (con decisión manual del recepcionista)
 
 ### Módulo 07 — CAJA
 **Tablas:** `caja`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `pagos_reserva`, `devoluciones`
@@ -772,31 +869,22 @@ Get-Content storage\logs\laravel.log -Tail 50
 
 ### Módulo 10 — INVENTARIO / KARDEX
 **Tablas:** `productos`, `categorias_producto`, `kardex`, `inventario_fisico`, `inventario_detalle`
-- Cada movimiento genera registro en kardex
-- Consumo descuenta stock
 
 ### Módulo 11 — PROVEEDORES
 **Tablas:** `proveedores`, `cuentas_por_pagar`, `pagos_proveedor`
-- Cuentas por pagar por decoración
-- Pago a proveedor
 
 ### Módulo 12 — PROMOCIONES
 **Tablas:** `promociones`, `promociones_aplicadas`, `promociones_cliente`, `temporadas`
-- 5 promociones activas
-- Se aplica la mejor por defecto
-- Acumulables se suman
 
 ### Módulo 13 — COMPROBANTES
 **Tablas:** `facturas`, `facturas_detalle`, `tipos_comprobante`, `series_comprobante`, `notas_credito`
 - Boleta (B001) y Factura (F001)
 - IGV 18% descompuesto
-- Emisión electrónica a SUNAT (futuro)
 
 ### Módulo 14 — ALERTAS
 **Tablas:** `alertas`, `reglas_alerta`, `canales_alerta`
 - Cronjob cada minuto
 - Alertas críticas por WebSocket
-- Anti-duplicados por clave única
 
 ### Módulo 15 — REPORTES
 - Ocupación, ingresos, clientes frecuentes
@@ -804,19 +892,12 @@ Get-Content storage\logs\laravel.log -Tail 50
 
 ### Módulo 16 — AUDITORÍA
 **Tablas:** `auditoria`, `auditoria_cambios`
-- Registra cada acción sensible
-- Cambios campo a campo
 
 ### Módulo 17 — ASISTENCIA DE PERSONAL
 **Tablas:** `asistencia`, `horas_extra`
-- Entrada/salida de cada trabajador
-- Cálculo de horas extra y tardanzas
 
 ### Módulo 18 — INTEGRACIÓN RENIEC
-**Función:** `ReniecService::consultar($dni)`
-- Se activa SOLO en producción
-- Al registrar cliente nuevo, autocompleta datos
-- Si falla → permite registro manual
+**Función:** `ReniecService::consultar($dni)` (solo producción)
 
 ---
 
@@ -825,33 +906,23 @@ Get-Content storage\logs\laravel.log -Tail 50
 | Regla | Obligatorio |
 |-------|-------------|
 | Idioma | Español (variables, funciones, tablas) |
-| Estilos | Tailwind CSS (nunca CSS puro) |
-| Componentes UI | shadcn/ui |
-| Estado global | Zustand |
-| HTTP | axios con `api.ts` |
-| Routing | react-router-dom v7 |
-| Alias | `@/` siempre |
-| Tipos | TypeScript estricto (nunca `any`) |
-| Iconos | lucide-react |
-| Toasts | sonner (nunca `alert()`) |
-| Confirmaciones | ConfirmDialog |
-| Tema | Oscuro (slate-950, slate-900) |
-
-### Estructura de capas
-- `pages/` → una página por ruta. Si >100 líneas → dividir en Page/Form/Tabla
-- `components/ui/` → shadcn (NO modificar)
-- `components/layout/` → Sidebar, Header
-- `services/` → llamadas HTTP (nunca lógica en componentes)
-- `hooks/` → estado global (Zustand)
-- `types/` → interfaces TypeScript
-- `Reglas/` → lógica de negocio compleja
+| Controllers | Delgados, solo llaman al Service |
+| Services | Lógica CRUD |
+| Reglas | Lógica de negocio compleja |
+| Models | Relaciones explícitas |
+| Migraciones | `Schema::create` con FK explícitas |
+| Seeders | Datos reales, no lorem ipsum |
+| Alias | `App\...` siempre |
+| Tipos | PHP 8.2 estricto |
 
 ### Convenciones
-- Componentes: `PascalCase.tsx`
-- Servicios/utilidades: `camelCase.ts`
-- Tipos: `PascalCase`
-- Funciones: `camelCase`
-- Constantes: `UPPER_SNAKE_CASE`
+- Controllers: `XxxController.php`
+- Models: `Xxx.php`
+- Services: `XxxService.php`
+- Reglas: `XxxService.php` (en carpeta `Reglas/`)
+- Migraciones: `YYYY_MM_DD_HHMMSS_create_xxx_table.php`
+- Tablas: `snake_case` plural
+- Campos: `snake_case`
 
 ---
 
@@ -860,15 +931,15 @@ Get-Content storage\logs\laravel.log -Tail 50
 | # | Decisión | Razón |
 |---|----------|-------|
 | D1 | Yape/Plin/Depósito Dueña NO entran a caja | El dinero va a la cuenta personal de la dueña |
-| D2 | Métodos 7 y 8 del intento anterior no se usan | Eran duplicados |
-| D3 | Cobro de reserva en 2 pasos | Al crear reserva se abre modal de cobro |
-| D4 | Catálogos dinámicos | Métodos de pago y categorías vienen de BD |
-| D5 | Precios con IGV incluido | Regla de negocio peruana |
-| D6 | Buffer de limpieza = 30 min | Configurable |
-| D7 | Tolerancia No-Show = 60 min | Configurable |
-| D8 | Método de pago 1 default | Efectivo es el más común |
-| D9 | Al anular pago se revierte caja | PagoService lo maneja |
-| D10 | Estado de hab. en vivo | EstadoHabitacionService calcula |
+| D2 | Cobro de reserva en 2 pasos | Al crear reserva se abre modal de cobro |
+| D3 | Catálogos dinámicos | Métodos de pago y categorías vienen de BD |
+| D4 | Precios con IGV incluido | Regla de negocio peruana |
+| D5 | Buffer de limpieza = 30 min | Configurable |
+| D6 | Tolerancia No-Show = 60 min | Configurable |
+| D7 | Al anular pago se revierte caja | PagoService lo maneja |
+| D8 | Estado de hab. en vivo | EstadoHabitacionService calcula |
+| D9 | RENIEC solo en producción | Ahorro de costos en desarrollo |
+| D10 | Visitas se incrementan en check-in | ClienteVisitaService lo maneja |
 
 ---
 
@@ -887,93 +958,182 @@ Proyecto privado — Sistema de Hospedaje.
 ---
 
 **Última actualización:** 02/10/2026
-**Módulos completados:** 2 de 18
-'@
-
-Write-Utf8NoBom -Path "README.md" -Content $readme
-
-$tamano = (Get-Item "README.md").Length
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Green
-Write-Host "  OK README.md CREADO" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Archivo: backend/README.md ($tamano bytes)" -ForegroundColor White
-Write-Host ""
-Write-Host "Contenido:" -ForegroundColor Cyan
-Write-Host "  1. Descripcion general" -ForegroundColor White
-Write-Host "  2. Reglas del proyecto (R1, R2, R3)" -ForegroundColor White
-Write-Host "  3. Estructura de carpetas completa" -ForegroundColor White
-Write-Host "  4. Base de datos (10 tablas actuales)" -ForegroundColor White
-Write-Host "  5. Modulo 01 AUTH (tablas + endpoints + reglas)" -ForegroundColor White
-Write-Host "  6. Modulo 02 CONFIG-BASE (6 tablas + endpoints)" -ForegroundColor White
-Write-Host "  7. Autenticacion Sanctum" -ForegroundColor White
-Write-Host "  8. Validaciones por endpoint" -ForegroundColor White
-Write-Host "  9. Modelos y relaciones" -ForegroundColor White
-Write-Host "  10. Reglas de negocio R1-R50" -ForegroundColor White
-Write-Host "  11. Como probar (PowerShell + Postman)" -ForegroundColor White
-Write-Host "  12. Instalacion paso a paso" -ForegroundColor White
-Write-Host "  13. Comandos utiles" -ForegroundColor White
-Write-Host "  14. Roadmap de 18 modulos" -ForegroundColor White
-Write-Host "  15. Detalle de cada modulo futuro" -ForegroundColor White
-Write-Host "  16. Reglas de codigo" -ForegroundColor White
-Write-Host "  17. Decisiones tecnicas" -ForegroundColor White
-Write-Host "  18. Credenciales de prueba" -ForegroundColor White
-Write-Host ""
-Write-Host "Ahora subi a GitHub:" -ForegroundColor Yellow
-Write-Host "  cd C:\Users\David\Desktop\hospedaje" -ForegroundColor White
-Write-Host "  git add ." -ForegroundColor White
-Write-Host "  git commit -m 'docs: README backend completo con roadmap de 18 modulos'" -ForegroundColor White
-Write-Host "  git push" -ForegroundColor White
-Write-Host ""
+**Módulos completados:** 4 de 18
 ```
 
 ---
 
-## 📋 Qué incluye el README
+## 📌 Cómo usarlo
 
-| Sección | Contenido |
-|---------|-----------|
-| **Reglas del proyecto** | R1 (nada hardcodeado), R2 (poco código), R3 (funcional > elegante) |
-| **Estructura completa** | Árbol de carpetas con TODOS los archivos |
-| **Base de datos** | 10 tablas con esquema, tipos, restricciones |
-| **Módulo 01 (AUTH)** | Tablas + 18 endpoints + reglas + semilla |
-| **Módulo 02 (CONFIG-BASE)** | 6 tablas + 48 endpoints + reglas + 53 registros semilla |
-| **Reglas de negocio** | R1-R50 con descripción |
-| **Modelos y relaciones** | Diagrama de FK actuales y futuras |
-| **Autenticación** | Flujo completo Sanctum |
-| **Validaciones** | Todas las reglas por endpoint |
-| **Testing** | Ejemplos con PowerShell + Postman |
-| **Instalación** | Paso a paso |
-| **Comandos útiles** | 8 comandos con descripción |
-| **Roadmap** | 18 módulos con estado |
-| **Detalle de cada módulo futuro** | Qué tablas, qué hace, dependencias |
-| **Decisiones técnicas** | D1-D10 |
-| **Reglas de código** | 12 reglas + estructura de capas + convenciones |
+1. **Abrí `backend/README.md`** en VS Code
+2. **Seleccioná TODO** el contenido actual (`Ctrl+A`)
+3. **Borralo** (`Delete` o `Backspace`)
+4. **Pegá TODO el bloque de arriba** (desde `# Backend — Sistema de Hospedaje` hasta el final)
+5. **Guardá** (`Ctrl+S`)
 
 ---
 
 ## 🎯 Después de pegar
 
-1. **Verificá el archivo:**
-   ```powershell
-   Get-Item README.md
-   ```
+**Cuando quieras subirlo a GitHub:**
 
-2. **Subilo a GitHub:**
-   ```powershell
-   cd C:\Users\David\Desktop\hospedaje
-   git add .
-   git commit -m "docs: README backend completo con roadmap de 18 modulos"
-   git push
-   ```
-
----
-
-## 📌 Pegame:
-
-1. **La salida del bloque** (los mensajes de OK)
-2. **El tamaño del README** (bytes)
-3. **(Opcional) Un screenshot del README abierto en VS Code**
+```bash
+cd /c/Users/David/Desktop/hospedaje
+git add backend/README.md
+git commit -m "docs: actualizo README backend con módulos 01-04"
+git push
+```
 
 **¿Dale?** 🚀
+BACKEND (backend/README.md)
+🔹 Qué agregar (7 puntos)
+1. Actualizar el título "Estado global"
+
+Buscar:
+
+text
+**Estado global:** Módulos 01-04 completados
+Reemplazar por:
+
+text
+**Estado global:** Módulos 01-05 completados
+2. Actualizar la sección "🗄️ Base de datos — Estado actual"
+
+Buscar la tabla y agregar 3 filas nuevas:
+
+markdown
+| `categorias_producto` | 7 | 05 | Categorías de productos |
+| `proveedores` | 5 | 05 | Proveedores ficticios |
+| `productos` | 19 | 05 | Productos (bebidas, snacks, etc.) |
+3. Agregar sección completa "🔷 Módulo 05 — PRODUCTOS (Fase 1)"
+
+Insertar después de la sección del Módulo 04 (antes de "🔌 Autenticación"):
+
+markdown
+## 🔷 Módulo 05 — PRODUCTOS Fase 1 (✅ CERRADO)
+
+### Tablas
+
+#### `categorias_producto` (7 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_categoria_producto | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| nombre | VARCHAR(50) | UNIQUE, NOT NULL |
+| slug | VARCHAR(50) | UNIQUE, NOT NULL |
+| descripcion | VARCHAR(255) | NULL |
+| icono | VARCHAR(50) | NULL |
+| color | VARCHAR(20) | NULL |
+| orden | INT | DEFAULT 0 |
+| activo | BOOLEAN | DEFAULT true |
+
+**Datos semilla:** Bebidas, Licores, Golosinas, Snacks, Cuidado Personal, Aseo, Peluches.
+
+#### `proveedores` (5 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_proveedor | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| razon_social | VARCHAR(100) | NOT NULL |
+| nombre_comercial | VARCHAR(100) | NULL |
+| ruc | VARCHAR(20) | NULL |
+| telefono | VARCHAR(20) | NULL |
+| email | VARCHAR(150) | NULL |
+| direccion | VARCHAR(255) | NULL |
+| contacto | VARCHAR(100) | NULL |
+| tipo | VARCHAR(30) | NULL |
+| notas | TEXT | NULL |
+| activo | BOOLEAN | DEFAULT true |
+
+#### `productos` (19 filas)
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_producto | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| nombre | VARCHAR(100) | NOT NULL |
+| descripcion | VARCHAR(255) | NULL |
+| id_categoria_producto | BIGINT FK NULL | → categorias_producto |
+| id_proveedor | BIGINT FK NULL | → proveedores |
+| codigo_barra | VARCHAR(50) | NULL |
+| precio_compra | DECIMAL(10,2) | DEFAULT 0 |
+| precio_venta | DECIMAL(10,2) | NOT NULL |
+| stock_actual | INT | DEFAULT 0 |
+| stock_minimo | INT | DEFAULT 10 |
+| unidad_medida | VARCHAR(20) | NULL |
+| imagen | VARCHAR(255) | NULL |
+| activo | BOOLEAN | DEFAULT true |
+
+### Endpoints Módulo 05
+
+**Categorías de Producto (8):**
+GET /api/categorias-producto
+GET /api/categorias-producto/activos
+GET /api/categorias-producto/{id}
+POST /api/categorias-producto
+PUT /api/categorias-producto/{id}
+PATCH /api/categorias-producto/{id}/desactivar
+PATCH /api/categorias-producto/{id}/reactivar
+DELETE /api/categorias-producto/{id}
+
+**Proveedores (8):**
+GET /api/proveedores
+GET /api/proveedores/activos
+GET /api/proveedores/{id}
+POST /api/proveedores
+PUT /api/proveedores/{id}
+PATCH /api/proveedores/{id}/desactivar
+PATCH /api/proveedores/{id}/reactivar
+DELETE /api/proveedores/{id}
+
+**Productos (10):**
+GET /api/productos
+GET /api/productos/activos
+GET /api/productos/stock-bajo
+GET /api/productos/por-categoria/{idCategoria}
+GET /api/productos/{id}
+POST /api/productos
+PUT /api/productos/{id}
+PATCH /api/productos/{id}/desactivar
+PATCH /api/productos/{id}/reactivar
+DELETE /api/productos/{id}
+
+### Reglas de negocio Módulo 05
+
+- Stock mínimo default = 10
+- Productos con `stock_actual <= stock_minimo` se listan en `/stock-bajo`
+- Proveedores y categorías son catálogos dinámicos
+- Productos opcionalmente asociados a categoría/proveedor
+4. Actualizar la sección "🔮 Roadmap de módulos"
+
+Buscar la tabla y agregar la fila del Módulo 05:
+
+markdown
+| 05 | PRODUCTOS (Fase 1) | ✅ | ✅ | ✅ CERRADO |
+Y ajustar la fila del 06 (antes decía HABITACIONES):
+
+markdown
+| 06 | PROMOCIONES | ⏳ | ⏳ | ⏳ Pendiente |
+| 07 | HABITACIONES | ⏳ | ⏳ | ⏳ Pendiente |
+| 08 | RESERVAS | ⏳ | ⏳ | ⏳ Pendiente |
+5. Agregar en la sección "📌 Reglas de negocio globales" (por si falta)
+
+Al final, después de las 50 reglas actuales, agregar:
+
+markdown
+### Productos (nuevas)
+- **R51** Producto con `stock_actual <= stock_minimo` se marca como "stock bajo"
+- **R52** Los productos NO se eliminan si tienen movimientos en kardex (futuro)
+- **R53** Los proveedores NO se eliminan si tienen productos asociados
+6. Actualizar la sección "👥 Credenciales de prueba"
+
+No hay cambios (sigue siendo nancy/admin123).
+
+7. Actualizar la última línea
+
+Buscar:
+
+text
+**Última actualización:** 02/10/2026
+**Módulos completados:** 4 de 18
+Reemplazar por:
+
+text
+**Última actualización:** 03/10/2026
+**Módulos completados:** 5 de 18

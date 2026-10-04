@@ -1,4 +1,4 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { toast } from "sonner"
 import { turnoService } from "@/services/turnoService"
 import type { Turno } from "@/types"
@@ -131,7 +131,7 @@ export default function TurnoForm({ turno, onGuardado, onCancelar }: Props) {
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button
           onClick={guardar}
           className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"

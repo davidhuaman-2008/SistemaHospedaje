@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import Sidebar from '@/components/layout/Sidebar'
-import { gravedadObservacionService } from '@/services/gravedadObservacionService'
-import type { GravedadObservacion, GravedadObservacionRequest } from '@/types/gravedadObservacion'
-import { GravedadObservacionForm } from './GravedadObservacionForm'
-import { GravedadObservacionTabla } from './GravedadObservacionTabla'
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { gravedadObservacionService } from "@/services/gravedadObservacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { GravedadObservacion, GravedadObservacionRequest } from "@/types/gravedadObservacion"
+import { GravedadObservacionForm } from "./GravedadObservacionForm"
+import { GravedadObservacionTabla } from "./GravedadObservacionTabla"
 
 export function GravedadObservacionPage() {
   const [items, setItems] = useState<GravedadObservacion[]>([])
@@ -12,12 +13,27 @@ export function GravedadObservacionPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [cargando, setCargando] = useState(true)
 
-  const cargar = async () => {
-    try { setCargando(true); setItems(await gravedadObservacionService.listar()) }
-    catch { toast.error('Error al cargar') } finally { setCargando(false) }
-  }
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await gravedadObservacionService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
 
-  useEffect(() => { cargar() }, [])
+  const recargar = async () => {
+    try { setItems(await gravedadObservacionService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
 
   const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
   const abrirEditar = (item: GravedadObservacion) => { setEditando(item); setMostrarForm(true) }
@@ -25,39 +41,60 @@ export function GravedadObservacionPage() {
 
   const guardar = async (datos: GravedadObservacionRequest) => {
     try {
-      if (editando) { await gravedadObservacionService.actualizar(editando.id_gravedad, datos); toast.success('Actualizado') }
-      else { await gravedadObservacionService.crear(datos); toast.success('Creado') }
-      cerrar(); cargar()
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Error') }
+      if (editando) {
+        await gravedadObservacionService.actualizar(editando.id_gravedad, datos)
+        toast.success("Actualizado")
+      } else {
+        await gravedadObservacionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
   }
 
   const cambiarEstado = async (item: GravedadObservacion) => {
     try {
-      if (item.activo) { await gravedadObservacionService.desactivar(item.id_gravedad); toast.success('Desactivado') }
-      else { await gravedadObservacionService.reactivar(item.id_gravedad); toast.success('Reactivado') }
-      cargar()
-    } catch { toast.error('Error') }
+      if (item.activo) {
+        await gravedadObservacionService.desactivar(item.id_gravedad)
+        toast.success("Desactivado")
+      } else {
+        await gravedadObservacionService.reactivar(item.id_gravedad)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
   }
 
   const eliminar = async (item: GravedadObservacion) => {
     if (!confirm(`Eliminar "${item.nombre}"?`)) return
-    try { await gravedadObservacionService.eliminar(item.id_gravedad); toast.success('Eliminado'); cargar() }
-    catch { toast.error('Error') }
+    try {
+      await gravedadObservacionService.eliminar(item.id_gravedad)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Gravedades de Observación</h1>
-          <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">+ Nuevo</button>
-        </div>
-        {mostrarForm && <GravedadObservacionForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
-        {cargando ? <p className="text-slate-400">Cargando...</p> : (
-          <GravedadObservacionTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
-        )}
-      </main>
-    </div>
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Gravedades de Observacion</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo
+        </button>
+      </div>
+
+      {mostrarForm && <GravedadObservacionForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <GravedadObservacionTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
   )
 }

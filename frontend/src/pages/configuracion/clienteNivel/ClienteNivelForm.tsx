@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ClienteNivel, ClienteNivelRequest } from '@/types/configuracion'
+import { IconPicker } from "@/components/IconPicker"
 
 interface Props {
   inicial: ClienteNivel | null
@@ -33,7 +34,7 @@ export function ClienteNivelForm({ inicial, onGuardar, onCancelar }: Props) {
 
   return (
     <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label className="text-slate-300 text-sm">Nombre *</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
@@ -56,14 +57,14 @@ export function ClienteNivelForm({ inicial, onGuardar, onCancelar }: Props) {
         </div>
         <div>
           <label className="text-slate-300 text-sm">Ícono (lucide)</label>
-          <input value={icono} onChange={e => setIcono(e.target.value)} placeholder="award, crown..." className="w-full bg-slate-900 text-white p-2 rounded" />
+          <IconPicker valor={icono} onChange={setIcono} />
         </div>
-        <div className="col-span-3">
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <label className="text-slate-300 text-sm">Beneficios</label>
           <textarea value={beneficios} onChange={e => setBeneficios(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" rows={2} />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
         <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
       </div>

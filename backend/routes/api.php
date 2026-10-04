@@ -1,4 +1,12 @@
-﻿<?php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\PromocionClienteController;
+use App\Http\Controllers\PromocionController;
+use App\Http\Controllers\CategoriaPromocionController;
+use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\CategoriaProductoController;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RolController;
@@ -26,16 +34,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/yo', [AuthController::class, 'yo']);
 
-    Route::apiResource('usuarios', UsuarioController::class);
+    Route::apiResource('usuarios', UsuarioController::class)->parameters(['usuarios' => 'usuario']);    
+    // Rutas adicionales de usuarios (soft delete)
+    Route::patch('usuarios/{id}/desactivar', [UsuarioController::class, 'desactivar']);
+    Route::patch('usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
 
-    Route::apiResource('roles', RolController::class);
+    Route::apiResource('roles', RolController::class)->parameters(['roles' => 'rol']);
+    Route::patch('roles/{id}/desactivar', [RolController::class, 'desactivar']);
+    Route::patch('roles/{id}/reactivar', [RolController::class, 'reactivar']);
 
-    Route::apiResource('turnos', TurnoController::class);
+    Route::apiResource('turnos', TurnoController::class)->parameters(['turnos' => 'turno']);
+    Route::patch('turnos/{id}/desactivar', [TurnoController::class, 'desactivar']);
+    Route::patch('turnos/{id}/reactivar', [TurnoController::class, 'reactivar']);
 });
 
 
 // ============================================================================
-// CONFIGURACIÓN BASE
+// CONFIGURACIÃ“N BASE
 // ============================================================================
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -50,7 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('pisos/{id}/reactivar', [PisoController::class, 'reactivar']);
     Route::delete('pisos/{id}', [PisoController::class, 'destroy']);
 
-    // Tipos de habitación
+    // Tipos de habitaciÃ³n
     Route::get('tipos-habitacion', [TipoHabitacionController::class, 'index']);
     Route::get('tipos-habitacion/activos', [TipoHabitacionController::class, 'activos']);
     Route::get('tipos-habitacion/{id}', [TipoHabitacionController::class, 'show']);
@@ -70,7 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('tipos-documento/{id}/reactivar', [TipoDocumentoController::class, 'reactivar']);
     Route::delete('tipos-documento/{id}', [TipoDocumentoController::class, 'destroy']);
 
-    // Métodos de pago
+    // MÃ©todos de pago
     Route::get('metodos-pago', [MetodoPagoController::class, 'index']);
     Route::get('metodos-pago/activos', [MetodoPagoController::class, 'activos']);
     Route::get('metodos-pago/de-caja', [MetodoPagoController::class, 'deCaja']);
@@ -82,7 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('metodos-pago/{id}/reactivar', [MetodoPagoController::class, 'reactivar']);
     Route::delete('metodos-pago/{id}', [MetodoPagoController::class, 'destroy']);
 
-    // Categorías de movimiento
+    // CategorÃ­as de movimiento
     Route::get('categorias-movimiento', [CategoriaMovimientoController::class, 'index']);
     Route::get('categorias-movimiento/activos', [CategoriaMovimientoController::class, 'activos']);
     Route::get('categorias-movimiento/{id}', [CategoriaMovimientoController::class, 'show']);
@@ -128,7 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // --- Tipos de Observación ---
+    // --- Tipos de ObservaciÃ³n ---
     Route::get('tipos-observacion', [TipoObservacionController::class, 'index']);
     Route::get('tipos-observacion/activos', [TipoObservacionController::class, 'activos']);
     Route::get('tipos-observacion/{id}', [TipoObservacionController::class, 'show']);
@@ -174,4 +189,82 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('clientes/{idCliente}/observaciones', [ClienteObservacionController::class, 'store']);
     Route::patch('cliente-observaciones/{id}/resolver', [ClienteObservacionController::class, 'resolver']);
     Route::delete('cliente-observaciones/{id}', [ClienteObservacionController::class, 'destroy']);
+});
+
+
+// ============================================================================
+// PRODUCTOS (Fase 1) â€” Categorias + Proveedores + Productos
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // --- CategorÃ­as de Producto ---
+    Route::get('categorias-producto', [CategoriaProductoController::class, 'index']);
+    Route::get('categorias-producto/activos', [CategoriaProductoController::class, 'activos']);
+    Route::get('categorias-producto/{id}', [CategoriaProductoController::class, 'show']);
+    Route::post('categorias-producto', [CategoriaProductoController::class, 'store']);
+    Route::put('categorias-producto/{id}', [CategoriaProductoController::class, 'update']);
+    Route::patch('categorias-producto/{id}/desactivar', [CategoriaProductoController::class, 'desactivar']);
+    Route::patch('categorias-producto/{id}/reactivar', [CategoriaProductoController::class, 'reactivar']);
+    Route::delete('categorias-producto/{id}', [CategoriaProductoController::class, 'destroy']);
+
+    // --- Proveedores ---
+    Route::get('proveedores', [ProveedorController::class, 'index']);
+    Route::get('proveedores/activos', [ProveedorController::class, 'activos']);
+    Route::get('proveedores/{id}', [ProveedorController::class, 'show']);
+    Route::post('proveedores', [ProveedorController::class, 'store']);
+    Route::put('proveedores/{id}', [ProveedorController::class, 'update']);
+    Route::patch('proveedores/{id}/desactivar', [ProveedorController::class, 'desactivar']);
+    Route::patch('proveedores/{id}/reactivar', [ProveedorController::class, 'reactivar']);
+    Route::delete('proveedores/{id}', [ProveedorController::class, 'destroy']);
+
+    // --- Productos ---
+    Route::get('productos', [ProductoController::class, 'index']);
+    Route::get('productos/activos', [ProductoController::class, 'activos']);
+    Route::get('productos/stock-bajo', [ProductoController::class, 'stockBajo']);
+    Route::get('productos/por-categoria/{idCategoria}', [ProductoController::class, 'porCategoria']);
+    Route::get('productos/{id}', [ProductoController::class, 'show']);
+    Route::post('productos', [ProductoController::class, 'store']);
+    Route::put('productos/{id}', [ProductoController::class, 'update']);
+    Route::patch('productos/{id}/desactivar', [ProductoController::class, 'desactivar']);
+    Route::patch('productos/{id}/reactivar', [ProductoController::class, 'reactivar']);
+    Route::delete('productos/{id}', [ProductoController::class, 'destroy']);
+});
+
+// ============================================================================
+// PROMOCIONES
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // --- CategorÃ­as de PromociÃ³n ---
+    Route::get('categorias-promocion', [CategoriaPromocionController::class, 'index']);
+    Route::get('categorias-promocion/activos', [CategoriaPromocionController::class, 'activos']);
+    Route::get('categorias-promocion/{id}', [CategoriaPromocionController::class, 'show']);
+    Route::post('categorias-promocion', [CategoriaPromocionController::class, 'store']);
+    Route::put('categorias-promocion/{id}', [CategoriaPromocionController::class, 'update']);
+    Route::patch('categorias-promocion/{id}/desactivar', [CategoriaPromocionController::class, 'desactivar']);
+    Route::patch('categorias-promocion/{id}/reactivar', [CategoriaPromocionController::class, 'reactivar']);
+    Route::delete('categorias-promocion/{id}', [CategoriaPromocionController::class, 'destroy']);
+
+    // --- Promociones ---
+    Route::get('promociones', [PromocionController::class, 'index']);
+    Route::get('promociones/activas', [PromocionController::class, 'activas']);
+    Route::get('promociones/vigentes', [PromocionController::class, 'vigentes']);
+    Route::get('promociones/por-categoria/{idCategoria}', [PromocionController::class, 'porCategoria']);
+    Route::get('promociones/{id}', [PromocionController::class, 'show']);
+    Route::post('promociones', [PromocionController::class, 'store']);
+    Route::put('promociones/{id}', [PromocionController::class, 'update']);
+    Route::patch('promociones/{id}/desactivar', [PromocionController::class, 'desactivar']);
+    Route::patch('promociones/{id}/reactivar', [PromocionController::class, 'reactivar']);
+    Route::delete('promociones/{id}', [PromocionController::class, 'destroy']);
+
+    // --- Promociones Cliente ---
+    Route::get('promociones-cliente', [PromocionClienteController::class, 'index']);
+    Route::get('clientes/{idCliente}/promociones', [PromocionClienteController::class, 'porCliente']);
+    Route::get('promociones/{idPromocion}/clientes', [PromocionClienteController::class, 'porPromocion']);
+    Route::get('promociones-cliente/{id}', [PromocionClienteController::class, 'show']);
+    Route::post('promociones-cliente', [PromocionClienteController::class, 'store']);
+    Route::patch('promociones-cliente/{id}/usar', [PromocionClienteController::class, 'marcarUsado']);
+    Route::delete('promociones-cliente/{id}', [PromocionClienteController::class, 'destroy']);
 });

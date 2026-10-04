@@ -1,4 +1,4 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { toast } from "sonner"
 import { usuarioService } from "@/services/usuarioService"
 import type { Usuario, Rol, Turno, CrearUsuarioRequest } from "@/types"
@@ -187,7 +187,7 @@ export default function UsuarioForm({ usuario, roles, turnos, onGuardado, onCanc
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button
           onClick={guardar}
           className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"

@@ -18,13 +18,30 @@ class TurnoService
 
     public function actualizar(Turno $turno, array $datos): Turno
     {
-        $turno->update($datos);
+        $turno->fill($datos);
+        $turno->save();
 
-        return $turno->fresh();
+        return Turno::find($turno->id);
     }
 
     public function eliminar(Turno $turno): void
     {
         $turno->delete();
+    }
+
+    public function desactivar(int $id): Turno
+    {
+        $turno = Turno::findOrFail($id);
+        $turno->activo = false;
+        $turno->save();
+        return $turno;
+    }
+
+    public function reactivar(int $id): Turno
+    {
+        $turno = Turno::findOrFail($id);
+        $turno->activo = true;
+        $turno->save();
+        return $turno;
     }
 }

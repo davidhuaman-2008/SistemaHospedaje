@@ -5,8 +5,8 @@ export interface TurnoRequest {
   nombre: string
   hora_inicio: string
   hora_fin: string
-  descripcion: string
-  activo: boolean
+  descripcion?: string
+  activo?: boolean
 }
 
 export const turnoService = {
@@ -17,26 +17,26 @@ export const turnoService = {
 
   async crear(datos: TurnoRequest) {
     const { data } = await api.post("/turnos", datos)
-    return data
+    return data.data || data
   },
 
-  async actualizar(
-    id: number,
-    datos: Partial<TurnoRequest>
-  ) {
-    const { data } = await api.put(
-      `/turnos/${id}`,
-      datos
-    )
+  async actualizar(id: number, datos: Partial<TurnoRequest>) {
+    const { data } = await api.put(`/turnos/${id}`, datos)
+    return data.data || data
+  },
 
-    return data
+  async desactivar(id: number): Promise<Turno> {
+    const { data } = await api.patch(`/turnos/${id}/desactivar`)
+    return data.data || data
+  },
+
+  async reactivar(id: number): Promise<Turno> {
+    const { data } = await api.patch(`/turnos/${id}/reactivar`)
+    return data.data || data
   },
 
   async eliminar(id: number) {
-    const { data } = await api.delete(
-      `/turnos/${id}`
-    )
-
+    const { data } = await api.delete(`/turnos/${id}`)
     return data
   },
 }

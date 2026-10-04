@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Usuario;
 use App\Services\UsuarioService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class UsuarioController extends Controller
 {
@@ -66,6 +67,24 @@ class UsuarioController extends Controller
 
         return response()->json([
             'mensaje' => 'Usuario eliminado',
+        ]);
+    }
+
+    public function desactivar(int $id): JsonResponse
+    {
+        $usuario = $this->usuarioService->desactivar($id);
+        return response()->json([
+            'mensaje' => 'Usuario desactivado',
+            'data' => $usuario,
+        ]);
+    }
+
+    public function reactivar(int $id): JsonResponse
+    {
+        $usuario = $this->usuarioService->reactivar($id);
+        return response()->json([
+            'mensaje' => 'Usuario reactivado',
+            'data' => $usuario,
         ]);
     }
 }

@@ -1,36 +1,20 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import Sidebar from "@/components/layout/Sidebar"
-import ConfirmDialog from "@/components/ConfirmDialog"
+import AppLayout from "@/components/layout/AppLayout"
 import { usuarioService } from "@/services/usuarioService"
 import { rolService } from "@/services/rolService"
 import { turnoService } from "@/services/turnoService"
+import { mensajeDeError } from "@/lib/errores"
 import type { Usuario, Rol, Turno } from "@/types"
-import UsuarioTabla from "./UsuarioTabla"
 import UsuarioForm from "./UsuarioForm"
+import UsuarioTabla from "./UsuarioTabla"
 
 export default function UsuarioPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [turnos, setTurnos] = useState<Turno[]>([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null)
-  const [usuarioAEliminar, setUsuarioAEliminar] = useState<Usuario | null>(null)
-
-  const cargarDatos = useCallback(async () => {
-    try {
-      const [u, r, t] = await Promise.all([
-        usuarioService.listar(),
-        rolService.listar(),
-        turnoService.listar(),
-      ])
-      setUsuarios(u)
-      setRoles(r)
-      setTurnos(t)
-    } catch (error) {
-      console.error(error)
-    }
-  }, [])
+  const [editando, setEditando] = useState<Usuario | null>(null)
 
   useEffect(() => {
     let cancelado = false
@@ -46,100 +30,82 @@ export default function UsuarioPage() {
           setRoles(r)
           setTurnos(t)
         }
-      } catch (error) {
-        console.error(error)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
       }
     }
-    void cargar()
+    cargar()
     return () => { cancelado = true }
   }, [])
 
-  const abrirCrear = () => {
-    setUsuarioEditando(null)
-    setMostrarFormulario(true)
-  }
-
-  const abrirEditar = (usuario: Usuario) => {
-    setUsuarioEditando(usuario)
-    setMostrarFormulario(true)
-  }
-
-  const cerrarFormulario = () => {
-    setMostrarFormulario(false)
-    setUsuarioEditando(null)
-  }
-
-  const cambiarEstado = async (usuario: Usuario) => {
+  const recargar = async () => {
     try {
-      await usuarioService.actualizar(usuario.id, { activo: !usuario.activo })
-      toast.success(usuario.activo ? "Usuario desactivado" : "Usuario activado")
-      await cargarDatos()
-    } catch (error) {
-      console.error(error)
-      toast.error("Error al cambiar estado")
+      const [u, r, t] = await Promise.all([
+        usuarioService.listar(),
+        rolService.listar(),
+        turnoService.listar(),
+      ])
+      setUsuarios(u); setRoles(r); setTurnos(t)
+    } catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarFormulario(true) }
+  const abrirEditar = (usuario: Usuario) => { setEditando(usuario); setMostrarFormulario(true) }
+  const cerrarFormulario = () => { setMostrarFormulario(false); setEditando(null) }
+
+  const onGuardado = () => { cerrarFormulario(); recargar() }
+
+  const onCambiarEstado = async (usuario: Usuario) => {
+    try {
+      const activo = usuario.activo ?? true
+      if (activo) {
+        await usuarioService.desactivar(usuario.id)
+        toast.success("Desactivado")
+      } else {
+        await usuarioService.reactivar(usuario.id)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
-  const confirmarEliminar = (usuario: Usuario) => {
-    setUsuarioAEliminar(usuario)
-  }
-
-  const ejecutarEliminar = async () => {
-    if (!usuarioAEliminar) return
+  const onEliminar = async (usuario: Usuario) => {
+    if (!confirm(`Eliminar "${usuario.nombre}"?`)) return
     try {
-      await usuarioService.eliminar(usuarioAEliminar.id)
-      toast.success("Usuario eliminado correctamente")
-      setUsuarioAEliminar(null)
-      await cargarDatos()
-    } catch (error) {
-      console.error(error)
-      toast.error("No se pudo eliminar el usuario")
+      await usuarioService.eliminar(usuario.id)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold">Usuarios</h1>
-          <button
-            onClick={abrirCrear}
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg"
-          >
-            Nuevo Usuario
-          </button>
-        </div>
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Usuarios</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Usuario
+        </button>
+      </div>
 
-        {mostrarFormulario && (
-          <UsuarioForm
-            usuario={usuarioEditando}
-            roles={roles}
-            turnos={turnos}
-            onGuardado={async () => { cerrarFormulario(); await cargarDatos() }}
-            onCancelar={cerrarFormulario}
-          />
-        )}
-
-        <UsuarioTabla
-          usuarios={usuarios}
-          onEditar={abrirEditar}
-          onCambiarEstado={cambiarEstado}
-          onEliminar={confirmarEliminar}
+      {mostrarFormulario && (
+        <UsuarioForm
+          usuario={editando}
+          roles={roles}
+          turnos={turnos}
+          onGuardado={onGuardado}
+          onCancelar={cerrarFormulario}
         />
+      )}
 
-        <ConfirmDialog
-          abierto={usuarioAEliminar !== null}
-          titulo="Eliminar usuario"
-          descripcion={
-            usuarioAEliminar
-              ? `Ã‚Â¿EstÃƒÂ¡s seguro de eliminar a "${usuarioAEliminar.nombre} ${usuarioAEliminar.apellido}"? Esta acciÃƒÂ³n no se puede deshacer.`
-              : ""
-          }
-          onConfirmar={ejecutarEliminar}
-          onCancelar={() => setUsuarioAEliminar(null)}
-        />
-      </main>
-    </div>
+      <UsuarioTabla
+        usuarios={usuarios}
+        onEditar={abrirEditar}
+        onCambiarEstado={onCambiarEstado}
+        onEliminar={onEliminar}
+      />
+    </AppLayout>
   )
 }

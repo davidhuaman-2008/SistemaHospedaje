@@ -36,4 +36,18 @@ class UsuarioService
     {
         $usuario->delete();
     }
+
+    public function desactivar(int $id): Usuario
+    {
+        $usuario = Usuario::findOrFail($id);
+        $usuario->update(['activo' => false]);
+        return $usuario->fresh();
+    }
+
+    public function reactivar(int $id): Usuario
+    {
+        $usuario = Usuario::findOrFail($id);
+        $usuario->update(['activo' => true]);
+        return $usuario->fresh();
+    }
 }

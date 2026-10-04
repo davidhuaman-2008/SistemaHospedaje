@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import type { Piso, PisoRequest } from '@/types/configuracion'
 
 interface Props {
@@ -48,7 +48,7 @@ export function PisoForm({ inicial, onGuardar, onCancelar }: Props) {
           />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
           {inicial ? 'Actualizar' : 'Crear'}
         </button>

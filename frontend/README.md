@@ -1,28 +1,8 @@
-# 📘 README completo del Frontend
+# 📘 README.md completo del Frontend — Solo para pegar en el archivo
 
-**Copiá TODO este bloque y pegalo en la terminal (`frontend/`). Enter.**
+**Copiá TODO lo que está dentro del bloque de abajo y pegalo en tu `frontend/README.md`** (reemplazando el contenido actual).
 
-```powershell
-# ============================================================================
-# README COMPLETO DEL FRONTEND — Sistema de Hospedaje
-# ============================================================================
-
-$ErrorActionPreference = "Stop"
-
-if (-not (Test-Path "package.json")) {
-    Write-Host "✗ No estás en frontend" -ForegroundColor Red
-    exit 1
-}
-
-function Write-Utf8NoBom {
-    param([string]$Path, [string]$Content)
-    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
-    $dir = Split-Path $full -Parent
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
-}
-
-$readme = @'
+```markdown
 # Frontend — Sistema de Hospedaje
 
 **Framework:** React 19 + TypeScript 6
@@ -34,7 +14,7 @@ $readme = @'
 **HTTP:** Axios 1.20
 **Notificaciones:** Sonner 2
 **Iconos:** Lucide React 1.49
-**Estado global:** Módulo 02 completado (Backend + Frontend)
+**Estado global:** Módulos 01-04 completados
 
 ---
 
@@ -44,9 +24,10 @@ SPA (Single Page Application) para gestión completa de un hospedaje de rotació
 
 **Arquitectura:**
 - Componentes por página (Page/Form/Tabla)
+- Cada `Page.tsx` incluye `<Sidebar />` (Layout a nivel de página)
 - Servicios para llamadas API (axios)
 - Zustand para estado de autenticación
-- Sidebar con dropdowns
+- Sidebar con dropdowns por módulo
 - Rutas protegidas con guard
 
 ---
@@ -75,7 +56,7 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   ├── layout/
-│   │   │   └── Sidebar.tsx               (menú lateral con dropdowns)
+│   │   │   └── Sidebar.tsx               (menú lateral con 3 dropdowns)
 │   │   ├── ui/                            (componentes shadcn)
 │   │   │   ├── alert-dialog.tsx
 │   │   │   ├── button.tsx
@@ -92,10 +73,10 @@ frontend/
 │   │   └── utils.ts                       (helper cn de shadcn)
 │   │
 │   ├── pages/
-│   │   ├── LoginPage.tsx                  (formulario de login)
-│   │   ├── DashboardPage.tsx              (página principal post-login)
+│   │   ├── LoginPage.tsx
+│   │   ├── DashboardPage.tsx
 │   │   │
-│   │   ├── usuarios/
+│   │   ├── usuarios/                      (Módulo 01)
 │   │   │   ├── usuario/
 │   │   │   │   ├── UsuarioPage.tsx
 │   │   │   │   ├── UsuarioForm.tsx
@@ -109,55 +90,83 @@ frontend/
 │   │   │       ├── RolForm.tsx
 │   │   │       └── RolTabla.tsx
 │   │   │
-│   │   └── configuracion/                 (Módulo 02)
-│   │       ├── piso/
-│   │       │   ├── PisoPage.tsx
-│   │       │   ├── PisoForm.tsx
-│   │       │   └── PisoTabla.tsx
-│   │       ├── tipoHabitacion/
-│   │       │   ├── TipoHabitacionPage.tsx
-│   │       │   ├── TipoHabitacionForm.tsx
-│   │       │   └── TipoHabitacionTabla.tsx
-│   │       ├── tipoDocumento/
-│   │       │   ├── TipoDocumentoPage.tsx
-│   │       │   ├── TipoDocumentoForm.tsx
-│   │       │   └── TipoDocumentoTabla.tsx
-│   │       ├── metodoPago/
-│   │       │   ├── MetodoPagoPage.tsx
-│   │       │   ├── MetodoPagoForm.tsx
-│   │       │   └── MetodoPagoTabla.tsx
-│   │       ├── categoriaMovimiento/
-│   │       │   ├── CategoriaMovimientoPage.tsx
-│   │       │   ├── CategoriaMovimientoForm.tsx
-│   │       │   └── CategoriaMovimientoTabla.tsx
-│   │       └── clienteNivel/
-│   │           ├── ClienteNivelPage.tsx
-│   │           ├── ClienteNivelForm.tsx
-│   │           └── ClienteNivelTabla.tsx
+│   │   ├── configuracion/                 (Módulos 02 y 03)
+│   │   │   ├── piso/
+│   │   │   │   ├── PisoPage.tsx
+│   │   │   │   ├── PisoForm.tsx
+│   │   │   │   └── PisoTabla.tsx
+│   │   │   ├── tipoHabitacion/
+│   │   │   │   ├── TipoHabitacionPage.tsx
+│   │   │   │   ├── TipoHabitacionForm.tsx
+│   │   │   │   └── TipoHabitacionTabla.tsx
+│   │   │   ├── tipoDocumento/
+│   │   │   │   ├── TipoDocumentoPage.tsx
+│   │   │   │   ├── TipoDocumentoForm.tsx
+│   │   │   │   └── TipoDocumentoTabla.tsx
+│   │   │   ├── metodoPago/
+│   │   │   │   ├── MetodoPagoPage.tsx
+│   │   │   │   ├── MetodoPagoForm.tsx
+│   │   │   │   └── MetodoPagoTabla.tsx
+│   │   │   ├── categoriaMovimiento/
+│   │   │   │   ├── CategoriaMovimientoPage.tsx
+│   │   │   │   ├── CategoriaMovimientoForm.tsx
+│   │   │   │   └── CategoriaMovimientoTabla.tsx
+│   │   │   ├── clienteNivel/
+│   │   │   │   ├── ClienteNivelPage.tsx
+│   │   │   │   ├── ClienteNivelForm.tsx
+│   │   │   │   └── ClienteNivelTabla.tsx
+│   │   │   └── tarifa/
+│   │   │       ├── TarifaPage.tsx
+│   │   │       ├── TarifaForm.tsx
+│   │   │       └── TarifaTabla.tsx
+│   │   │
+│   │   └── clientes/                      (Módulo 04)
+│   │       ├── tipoObservacion/
+│   │       │   ├── TipoObservacionPage.tsx
+│   │       │   ├── TipoObservacionForm.tsx
+│   │       │   └── TipoObservacionTabla.tsx
+│   │       ├── gravedadObservacion/
+│   │       │   ├── GravedadObservacionPage.tsx
+│   │       │   ├── GravedadObservacionForm.tsx
+│   │       │   └── GravedadObservacionTabla.tsx
+│   │       └── cliente/
+│   │           ├── ClientePage.tsx
+│   │           ├── ClienteForm.tsx
+│   │           ├── ClienteTabla.tsx
+│   │           ├── ClienteHistorial.tsx
+│   │           └── ClienteVisitaDialog.tsx
 │   │
 │   ├── services/
-│   │   ├── api.ts                         (axios + interceptores)
-│   │   ├── authService.ts                 (login, logout, yo)
-│   │   ├── usuarioService.ts              (CRUD usuarios)
-│   │   ├── rolService.ts                  (CRUD roles)
-│   │   ├── turnoService.ts                (CRUD turnos)
-│   │   ├── pisoService.ts                 (CRUD pisos)
-│   │   ├── tipoHabitacionService.ts       (CRUD tipos hab.)
-│   │   ├── tipoDocumentoService.ts        (CRUD tipos doc.)
-│   │   ├── metodoPagoService.ts           (CRUD métodos pago)
-│   │   ├── categoriaMovimientoService.ts  (CRUD categorías)
-│   │   └── clienteNivelService.ts         (CRUD niveles)
+│   │   ├── api.ts
+│   │   ├── authService.ts
+│   │   ├── usuarioService.ts
+│   │   ├── rolService.ts
+│   │   ├── turnoService.ts
+│   │   ├── pisoService.ts
+│   │   ├── tipoHabitacionService.ts
+│   │   ├── tipoDocumentoService.ts
+│   │   ├── metodoPagoService.ts
+│   │   ├── categoriaMovimientoService.ts
+│   │   ├── clienteNivelService.ts
+│   │   ├── tarifaService.ts
+│   │   ├── tipoObservacionService.ts
+│   │   ├── gravedadObservacionService.ts
+│   │   └── clienteService.ts
 │   │
 │   ├── types/
 │   │   ├── index.ts                       (tipos Módulo 01)
-│   │   └── configuracion.ts               (tipos Módulo 02)
+│   │   ├── configuracion.ts               (tipos Módulo 02)
+│   │   ├── tarifa.ts                      (tipos Módulo 03)
+│   │   ├── tipoObservacion.ts             (tipos Módulo 04)
+│   │   ├── gravedadObservacion.ts         (tipos Módulo 04)
+│   │   └── cliente.ts                     (tipos Módulo 04)
 │   │
 │   ├── App.tsx                            (router principal + Toaster)
 │   ├── main.tsx                           (entry point)
 │   └── index.css                          (Tailwind + variables shadcn)
 │
 ├── .gitignore
-├── components.json                        (config shadcn)
+├── components.json
 ├── eslint.config.js
 ├── index.html
 ├── package.json
@@ -240,7 +249,7 @@ export default defineConfig({
 })
 ```
 
-**Importante:** El proxy `/api` redirige al backend Laravel. Evita problemas de CORS.
+**Importante:** El proxy `/api` redirige al backend Laravel.
 
 ### `tsconfig.json` y `tsconfig.app.json`
 
@@ -254,144 +263,214 @@ export default defineConfig({
 }
 ```
 
-### `src/index.css`
+---
 
-```css
-@import "tailwindcss";
-/* Variables de shadcn/ui (auto-generadas en init) */
-```
+## 🧭 Rutas completas
 
-### `components.json` (shadcn)
+### `src/App.tsx`
 
-Preset: **Nova** con **Base UI (Recommended)**, iconos **Lucide**, fuente **Geist**.
+| Ruta | Componente | Protegida |
+|------|-----------|-----------|
+| `/login` | LoginPage | No |
+| `/dashboard` | DashboardPage | Sí |
+| `/usuarios` | UsuarioPage | Sí |
+| `/roles` | RolPage | Sí |
+| `/turnos` | TurnoPage | Sí |
+| `/configuracion/pisos` | PisoPage | Sí |
+| `/configuracion/tipos-habitacion` | TipoHabitacionPage | Sí |
+| `/configuracion/tipos-documento` | TipoDocumentoPage | Sí |
+| `/configuracion/metodos-pago` | MetodoPagoPage | Sí |
+| `/configuracion/categorias-movimiento` | CategoriaMovimientoPage | Sí |
+| `/configuracion/clientes-niveles` | ClienteNivelPage | Sí |
+| `/configuracion/tarifas` | TarifaPage | Sí |
+| `/clientes` | ClientePage | Sí |
+| `/clientes/tipos-observacion` | TipoObservacionPage | Sí |
+| `/clientes/gravedades-observacion` | GravedadObservacionPage | Sí |
+| `/` | Redirect → `/dashboard` | — |
+| `*` | Redirect → `/dashboard` | — |
+
+**Toaster global:** Sonner con `theme="dark"`, `position="top-right"`, `richColors`, `closeButton`.
 
 ---
 
-## 🔷 Tipos TypeScript
+## 🎨 Sidebar — Estructura de menú
 
-### `src/types/index.ts` (Módulo 01)
-
-```ts
-export interface Rol {
-  id: number
-  nombre: string
-  descripcion: string | null
-}
-
-export interface Turno {
-  id: number
-  nombre: string
-  hora_inicio: string
-  hora_fin: string
-  descripcion: string | null
-  activo: boolean
-}
-
-export interface Usuario {
-  id: number
-  nombre: string
-  apellido: string
-  nombre_usuario: string
-  id_rol: number
-  id_turno: number | null
-  activo: boolean
-  ultimo_login: string | null
-  rol: Rol
-  turno: Turno | null
-}
-
-export interface LoginRequest {
-  nombre_usuario: string
-  password: string
-}
-
-export interface LoginResponse {
-  mensaje: string
-  usuario: Usuario
-  token: string
-}
-
-export interface CrearUsuarioRequest {
-  nombre: string
-  apellido: string
-  nombre_usuario: string
-  password: string
-  id_rol: number
-  id_turno: number | null
-  activo: boolean
-}
+```
+🏨 Hospedaje
+├── Dashboard (link directo)
+├── Usuarios (dropdown)
+│   ├── Usuarios
+│   ├── Roles
+│   └── Turnos
+├── Configuración (dropdown)
+│   ├── Pisos
+│   ├── Tipos de Habitación
+│   ├── Tipos de Documento
+│   ├── Métodos de Pago
+│   ├── Categorías Movimiento
+│   ├── Niveles de Cliente
+│   └── Tarifas
+└── Clientes (dropdown)
+    ├── Clientes
+    ├── Tipos Observación
+    └── Gravedades
 ```
 
-### `src/types/configuracion.ts` (Módulo 02)
+**Iconos de Lucide:** ChevronDown, Users, Shield, Clock, LayoutDashboard, Settings, Building2, BedDouble, FileText, Wallet, TrendingUp, Award, DollarSign, UserPlus, AlertOctagon, ShieldAlert.
 
-Incluye:
-- `Piso` / `PisoRequest`
-- `TipoHabitacion` / `TipoHabitacionRequest`
-- `TipoDocumento` / `TipoDocumentoRequest`
-- `MetodoPago` / `MetodoPagoRequest`
-- `CategoriaMovimiento` / `CategoriaMovimientoRequest`
-- `ClienteNivel` / `ClienteNivelRequest`
-- `TipoMovimiento` = `'Ingreso' | 'Egreso'`
+**Comportamiento de dropdowns:**
+- Cada dropdown tiene su `useState` inicializado según la ruta actual
+- Se abre automáticamente si estás en una ruta de ese grupo
+- Se cierra/abre con click
 
 ---
 
-## 🔌 Servicios
+## 📄 Módulo 01 — AUTH
 
-### `src/services/api.ts`
+### `LoginPage.tsx`
+- Input usuario, input password
+- Botón "Ingresar" (deshabilitado mientras carga)
+- Toast de éxito: "Bienvenido, {nombre}"
+- Toast de error: mensaje del backend
 
-Instancia de axios con:
-- `baseURL: "/api"` (proxy a Laravel)
-- Headers default: `Content-Type: application/json`, `Accept: application/json`
-- **Interceptor de request:** agrega `Authorization: Bearer {token}` desde `localStorage`
-- **Interceptor de response:** si recibe 401 → limpia `localStorage` y redirige a `/login`
-- **Interceptor de response:** NO muestra toast para 404 (lo maneja el consumidor)
+**Credenciales de prueba:** `nancy` / `admin123`
 
-### `src/services/authService.ts`
+### `DashboardPage.tsx`
+- Saludo: "Bienvenido, {nombre}"
+- Rol + turno del usuario
+- Card con datos de sesión
+- **Incluye `<Sidebar />`**
 
-```ts
-export const authService = {
-  async login(datos: LoginRequest): Promise<LoginResponse>
-  async logout(): Promise<void>
-  async yo(): Promise<Usuario>
+### `UsuarioPage.tsx`, `TurnoPage.tsx`, `RolPage.tsx`
+- CRUD completo con Page/Form/Tabla
+- Toasts verde/rojo
+- **Cada uno incluye `<Sidebar />`**
+
+---
+
+## 📄 Módulo 02 — CONFIG-BASE (6 CRUDs)
+
+**Cada uno con el mismo patrón:**
+
+```
+src/pages/configuracion/xxx/
+├── XxxPage.tsx         (orquesta + Sidebar + carga datos)
+├── XxxForm.tsx         (formulario con validación)
+└── XxxTabla.tsx        (tabla con acciones)
+```
+
+**CRUDs:**
+1. `piso/` — Pisos
+2. `tipoHabitacion/` — Tipos de Habitación
+3. `tipoDocumento/` — Tipos de Documento
+4. `metodoPago/` — Métodos de Pago (con badges CAJA/DUEÑA)
+5. `categoriaMovimiento/` — Categorías Movimiento
+6. `clienteNivel/` — Niveles de Cliente
+
+**Patrón de cada Page:**
+
+```tsx
+export function XxxPage() {
+  const [items, setItems] = useState<Xxx[]>([])
+  const [editando, setEditando] = useState<Xxx | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  const cargar = async () => { ... }
+  useEffect(() => { cargar() }, [])
+
+  const guardar = async (datos) => { ... }
+  const cambiarEstado = async (item) => { ... }
+  const eliminar = async (item) => { ... }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex">
+      <Sidebar />
+      <main className="flex-1 p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Xxx</h1>
+          <button className="bg-green-600 ...">+ Nuevo</button>
+        </div>
+        {mostrarForm && <XxxForm ... />}
+        {cargando ? <p>Cargando...</p> : <XxxTabla ... />}
+      </main>
+    </div>
+  )
 }
 ```
 
-### `src/services/usuarioService.ts`
-### `src/services/rolService.ts`
-### `src/services/turnoService.ts`
+**⚠️ IMPORTANTE:** Cada `Page.tsx` **incluye `<Sidebar />`** adentro. El Layout se hace a nivel de página, no a nivel de App.tsx.
 
-```ts
-export const usuarioService = {
-  async listar(): Promise<Usuario[]>
-  async crear(datos: CrearUsuarioRequest)
-  async actualizar(id: number, datos: Partial<CrearUsuarioRequest>)
-  async eliminar(id: number)
-}
-```
+---
 
-### `src/services/pisoService.ts` (Módulo 02)
+## 📄 Módulo 03 — TARIFAS
 
-Todos los services de Configuración tienen el mismo patrón:
+### `TarifaPage.tsx`
+- Carga tarifas + tipos de habitación (`Promise.all`)
+- Formulario con selector de tipo + horas + montos
+- Tabla con: ID, Tipo, Horas, Monto, Hora Extra, Máx Extra, Turno Adic., Estado, Acciones
+- **Incluye `<Sidebar />`**
 
-```ts
-export const pisoService = {
-  listar: async (): Promise<Piso[]> => { ... },
-  listarActivos: async (): Promise<Piso[]> => { ... },
-  obtener: async (id: number): Promise<Piso> => { ... },
-  crear: async (datos: PisoRequest): Promise<Piso> => { ... },
-  actualizar: async (id: number, datos: Partial<PisoRequest>): Promise<Piso> => { ... },
-  desactivar: async (id: number): Promise<Piso> => { ... },
-  reactivar: async (id: number): Promise<Piso> => { ... },
-  eliminar: async (id: number): Promise<void> => { ... },
-}
-```
+### `TarifaForm.tsx`
+- Select de tipo de habitación
+- Input horas
+- Input monto
+- Input precio hora extra
+- Input max horas extra
+- Input precio turno adicional
 
-**Igual para:**
-- `tipoHabitacionService`
-- `tipoDocumentoService`
-- `metodoPagoService` (con `listarDeCaja` y `listarDeDuenia`)
-- `categoriaMovimientoService` (con `listar(tipo?: TipoMovimiento)`)
-- `clienteNivelService`
+### `TarifaTabla.tsx`
+- Muestra todos los campos formateados con "S/ X.XX"
+
+---
+
+## 📄 Módulo 04 — CLIENTES
+
+### `cliente/ClientePage.tsx`
+- Lista de clientes con búsqueda por nombre/DNI/celular
+- Botón "+ Nuevo Cliente"
+- Maneja 3 estados:
+  - `editando` (editar existente)
+  - `idExistente` (buscó DNI que ya existe → cambia a modo Editar)
+  - Ninguno (crear nuevo)
+- Modales: `ClienteHistorial` + `ClienteVisitaDialog`
+
+### `cliente/ClienteForm.tsx`
+- **Buscador por DNI** (botón cyan "Buscar")
+  - Si existe → autocompleta + cambia a modo Editar + muestra aviso cyan "Este cliente ya existe con X visitas"
+  - Si no existe → mensaje "Cliente nuevo. Complete los datos."
+- Campos: DNI, Nombre, Apellido, Celular, Email, Fecha Nacimiento, Dirección
+- Botón cambia entre "Crear" / "Actualizar datos"
+
+**Función `normalizarFecha()`**: convierte ISO (`2026-10-02T00:00:00.000000Z`) a `YYYY-MM-DD` para el `<input type="date">`.
+
+### `cliente/ClienteTabla.tsx`
+- Columnas: ID, Nombre, Documento, Celular, F. Nac., Visitas, Nivel, Estado, Acciones
+- 5 botones por fila:
+  - **Editar** (amarillo)
+  - **+ Visita** (verde) → abre `ClienteVisitaDialog`
+  - **Historial** (purple) → abre `ClienteHistorial`
+  - **Desactivar/Activar** (azul)
+  - **Eliminar** (rojo)
+- `formatearFecha()`: convierte `YYYY-MM-DD` a `DD/MM/YYYY`
+
+### `cliente/ClienteHistorial.tsx`
+- Modal con lista de visitas del cliente
+- Muestra: Visitas totales, Total gastado, tabla con ID/Entrada/Salida/Monto
+
+### `cliente/ClienteVisitaDialog.tsx`
+- Modal para registrar visita manual (simula check-in)
+- Input monto gastado (opcional)
+- Input observación (opcional)
+- Info box explicando qué hace al guardar (incrementa visitas, actualiza fecha, suma total, recalcula nivel)
+
+### `tipoObservacion/TipoObservacionPage.tsx`
+- CRUD de tipos de observación
+- Campos: nombre, slug, icono, color, descripción, orden
+
+### `gravedadObservacion/GravedadObservacionPage.tsx`
+- CRUD de gravedades
+- Campos: nombre, slug, color, prioridad
 
 ---
 
@@ -413,207 +492,100 @@ interface AuthState {
 
 ---
 
-## 🧭 Rutas
+## 🔌 Servicios — Patrón común
 
-### `src/App.tsx`
+### `src/services/api.ts`
 
-| Ruta | Componente | Protegida |
-|------|-----------|-----------|
-| `/login` | LoginPage | No |
-| `/dashboard` | DashboardPage | Sí |
-| `/usuarios` | UsuarioPage | Sí |
-| `/roles` | RolPage | Sí |
-| `/turnos` | TurnoPage | Sí |
-| `/configuracion/pisos` | PisoPage | Sí |
-| `/configuracion/tipos-habitacion` | TipoHabitacionPage | Sí |
-| `/configuracion/tipos-documento` | TipoDocumentoPage | Sí |
-| `/configuracion/metodos-pago` | MetodoPagoPage | Sí |
-| `/configuracion/categorias-movimiento` | CategoriaMovimientoPage | Sí |
-| `/configuracion/clientes-niveles` | ClienteNivelPage | Sí |
-| `/` | Redirect → `/dashboard` | — |
-| `*` | Redirect → `/dashboard` | — |
+Instancia de axios con:
+- `baseURL: "/api"` (proxy a Laravel)
+- Interceptor request: agrega `Authorization: Bearer {token}` desde `localStorage.token`
+- Interceptor response: si 401 → limpia `localStorage` y redirige a `/login`; si 404 → NO muestra toast (lo maneja el consumidor)
 
-**Toaster global:** Sonner con `theme="dark"`, `position="top-right"`, `richColors`, `closeButton`.
+### Patrón de cada Service
 
----
-
-## 🎨 Componentes reutilizables
-
-### `src/components/ProtectedRoute.tsx`
-
-Envuelve rutas autenticadas. Si no hay token en `useAuth`, redirige a `/login`.
-
-### `src/components/ConfirmDialog.tsx`
-
-Modal de confirmación basado en `AlertDialog` de shadcn. Props:
 ```ts
-interface Props {
-  abierto: boolean
-  titulo: string
-  descripcion: string
-  onConfirmar: () => void
-  onCancelar: () => void
-  textoConfirmar?: string
-  textoCancelar?: string
+export const xxxService = {
+  listar: async (): Promise<Xxx[]> => {
+    const { data } = await api.get('/xxx')
+    return data
+  },
+  listarActivos: async (): Promise<Xxx[]> => {
+    const { data } = await api.get('/xxx/activos')
+    return data
+  },
+  obtener: async (id: number): Promise<Xxx> => {
+    const { data } = await api.get(`/xxx/${id}`)
+    return data
+  },
+  crear: async (datos: XxxRequest): Promise<Xxx> => {
+    const { data } = await api.post('/xxx', datos)
+    return data.data       // ← POST devuelve { mensaje, data }
+  },
+  actualizar: async (id: number, datos: Partial<XxxRequest>): Promise<Xxx> => {
+    const { data } = await api.put(`/xxx/${id}`, datos)
+    return data.data       // ← PUT devuelve { mensaje, data }
+  },
+  desactivar: async (id: number): Promise<Xxx> => {
+    const { data } = await api.patch(`/xxx/${id}/desactivar`)
+    return data.data
+  },
+  reactivar: async (id: number): Promise<Xxx> => {
+    const { data } = await api.patch(`/xxx/${id}/reactivar`)
+    return data.data
+  },
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/xxx/${id}`)
+  },
 }
 ```
 
-### `src/components/layout/Sidebar.tsx`
+**⚠️ IMPORTANTE:**
+- **GET** → devuelve `data` directo
+- **POST/PUT/PATCH** → devuelve `data.data` (porque el backend anida `{ mensaje, data }`)
 
-Menú lateral con:
-- Logo "🏨 Hospedaje"
-- Dashboard (link directo)
-- **Usuarios** (dropdown): Usuarios, Roles, Turnos
-- **Configuración** (dropdown): Pisos, Tipos Habitación, Tipos Documento, Métodos Pago, Categorías Movimiento, Niveles Cliente
-- Botón "Cerrar sesión" (rojo)
+### Servicios especiales
 
-Estado de cada dropdown: se abre automáticamente si estás en una ruta de ese grupo.
+**`clienteService`** incluye:
+- `buscarPorDni(dni)` → `GET /clientes/buscar?dni=X`
+- `listarVisitas(idCliente)` → `GET /clientes/{id}/visitas`
+- `crearVisita(idCliente, datos)` → `POST /clientes/{id}/visitas`
+- `listarObservaciones(idCliente)` → `GET /clientes/{id}/observaciones`
+- `crearObservacion(idCliente, datos)` → `POST /clientes/{id}/observaciones`
+- `resolverObservacion(id)` → `PATCH /cliente-observaciones/{id}/resolver`
 
-**Iconos de Lucide:** ChevronDown, Users, Shield, Clock, LayoutDashboard, Settings, Building2, BedDouble, FileText, Wallet, TrendingUp, Award.
+**`metodoPagoService`** incluye:
+- `listarDeCaja()` → solo métodos con `es_de_caja = true`
+- `listarDeDuenia()` → solo métodos con `es_de_caja = false`
 
----
-
-## 📄 Páginas
-
-### `src/pages/LoginPage.tsx`
-
-Formulario con:
-- Input usuario
-- Input contraseña (type password)
-- Botón "Ingresar" (deshabilitado mientras carga)
-- Toast de éxito: "Bienvenido, {nombre}"
-- Toast de error: mensaje del backend si falla
-
-**Credenciales de prueba:** `nancy` / `admin123`
-
-### `src/pages/DashboardPage.tsx`
-
-Muestra:
-- Saludo personalizado: "Bienvenido, {nombre}"
-- Rol + turno del usuario
-- Card con datos de sesión: usuario, nombre, rol, turno, estado
-- **Incluye `<Sidebar />` adentro**
-
-### Módulo 01 — Usuarios
-
-#### `UsuarioPage.tsx`
-- Orquesta CRUD de usuarios
-- Carga `Promise.all([usuarioService.listar(), rolService.listar(), turnoService.listar()])`
-- Renderiza: `UsuarioForm` + `UsuarioTabla` + `ConfirmDialog`
-- **Incluye `<Sidebar />`**
-
-#### `UsuarioForm.tsx`
-- Nombre, Apellido, Usuario, Password (solo al crear), Select rol, Select turno
-- Validación local + errores del backend (422)
-- Toasts verde (éxito) / rojo (error)
-
-#### `UsuarioTabla.tsx`
-- Columnas: ID, Nombre, Usuario, Rol, Turno, Estado, Acciones
-- Botones: Editar (amarillo), Desactivar/Activar (azul), Eliminar (rojo)
-
-#### `TurnoPage.tsx`, `TurnoForm.tsx`, `TurnoTabla.tsx`
-Análogo a Usuario pero para turnos. Sin dropdowns de rol.
-
-#### `RolPage.tsx`, `RolForm.tsx`, `RolTabla.tsx`
-Análogo a Usuario pero para roles. Sin dropdowns.
-
-### Módulo 02 — Configuración Base
-
-**6 CRUDs, todos con el MISMO patrón:**
-
-Cada carpeta (`piso/`, `tipoHabitacion/`, etc.) tiene 3 archivos:
-
-1. **`XxxPage.tsx`** — Orquesta: cargar, crear, editar, desactivar, reactivar, eliminar
-2. **`XxxForm.tsx`** — Formulario con validación local
-3. **`XxxTabla.tsx`** — Tabla con acciones
-
-**Patrón de cada Page:**
-
-```tsx
-export function PisoPage() {
-  const [items, setItems] = useState<Piso[]>([])
-  const [editando, setEditando] = useState<Piso | null>(null)
-  const [mostrarForm, setMostrarForm] = useState(false)
-  const [cargando, setCargando] = useState(true)
-
-  // cargar, abrirCrear, abrirEditar, cerrar, guardar, cambiarEstado, eliminar
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Pisos</h1>
-          <button onClick={abrirCrear} className="bg-green-600 ...">+ Nuevo</button>
-        </div>
-        {mostrarForm && <PisoForm ... />}
-        {cargando ? <p>Cargando...</p> : <PisoTabla ... />}
-      </main>
-    </div>
-  )
-}
-```
-
-**⚠️ IMPORTANTE:** Cada Page.tsx **incluye `<Sidebar />` adentro** (el Layout se hace a nivel de página, no a nivel de App.tsx).
-
-**Esta es una decisión de diseño del proyecto:** cada página es dueña de su layout. Esto evita problemas de anidación y hace que cada página sea autocontenida.
-
----
-
-## 🎨 Componentes de shadcn/ui instalados
-
-| Componente | Ruta |
-|-----------|------|
-| Button | `src/components/ui/button.tsx` |
-| Input | `src/components/ui/input.tsx` |
-| Label | `src/components/ui/label.tsx` |
-| Card | `src/components/ui/card.tsx` |
-| AlertDialog | `src/components/ui/alert-dialog.tsx` |
-
-**Para agregar más componentes:**
-```bash
-npx shadcn@latest add [nombre-componente]
-```
-
-**Componentes recomendados para próximos módulos:**
-- `table` → tablas más complejas con sorting
-- `dialog` → modales
-- `select` → reemplazar `<select>` HTML
-- `dropdown-menu` → menús contextuales
-- `badge` → etiquetas de estado
-- `avatar` → fotos de usuario
-- `form` → formularios con react-hook-form
-- `toast` (deprecado, ya usamos sonner)
-- `sidebar` → sidebar avanzado con shadcn
-- `tabs` → pestañas
-- `tooltip` → ayuda contextual
-- `pagination` → paginación de tablas
+**`tarifaService`** incluye:
+- `listarPorTipo(idTipo)` → tarifas de un tipo específico
 
 ---
 
 ## 🎨 Tema visual
 
-**Modo:** Oscuro por defecto (`bg-slate-950` fondo, `bg-slate-900` cards).
+**Modo:** Oscuro por defecto (`bg-slate-950` fondo, `bg-slate-900` cards, `bg-slate-800` forms/tablas).
 
-**Colores semánticos:**
-- Verde (`bg-green-600`) → éxito, crear
-- Azul (`bg-blue-600`) → acción neutral, activar
+**Colores semánticos de botones:**
+- Verde (`bg-green-600`) → éxito, crear, + Visita
+- Azul (`bg-blue-600`) → acción neutral, actualizar
 - Amarillo (`bg-yellow-600`) → editar
 - Rojo (`bg-red-600`) → eliminar, desactivar
+- Cyan (`bg-cyan-600`) → buscar por DNI
+- Purple (`bg-purple-600`) → historial
 
 **Badges de estado:**
 - `bg-green-900 text-green-300` → CAJA / Activo / Ingreso
 - `bg-yellow-900 text-yellow-300` → DUEÑA
 - `bg-red-900 text-red-300` → Egreso / Inactivo
+- Colores dinámicos de `clientes_niveles.color` → Nivel del cliente
 
 **Toasts (Sonner):**
 - Verde con `richColors` → éxito
 - Rojo con `richColors` → error
+- Cyan con `richColors` → info
 - Posición: arriba a la derecha
-- Cierre: botón X visible
 - Tema: oscuro
-
-**Estados hover:** `hover:bg-X-700` en todos los botones.
 
 ---
 
@@ -639,43 +611,39 @@ npm run dev
 
 ---
 
-## 🎯 Flujo de trabajo para agregar un módulo nuevo
+## 🎯 Flujo para agregar un módulo nuevo
 
-**Ejemplo: módulo Habitaciones**
-
-### 1. Crear tipos en `src/types/habitacion.ts`
+### 1. Crear types en `src/types/xxx.ts`
 
 ```ts
-export interface Habitacion { ... }
-export interface HabitacionRequest { ... }
+export interface Xxx { ... }
+export interface XxxRequest { ... }
 ```
 
-### 2. Crear servicio en `src/services/habitacionService.ts`
+### 2. Crear service en `src/services/xxxService.ts`
 
 ```ts
-export const habitacionService = {
-  listar, listarActivos, obtener, crear, actualizar, desactivar, reactivar, eliminar
-}
+export const xxxService = { listar, listarActivos, obtener, crear, actualizar, desactivar, reactivar, eliminar }
 ```
 
 ### 3. Crear carpeta y 3 componentes
 
 ```
-src/pages/habitaciones/habitacion/
-├── HabitacionPage.tsx       (incluye Sidebar + orquesta)
-├── HabitacionForm.tsx       (formulario)
-└── HabitacionTabla.tsx      (tabla)
+src/pages/xxx/xxx/
+├── XxxPage.tsx       (incluye Sidebar + orquesta)
+├── XxxForm.tsx       (formulario)
+└── XxxTabla.tsx      (tabla)
 ```
 
 ### 4. Agregar ruta en `App.tsx`
 
 ```tsx
-<Route path="/habitaciones" element={<ProtectedRoute><HabitacionPage /></ProtectedRoute>} />
+<Route path="/xxx" element={<ProtectedRoute><XxxPage /></ProtectedRoute>} />
 ```
 
 ### 5. Agregar link en `Sidebar.tsx`
 
-**Patrón repetido 2 veces (Usuarios y Configuración). Solo cambia el nombre del recurso.**
+Agregar al dropdown correspondiente (Configuración, Clientes, o nuevo grupo).
 
 ---
 
@@ -700,19 +668,16 @@ src/pages/habitaciones/habitacion/
 ### Error 3 — Servicios devuelven `undefined` en `.data.data`
 **Causa:** El backend devuelve `{ mensaje, data }` en POST/PUT, pero `{ ... }` directo en GET.
 **Solución:**
-- POST/PUT: `return data.data`
 - GET: `return data`
+- POST/PUT/PATCH: `return data.data`
 
 ### Error 4 — Token no se envía en las requests
 **Causa:** El interceptor de axios lee el token de `localStorage.token`, pero el `useAuth` de Zustand lo guarda en `auth-storage`.
-**Solución:** Guardar el token TAMBIÉN en `localStorage.token` al hacer login:
-```ts
-localStorage.setItem('token', token)
-```
+**Solución:** Guardar el token TAMBIÉN en `localStorage.token` al hacer login.
 
 ### Error 5 — 404 de endpoints muestra toast rojo
 **Causa:** El interceptor de axios muestra toast para CUALQUIER error.
-**Solución:** El interceptor NO debe mostrar toast para 404 (lo maneja el consumidor).
+**Solución:** El interceptor NO debe mostrar toast para 404.
 
 ### Error 6 — `Cannot access 'X' before initialization`
 **Causa:** Uso de variable antes de declararla.
@@ -736,6 +701,23 @@ const [abierto, setAbierto] = useState(
   location.pathname.startsWith("/configuracion")
 )
 ```
+
+### Error 9 — Fecha ISO con `T` no se muestra en `<input type="date">`
+**Causa:** El backend devuelve `2026-10-02T00:00:00.000000Z` (con T y Z).
+**Solución:** Normalizar con `valor.substring(0, 10)` para obtener `YYYY-MM-DD`.
+```ts
+function normalizarFecha(valor: string | null): string {
+  if (!valor) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor
+  return valor.substring(0, 10)
+}
+```
+
+### Error 10 — `validation.unique` al crear cliente con DNI existente
+**Causa:** El form permite crear, pero el DNI ya existe.
+**Solución:** Al buscar por DNI, si existe → cambiar a modo Editar:
+- Guardar `idExistente` en estado
+- `onGuardar(datos, idExistente)` → hace PUT en vez de POST
 
 ---
 
@@ -765,25 +747,25 @@ npx shadcn@latest add [componente]
 | Regla | Obligatorio |
 |-------|-------------|
 | Estilos | Tailwind CSS (nunca CSS puro) |
-| Componentes UI | shadcn/ui (nunca MUI, Ant Design, Bootstrap) |
-| Estado global | Zustand (nunca Redux) |
-| HTTP | axios con `api.ts` (nunca fetch directo) |
+| Componentes UI | shadcn/ui |
+| Estado global | Zustand |
+| HTTP | axios con `api.ts` |
 | Routing | react-router-dom v7 |
-| Alias | `@/` siempre (nunca `../../`) |
+| Alias | `@/` siempre |
 | Tipos | TypeScript estricto (nunca `any`) |
 | Iconos | lucide-react |
 | Toasts | sonner (nunca `alert()`) |
-| Confirmaciones | `ConfirmDialog` (nunca `window.confirm()`) |
+| Confirmaciones | `ConfirmDialog` |
 | Tema | Oscuro (slate-950, slate-900) |
 | Layout | Cada `Page.tsx` incluye `<Sidebar />` |
 
 ### Estructura de capas
-- `pages/` → una página por ruta. Si >100 líneas → dividir en `Page/Form/Tabla`.
-- `components/ui/` → componentes de shadcn (NO modificar).
-- `components/layout/` → Sidebar, Header.
-- `services/` → llamadas HTTP (nunca lógica en componentes).
-- `hooks/` → estado global (Zustand).
-- `types/` → interfaces TypeScript.
+- `pages/` → una página por ruta. Si >100 líneas → dividir en Page/Form/Tabla
+- `components/ui/` → shadcn (NO modificar)
+- `components/layout/` → Sidebar
+- `services/` → llamadas HTTP (nunca lógica en componentes)
+- `hooks/` → estado global (Zustand)
+- `types/` → interfaces TypeScript
 
 ### Convenciones
 - Componentes: `PascalCase.tsx`
@@ -800,8 +782,8 @@ npx shadcn@latest add [componente]
 |---|--------|---------|----------|--------|
 | 01 | AUTH (usuarios, roles, turnos) | ✅ | ✅ | ✅ CERRADO |
 | 02 | CONFIG-BASE (6 tablas) | ✅ | ✅ | ✅ CERRADO |
-| 03 | TARIFAS | ⏳ | ⏳ | ⏳ Pendiente |
-| 04 | CLIENTES (+ RENIEC) | ⏳ | ⏳ | ⏳ Pendiente |
+| 03 | TARIFAS | ✅ | ✅ | ✅ CERRADO |
+| 04 | CLIENTES (5 tablas) | ✅ | ✅ | ✅ CERRADO |
 | 05 | HABITACIONES | ⏳ | ⏳ | ⏳ Pendiente |
 | 06 | RESERVAS | ⏳ | ⏳ | ⏳ Pendiente |
 | 07 | CAJA | ⏳ | ⏳ | ⏳ Pendiente |
@@ -819,27 +801,24 @@ npx shadcn@latest add [componente]
 
 ---
 
-## 🎯 Rutas planeadas para los próximos módulos
+## 🎯 Rutas planeadas para próximos módulos
 
 ```
-/tarifas                            → CRUD tarifas
-/clientes                           → CRUD clientes + búsqueda por DNI
-/clientes/:id                       → detalle con historial y observaciones
-/habitaciones                       → CRUD habitaciones + mapa visual
-/reservas                           → listado + creación
-/reservas/:id                       → detalle (check-in/out, pagos, consumos)
-/caja                               → caja actual + movimientos
-/caja/historial                     → historial de cajas cerradas
-/limpieza                           → cola de limpieza
-/mantenimiento                      → reportes y reparaciones
-/inventario                         → productos + kardex
-/proveedores                        → CRUD proveedores + cuentas por pagar
-/promociones                        → CRUD promociones
-/comprobantes                       → facturas y boletas
-/alertas                            → panel de alertas en vivo
-/reportes                           → dashboards y exportaciones
-/auditoria                          → log de acciones
-/asistencia                         → asistencia de personal
+/habitaciones                    → CRUD habitaciones + mapa visual
+/reservas                        → listado + creación
+/reservas/:id                    → detalle (check-in/out, pagos, consumos)
+/caja                            → caja actual + movimientos
+/caja/historial                  → historial de cajas cerradas
+/limpieza                        → cola de limpieza
+/mantenimiento                   → reportes y reparaciones
+/inventario                      → productos + kardex
+/proveedores                     → CRUD proveedores + cuentas por pagar
+/promociones                     → CRUD promociones
+/comprobantes                    → facturas y boletas
+/alertas                         → panel de alertas en vivo
+/reportes                        → dashboards y exportaciones
+/auditoria                       → log de acciones
+/asistencia                      → asistencia de personal
 ```
 
 ---
@@ -848,26 +827,28 @@ npx shadcn@latest add [componente]
 
 | # | Decisión | Razón |
 |---|----------|-------|
-| D1 | Cada `Page.tsx` incluye `<Sidebar />` | Página autocontenida, evita anidación |
+| D1 | Cada `Page.tsx` incluye `<Sidebar />` | Página autocontenida |
 | D2 | Los services devuelven `data.data` en POST/PUT | Backend anida respuesta |
 | D3 | Guardar token en `localStorage.token` | Interceptor axios lo lee |
 | D4 | Interceptor NO muestra toast para 404 | El consumidor maneja 404 |
-| D5 | Dropdowns del Sidebar con `useState` inicializado por ruta | UX consistente |
+| D5 | Dropdowns del Sidebar con `useState` por ruta | UX consistente |
 | D6 | Badges con `bg-X-900 text-X-300` | Legibles en modo oscuro |
 | D7 | Page/Form/Tabla por cada CRUD | Cada archivo <100 líneas |
 | D8 | ConfirmDialog en vez de `window.confirm()` | UX consistente |
+| D9 | Normalizar fechas ISO a YYYY-MM-DD en forms | Compatibilidad `<input type="date">` |
+| D10 | Modo Editar automático si DNI existe | Evita error `validation.unique` |
 
 ---
 
 ## 📝 Notas de diseño
 
-- **Todo en español:** nombres de variables, funciones, archivos, comentarios.
-- **Sin `alert()`:** reemplazado por toasts de sonner.
-- **Sin `window.confirm()`:** reemplazado por `ConfirmDialog`.
-- **Sin `any`:** TypeScript estricto.
-- **Sin archivos >100 líneas:** si pasa, dividir en Page/Form/Tabla.
-- **Componentes "tontos":** Form y Tabla reciben datos por props.
-- **Páginas "inteligentes":** Page tiene el estado, hace llamadas API, maneja eventos.
+- **Todo en español:** nombres de variables, funciones, archivos, comentarios
+- **Sin `alert()`:** reemplazado por toasts de sonner
+- **Sin `window.confirm()`:** reemplazado por `ConfirmDialog`
+- **Sin `any`:** TypeScript estricto
+- **Sin archivos >100 líneas:** si pasa, dividir en Page/Form/Tabla
+- **Componentes "tontos":** Form y Tabla reciben datos por props
+- **Páginas "inteligentes":** Page tiene el estado, hace llamadas API, maneja eventos
 
 ---
 
@@ -886,105 +867,143 @@ Proyecto privado — Sistema de Hospedaje.
 ---
 
 **Última actualización:** 02/10/2026
-**Módulos completados:** 2 de 18
-'@
-
-Write-Utf8NoBom -Path "README.md" -Content $readme
-
-$tamano = (Get-Item "README.md").Length
-Write-Host ""
-Write-Host "============================================" -ForegroundColor Green
-Write-Host "  OK README.md CREADO" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Archivo: frontend/README.md ($tamano bytes)" -ForegroundColor White
-Write-Host ""
-Write-Host "Contenido:" -ForegroundColor Cyan
-Write-Host "  1. Descripcion general" -ForegroundColor White
-Write-Host "  2. Reglas del proyecto (R1, R2, R3)" -ForegroundColor White
-Write-Host "  3. Estructura de carpetas completa" -ForegroundColor White
-Write-Host "  4. Stack tecnico con versiones exactas" -ForegroundColor White
-Write-Host "  5. Configuracion (vite, tsconfig, tailwind)" -ForegroundColor White
-Write-Host "  6. Tipos TypeScript (Modulo 01 + 02)" -ForegroundColor White
-Write-Host "  7. Servicios (11)" -ForegroundColor White
-Write-Host "  8. Estado global (Zustand)" -ForegroundColor White
-Write-Host "  9. Rutas completas" -ForegroundColor White
-Write-Host "  10. Componentes reutilizables" -ForegroundColor White
-Write-Host "  11. Paginas (Modulo 01 + 02)" -ForegroundColor White
-Write-Host "  12. Componentes shadcn instalados + recomendados" -ForegroundColor White
-Write-Host "  13. Tema visual" -ForegroundColor White
-Write-Host "  14. Instalacion" -ForegroundColor White
-Write-Host "  15. Flujo para agregar un modulo nuevo" -ForegroundColor White
-Write-Host "  16. ERRORES COMUNES Y COMO EVITARLOS (8 errores documentados)" -ForegroundColor Yellow
-Write-Host "  17. Comandos utiles" -ForegroundColor White
-Write-Host "  18. Reglas de codigo" -ForegroundColor White
-Write-Host "  19. Roadmap de 18 modulos" -ForegroundColor White
-Write-Host "  20. Rutas planeadas para proximos modulos" -ForegroundColor White
-Write-Host "  21. Decisiones tecnicas" -ForegroundColor White
-Write-Host "  22. Notas de diseño" -ForegroundColor White
-Write-Host ""
-Write-Host "Ahora subi a GitHub:" -ForegroundColor Yellow
-Write-Host "  cd C:\Users\David\Desktop\hospedaje" -ForegroundColor White
-Write-Host "  git add ." -ForegroundColor White
-Write-Host "  git commit -m 'docs: README frontend completo con errores comunes y roadmap'" -ForegroundColor White
-Write-Host "  git push" -ForegroundColor White
-Write-Host ""
+**Módulos completados:** 4 de 18
 ```
 
 ---
 
-## 📋 Qué incluye este README (a diferencia del backend)
+## 📌 Cómo usarlo
 
-### 🎯 Sección especial: **Errores comunes y cómo evitarlos**
-
-**8 errores documentados** que cometí durante el desarrollo:
-
-1. **Encodings raros** (`Ã³`) → usar Write-Utf8NoBom
-2. **Página fuera del Dashboard** → cada Page.tsx incluye `<Sidebar />`
-3. **`data.data` undefined** → POST/PUT devuelven `data.data`, GET devuelve `data`
-4. **Token no se envía** → guardar también en `localStorage.token`
-5. **404 muestra toast rojo** → el interceptor no debe toastear 404
-6. **`Cannot access X before initialization`** → orden de hooks
-7. **Tipos `any` en catch** → usar `catch (e: any)` o `unknown`
-8. **Dropdown no se despliega** → `useState` inicializado por ruta
-
-**Esto es CLAVE** para que la próxima IA (o dev) no repita los mismos errores.
-
-### 🎯 Sección extra: **Decisiones técnicas tomadas (D1-D8)**
-
-Documenta **por qué** se hicieron las cosas así:
-- D1: Cada Page.tsx incluye Sidebar
-- D2: Services devuelven `data.data` en POST/PUT
-- etc.
-
-### 🎯 Sección extra: **Rutas planeadas para los próximos módulos**
-
-Lista de las ~18 rutas futuras para que sepas qué viene.
+1. **Abrí `frontend/README.md`** en VS Code
+2. **Seleccioná TODO** el contenido actual (`Ctrl+A`)
+3. **Borralo** (`Delete` o `Backspace`)
+4. **Pegá TODO el bloque de arriba** (desde `# Frontend — Sistema de Hospedaje` hasta el final)
+5. **Guardá** (`Ctrl+S`)
 
 ---
 
 ## 🎯 Después de pegar
 
-1. **Verificá el archivo:**
-   ```powershell
-   Get-Item README.md
-   ```
+**Cuando quieras subirlo a GitHub:**
 
-2. **Subilo a GitHub:**
-   ```powershell
-   cd C:\Users\David\Desktop\hospedaje
-   git add .
-   git commit -m "docs: README frontend completo con errores comunes y roadmap"
-   git push
-   ```
+```bash
+cd /c/Users/David/Desktop/hospedaje
+git add frontend/README.md
+git commit -m "docs: actualizo README frontend con módulos 01-04"
+git push
+```
 
----
+**¿Dale?** 🚀
+FRONTEND (frontend/README.md)
+🔹 Qué agregar (6 puntos)
+1. Actualizar el título "Estado global"
 
-## 📌 Pegame:
+Buscar:
 
-1. **La salida del bloque** (mensajes OK + tamaño)
-2. **(Opcional) Un screenshot del README abierto en VS Code**
+text
+**Estado global:** Módulos 01-04 completados
+Reemplazar por:
 
-**Con esto, tenés los 2 READMEs completos (backend + frontend) y podés pasárselos a cualquier IA para que entienda el proyecto al 100%.** 🚀
+text
+**Estado global:** Módulos 01-05 completados
+2. Actualizar la estructura de carpetas
 
-¿Dale?
+Agregar dentro de src/pages/:
+
+text
+│   │   └── productos/                     (Módulo 05)
+│   │       ├── categoriaProducto/
+│   │       │   ├── CategoriaProductoPage.tsx
+│   │       │   ├── CategoriaProductoForm.tsx
+│   │       │   └── CategoriaProductoTabla.tsx
+│   │       ├── proveedor/
+│   │       │   ├── ProveedorPage.tsx
+│   │       │   ├── ProveedorForm.tsx
+│   │       │   └── ProveedorTabla.tsx
+│   │       └── producto/
+│   │           ├── ProductoPage.tsx
+│   │           ├── ProductoForm.tsx
+│   │           └── ProductoTabla.tsx
+Y en services/:
+
+text
+│   │   ├── categoriaProductoService.ts
+│   │   ├── proveedorService.ts
+│   │   └── productoService.ts
+Y en types/:
+
+text
+│   │   └── producto.ts
+3. Actualizar la sección "🧭 Rutas"
+
+Agregar 3 rutas al final de la tabla:
+
+markdown
+| `/productos` | ProductoPage | Sí |
+| `/productos/categorias` | CategoriaProductoPage | Sí |
+| `/productos/proveedores` | ProveedorPage | Sí |
+4. Agregar sección "📄 Módulo 05 — PRODUCTOS (Fase 1)"
+
+Insertar después de la sección del Módulo 04 (antes de "🧠 Estado global"):
+
+markdown
+## 📄 Módulo 05 — PRODUCTOS (Fase 1)
+
+### `producto/ProductoPage.tsx`
+- Lista de productos con búsqueda por nombre/código de barras
+- Botón "+ Nuevo Producto"
+- Carga inicial: solo productos (1 petición)
+- Categorías y proveedores se cargan AL ABRIR el formulario (lazy loading)
+- Tabla con stock coloreado (verde normal, rojo si ≤ mínimo)
+- **Incluye `<Sidebar />`** (vía AppLayout)
+
+### `producto/ProductoForm.tsx`
+- Campos: nombre, categoría (select), proveedor (select), código de barras, precio compra, precio venta, stock actual, stock mínimo, unidad de medida, descripción
+- Selects de categoría y proveedor cargados dinámicamente
+- Validación local
+
+### `producto/ProductoTabla.tsx`
+- Columnas: ID, Nombre, Categoría (badge con color), P. Compra, P. Venta, Stock (coloreado), Mín., Unidad, Estado, Acciones
+- Stock en rojo si ≤ stock_minimo
+
+### `categoriaProducto/CategoriaProductoPage.tsx`
+- CRUD de categorías de producto
+- Campos: nombre, slug, descripción, ícono, color, orden
+
+### `proveedor/ProveedorPage.tsx`
+- CRUD de proveedores
+- Campos: razón social, nombre comercial, RUC, teléfono, email, dirección, contacto, tipo, notas
+5. Agregar en la sección "📝 Decisiones técnicas tomadas"
+
+Agregar al final:
+
+markdown
+| D11 | ProductoPage carga SOLO productos al inicio | Optimización: categorías/proveedores se cargan al abrir el form |
+| D12 | Stock coloreado dinámicamente | Verde normal, rojo si ≤ stock_minimo |
+6. Actualizar la última línea
+
+Buscar:
+
+text
+**Última actualización:** 02/10/2026
+**Módulos completados:** 4 de 18
+Reemplazar por:
+
+text
+**Última actualización:** 03/10/2026
+**Módulos completados:** 5 de 18
+🎯 Resumen de cambios
+Archivo	Cambios
+backend/README.md	+1 sección (Módulo 05) + ajustes en tablas, roadmap y contador
+frontend/README.md	+1 sección (Módulo 05) + ajustes en estructura, rutas y contador
+Total: ~100 líneas nuevas en cada README.
+
+📌 ¿Cómo hacerlo?
+Opción A — Aplicarlo vos manualmente
+Buscá los textos que te marqué y reemplazalos / agregá las secciones.
+
+Opción B — Te armo un bloque PowerShell
+Que reemplace ambas secciones (título + estructura + sección Módulo 05 + roadmap + contador final).
+
+¿Cuál querés?
+

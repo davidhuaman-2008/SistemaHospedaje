@@ -1,4 +1,4 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { toast } from "sonner"
 import { rolService } from "@/services/rolService"
 import type { Rol } from "@/types"
@@ -30,7 +30,7 @@ export default function RolForm({ rol, onGuardado, onCancelar }: Props) {
 
   const guardar = async () => {
     if (!validar()) {
-      toast.error("RevisÃƒÂ¡ los campos marcados en rojo")
+      toast.error("Revisa los campos marcados en rojo")
       return
     }
 
@@ -61,7 +61,7 @@ export default function RolForm({ rol, onGuardado, onCancelar }: Props) {
           nuevos[campo] = erroresBackend[campo][0]
         }
         setErrores(nuevos)
-        toast.error("RevisÃƒÂ¡ los campos marcados")
+        toast.error("Revisa los campos marcados")
       } else {
         toast.error("Error al guardar el rol")
       }
@@ -93,7 +93,7 @@ export default function RolForm({ rol, onGuardado, onCancelar }: Props) {
 
         <div>
           <input
-            placeholder="DescripciÃƒÂ³n"
+            placeholder="Descripción"
             value={form.descripcion}
             onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
             className={`w-full ${inputClass("descripcion")}`}
@@ -102,7 +102,7 @@ export default function RolForm({ rol, onGuardado, onCancelar }: Props) {
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button
           onClick={guardar}
           className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"

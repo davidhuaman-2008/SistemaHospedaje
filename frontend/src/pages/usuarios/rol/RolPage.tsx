@@ -1,113 +1,90 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import Sidebar from "@/components/layout/Sidebar"
-import ConfirmDialog from "@/components/ConfirmDialog"
+import AppLayout from "@/components/layout/AppLayout"
 import { rolService } from "@/services/rolService"
+import { mensajeDeError } from "@/lib/errores"
 import type { Rol } from "@/types"
-import RolTabla from "./RolTabla"
 import RolForm from "./RolForm"
+import RolTabla from "./RolTabla"
 
 export default function RolPage() {
   const [roles, setRoles] = useState<Rol[]>([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [rolEditando, setRolEditando] = useState<Rol | null>(null)
-  const [rolAEliminar, setRolAEliminar] = useState<Rol | null>(null)
-
-  const cargarDatos = useCallback(async () => {
-    try {
-      const data = await rolService.listar()
-      setRoles(data)
-    } catch (error) {
-      console.error(error)
-    }
-  }, [])
+  const [editando, setEditando] = useState<Rol | null>(null)
 
   useEffect(() => {
     let cancelado = false
     const cargar = async () => {
       try {
-        const data = await rolService.listar()
-        if (!cancelado) setRoles(data)
-      } catch (error) {
-        console.error(error)
+        const datos = await rolService.listar()
+        if (!cancelado) setRoles(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
       }
     }
-    void cargar()
+    cargar()
     return () => { cancelado = true }
   }, [])
 
-  const abrirCrear = () => {
-    setRolEditando(null)
-    setMostrarFormulario(true)
+  const recargar = async () => {
+    try { setRoles(await rolService.listar()) }
+    catch { toast.error("Error al recargar") }
   }
 
-  const abrirEditar = (rol: Rol) => {
-    setRolEditando(rol)
-    setMostrarFormulario(true)
-  }
+  const abrirCrear = () => { setEditando(null); setMostrarFormulario(true) }
+  const abrirEditar = (rol: Rol) => { setEditando(rol); setMostrarFormulario(true) }
+  const cerrarFormulario = () => { setMostrarFormulario(false); setEditando(null) }
 
-  const cerrarFormulario = () => {
-    setMostrarFormulario(false)
-    setRolEditando(null)
-  }
+  const onGuardado = () => { cerrarFormulario(); recargar() }
 
-  const confirmarEliminar = (rol: Rol) => {
-    setRolAEliminar(rol)
-  }
-
-  const ejecutarEliminar = async () => {
-    if (!rolAEliminar) return
+  const onCambiarEstado = async (rol: Rol) => {
     try {
-      await rolService.eliminar(rolAEliminar.id)
-      toast.success("Rol eliminado correctamente")
-      setRolAEliminar(null)
-      await cargarDatos()
-    } catch (error) {
-      console.error(error)
-      toast.error("No se pudo eliminar el rol")
+      if (rol.activo) {
+        await rolService.desactivar(rol.id)
+        toast.success("Desactivado")
+      } else {
+        await rolService.reactivar(rol.id)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const onEliminar = async (rol: Rol) => {
+    if (!confirm(`Eliminar "${rol.nombre}"?`)) return
+    try {
+      await rolService.eliminar(rol.id)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold">Roles</h1>
-          <button
-            onClick={abrirCrear}
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg"
-          >
-            Nuevo Rol
-          </button>
-        </div>
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Roles</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Rol
+        </button>
+      </div>
 
-        {mostrarFormulario && (
-          <RolForm
-            rol={rolEditando}
-            onGuardado={async () => { cerrarFormulario(); await cargarDatos() }}
-            onCancelar={cerrarFormulario}
-          />
-        )}
-
-        <RolTabla
-          roles={roles}
-          onEditar={abrirEditar}
-          onEliminar={confirmarEliminar}
+      {mostrarFormulario && (
+        <RolForm
+          rol={editando}
+          onGuardado={onGuardado}
+          onCancelar={cerrarFormulario}
         />
+      )}
 
-        <ConfirmDialog
-          abierto={rolAEliminar !== null}
-          titulo="Eliminar rol"
-          descripcion={
-            rolAEliminar
-              ? `¿Estás seguro de eliminar el rol "${rolAEliminar.nombre}"? Esta acción no se puede deshacer.`
-              : ""
-          }
-          onConfirmar={ejecutarEliminar}
-          onCancelar={() => setRolAEliminar(null)}
-        />
-      </main>
-    </div>
+      <RolTabla
+        roles={roles}
+        onEditar={abrirEditar}
+        onCambiarEstado={onCambiarEstado}
+        onEliminar={onEliminar}
+      />
+    </AppLayout>
   )
 }

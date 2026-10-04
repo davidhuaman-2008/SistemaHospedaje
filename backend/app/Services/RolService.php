@@ -11,20 +11,42 @@ class RolService
         return Rol::orderBy('id')->get();
     }
 
+    public function obtener(int $id): Rol
+    {
+        return Rol::findOrFail($id);
+    }
+
     public function crear(array $datos): Rol
     {
         return Rol::create($datos);
     }
 
-    public function actualizar(Rol $rol, array $datos): Rol
+    public function actualizar(int $id, array $datos): Rol
     {
-        $rol->update($datos);
-
+        $rol = Rol::findOrFail($id);
+        $rol->fill($datos);
+        $rol->save();
         return $rol->fresh();
     }
 
-    public function eliminar(Rol $rol): void
+    public function eliminar(int $id): void
     {
-        $rol->delete();
+        Rol::findOrFail($id)->delete();
+    }
+
+    public function desactivar(int $id): Rol
+    {
+        $rol = Rol::findOrFail($id);
+        $rol->activo = false;
+        $rol->save();
+        return $rol;
+    }
+
+    public function reactivar(int $id): Rol
+    {
+        $rol = Rol::findOrFail($id);
+        $rol->activo = true;
+        $rol->save();
+        return $rol;
     }
 }

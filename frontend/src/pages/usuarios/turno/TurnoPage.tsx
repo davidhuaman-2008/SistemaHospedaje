@@ -1,125 +1,91 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import Sidebar from "@/components/layout/Sidebar"
-import ConfirmDialog from "@/components/ConfirmDialog"
+import AppLayout from "@/components/layout/AppLayout"
 import { turnoService } from "@/services/turnoService"
+import { mensajeDeError } from "@/lib/errores"
 import type { Turno } from "@/types"
-import TurnoTabla from "./TurnoTabla"
 import TurnoForm from "./TurnoForm"
+import TurnoTabla from "./TurnoTabla"
 
 export default function TurnoPage() {
   const [turnos, setTurnos] = useState<Turno[]>([])
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [turnoEditando, setTurnoEditando] = useState<Turno | null>(null)
-  const [turnoAEliminar, setTurnoAEliminar] = useState<Turno | null>(null)
-
-  const cargarDatos = useCallback(async () => {
-    try {
-      const data = await turnoService.listar()
-      setTurnos(data)
-    } catch (error) {
-      console.error(error)
-    }
-  }, [])
+  const [editando, setEditando] = useState<Turno | null>(null)
 
   useEffect(() => {
     let cancelado = false
     const cargar = async () => {
       try {
-        const data = await turnoService.listar()
-        if (!cancelado) setTurnos(data)
-      } catch (error) {
-        console.error(error)
+        const datos = await turnoService.listar()
+        if (!cancelado) setTurnos(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
       }
     }
-    void cargar()
+    cargar()
     return () => { cancelado = true }
   }, [])
 
-  const abrirCrear = () => {
-    setTurnoEditando(null)
-    setMostrarFormulario(true)
+  const recargar = async () => {
+    try { setTurnos(await turnoService.listar()) }
+    catch { toast.error("Error al recargar") }
   }
 
-  const abrirEditar = (turno: Turno) => {
-    setTurnoEditando(turno)
-    setMostrarFormulario(true)
-  }
+  const abrirCrear = () => { setEditando(null); setMostrarFormulario(true) }
+  const abrirEditar = (turno: Turno) => { setEditando(turno); setMostrarFormulario(true) }
+  const cerrarFormulario = () => { setMostrarFormulario(false); setEditando(null) }
 
-  const cerrarFormulario = () => {
-    setMostrarFormulario(false)
-    setTurnoEditando(null)
-  }
+  const onGuardado = () => { cerrarFormulario(); recargar() }
 
-  const cambiarEstado = async (turno: Turno) => {
+  const onCambiarEstado = async (turno: Turno) => {
     try {
-      await turnoService.actualizar(turno.id, { activo: !turno.activo })
-      toast.success(turno.activo ? "Turno desactivado" : "Turno activado")
-      await cargarDatos()
-    } catch (error) {
-      console.error(error)
-      toast.error("Error al cambiar estado")
+      const activo = turno.activo ?? true
+      if (activo) {
+        await turnoService.desactivar(turno.id)
+        toast.success("Desactivado")
+      } else {
+        await turnoService.reactivar(turno.id)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
-  const confirmarEliminar = (turno: Turno) => {
-    setTurnoAEliminar(turno)
-  }
-
-  const ejecutarEliminar = async () => {
-    if (!turnoAEliminar) return
+  const onEliminar = async (turno: Turno) => {
+    if (!confirm(`Eliminar "${turno.nombre}"?`)) return
     try {
-      await turnoService.eliminar(turnoAEliminar.id)
-      toast.success("Turno eliminado correctamente")
-      setTurnoAEliminar(null)
-      await cargarDatos()
-    } catch (error) {
-      console.error(error)
-      toast.error("No se pudo eliminar el turno")
+      await turnoService.eliminar(turno.id)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-4xl font-bold">Turnos</h1>
-          <button
-            onClick={abrirCrear}
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg"
-          >
-            Nuevo Turno
-          </button>
-        </div>
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Turnos</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Turno
+        </button>
+      </div>
 
-        {mostrarFormulario && (
-          <TurnoForm
-            turno={turnoEditando}
-            onGuardado={async () => { cerrarFormulario(); await cargarDatos() }}
-            onCancelar={cerrarFormulario}
-          />
-        )}
-
-        <TurnoTabla
-          turnos={turnos}
-          onEditar={abrirEditar}
-          onCambiarEstado={cambiarEstado}
-          onEliminar={confirmarEliminar}
+      {mostrarFormulario && (
+        <TurnoForm
+          turno={editando}
+          onGuardado={onGuardado}
+          onCancelar={cerrarFormulario}
         />
+      )}
 
-        <ConfirmDialog
-          abierto={turnoAEliminar !== null}
-          titulo="Eliminar turno"
-          descripcion={
-            turnoAEliminar
-              ? `Ã‚Â¿EstÃƒÂ¡s seguro de eliminar el turno "${turnoAEliminar.nombre}"? Esta acciÃƒÂ³n no se puede deshacer.`
-              : ""
-          }
-          onConfirmar={ejecutarEliminar}
-          onCancelar={() => setTurnoAEliminar(null)}
-        />
-      </main>
-    </div>
+      <TurnoTabla
+        turnos={turnos}
+        onEditar={abrirEditar}
+        onCambiarEstado={onCambiarEstado}
+        onEliminar={onEliminar}
+      />
+    </AppLayout>
   )
 }

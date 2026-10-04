@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TipoObservacion, TipoObservacionRequest } from '@/types/tipoObservacion'
 
+import { IconPicker } from "@/components/IconPicker"
 interface Props {
   inicial: TipoObservacion | null
   onGuardar: (datos: TipoObservacionRequest) => void
@@ -23,7 +24,7 @@ export function TipoObservacionForm({ inicial, onGuardar, onCancelar }: Props) {
 
   return (
     <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label className="text-slate-300 text-sm">Nombre *</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
@@ -34,7 +35,7 @@ export function TipoObservacionForm({ inicial, onGuardar, onCancelar }: Props) {
         </div>
         <div>
           <label className="text-slate-300 text-sm">Ícono (lucide)</label>
-          <input value={icono} onChange={e => setIcono(e.target.value)} placeholder="alert-triangle" className="w-full bg-slate-900 text-white p-2 rounded" />
+          <IconPicker valor={icono} onChange={setIcono} />
         </div>
         <div>
           <label className="text-slate-300 text-sm">Color</label>
@@ -44,12 +45,12 @@ export function TipoObservacionForm({ inicial, onGuardar, onCancelar }: Props) {
           <label className="text-slate-300 text-sm">Orden</label>
           <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
-        <div className="col-span-3">
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <label className="text-slate-300 text-sm">Descripción</label>
           <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
         <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
       </div>

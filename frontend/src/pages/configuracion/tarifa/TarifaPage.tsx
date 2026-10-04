@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import Sidebar from '@/components/layout/Sidebar'
-import { tarifaService } from '@/services/tarifaService'
-import { tipoHabitacionService } from '@/services/tipoHabitacionService'
-import type { Tarifa, TarifaRequest } from '@/types/tarifa'
-import type { TipoHabitacion } from '@/types/configuracion'
-import { TarifaForm } from './TarifaForm'
-import { TarifaTabla } from './TarifaTabla'
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { tarifaService } from "@/services/tarifaService"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Tarifa, TarifaRequest } from "@/types/tarifa"
+import type { TipoHabitacion } from "@/types/configuracion"
+import { TarifaForm } from "./TarifaForm"
+import { TarifaTabla } from "./TarifaTabla"
 
 export function TarifaPage() {
   const [items, setItems] = useState<Tarifa[]>([])
@@ -15,23 +16,39 @@ export function TarifaPage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [cargando, setCargando] = useState(true)
 
-  const cargar = async () => {
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const [tarifas, tiposHab] = await Promise.all([
+          tarifaService.listar(),
+          tipoHabitacionService.listarActivos(),
+        ])
+        if (!cancelado) {
+          setItems(tarifas)
+          setTipos(tiposHab)
+        }
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
     try {
-      setCargando(true)
       const [tarifas, tiposHab] = await Promise.all([
         tarifaService.listar(),
         tipoHabitacionService.listarActivos(),
       ])
       setItems(tarifas)
       setTipos(tiposHab)
-    } catch {
-      toast.error('Error al cargar tarifas')
-    } finally {
-      setCargando(false)
-    }
+    } catch { toast.error("Error al recargar") }
   }
-
-  useEffect(() => { cargar() }, [])
 
   const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
   const abrirEditar = (item: Tarifa) => { setEditando(item); setMostrarForm(true) }
@@ -41,15 +58,14 @@ export function TarifaPage() {
     try {
       if (editando) {
         await tarifaService.actualizar(editando.id_tarifa, datos)
-        toast.success('Tarifa actualizada')
+        toast.success("Actualizado")
       } else {
         await tarifaService.crear(datos)
-        toast.success('Tarifa creada')
+        toast.success("Creado")
       }
-      cerrar()
-      cargar()
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al guardar')
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
@@ -57,62 +73,43 @@ export function TarifaPage() {
     try {
       if (item.activo) {
         await tarifaService.desactivar(item.id_tarifa)
-        toast.success('Tarifa desactivada')
+        toast.success("Desactivado")
       } else {
         await tarifaService.reactivar(item.id_tarifa)
-        toast.success('Tarifa reactivada')
+        toast.success("Reactivado")
       }
-      cargar()
-    } catch {
-      toast.error('Error al cambiar estado')
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
   const eliminar = async (item: Tarifa) => {
-    if (!confirm(`Eliminar tarifa de ${item.tipo?.nombre ?? 'tipo'} por ${item.horas}h?`)) return
+    if (!confirm(`Eliminar tarifa?`)) return
     try {
       await tarifaService.eliminar(item.id_tarifa)
-      toast.success('Tarifa eliminada')
-      cargar()
-    } catch {
-      toast.error('Error al eliminar')
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Tarifas</h1>
-          <button
-            onClick={abrirCrear}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-          >
-            + Nueva Tarifa
-          </button>
-        </div>
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Tarifas</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva
+        </button>
+      </div>
 
-        {mostrarForm && (
-          <TarifaForm
-            inicial={editando}
-            tipos={tipos}
-            onGuardar={guardar}
-            onCancelar={cerrar}
-          />
-        )}
+      {mostrarForm && <TarifaForm inicial={editando} tipos={tipos} onGuardar={guardar} onCancelar={cerrar} />}
 
-        {cargando ? (
-          <p className="text-slate-400">Cargando...</p>
-        ) : (
-          <TarifaTabla
-            items={items}
-            onEditar={abrirEditar}
-            onCambiarEstado={cambiarEstado}
-            onEliminar={eliminar}
-          />
-        )}
-      </main>
-    </div>
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <TarifaTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
   )
 }

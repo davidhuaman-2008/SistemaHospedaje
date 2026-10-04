@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { toast } from 'sonner'
 import { clienteService } from '@/services/clienteService'
 import type { Cliente, ClienteRequest } from '@/types/cliente'
@@ -80,7 +80,7 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label className="text-slate-300 text-sm">DNI / Documento</label>
           <div className="flex gap-2">
@@ -119,12 +119,12 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
           <label className="text-slate-300 text-sm">Fecha de nacimiento</label>
           <input type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
-        <div className="col-span-3">
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <label className="text-slate-300 text-sm">Dirección</label>
           <input value={direccion} onChange={e => setDireccion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
           {idExistente ? 'Actualizar datos' : 'Crear'}
         </button>

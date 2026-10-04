@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import type { Tarifa, TarifaRequest } from '@/types/tarifa'
 import type { TipoHabitacion } from '@/types/configuracion'
 
@@ -33,7 +33,7 @@ export function TarifaForm({ inicial, tipos, onGuardar, onCancelar }: Props) {
 
   return (
     <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label className="text-slate-300 text-sm">Tipo de habitación *</label>
           <select
@@ -105,7 +105,7 @@ export function TarifaForm({ inicial, tipos, onGuardar, onCancelar }: Props) {
           />
         </div>
       </div>
-      <div className="flex gap-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
           {inicial ? 'Actualizar' : 'Crear'}
         </button>

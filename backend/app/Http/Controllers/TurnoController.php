@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Turno;
 use App\Services\TurnoService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class TurnoController extends Controller
 {
@@ -66,6 +67,24 @@ class TurnoController extends Controller
 
         return response()->json([
             'mensaje' => 'Turno eliminado',
+        ]);
+    }
+
+    public function desactivar(int $id): JsonResponse
+    {
+        $turno = $this->turnoService->desactivar($id);
+        return response()->json([
+            'mensaje' => 'Turno desactivado',
+            'data' => $turno,
+        ]);
+    }
+
+    public function reactivar(int $id): JsonResponse
+    {
+        $turno = $this->turnoService->reactivar($id);
+        return response()->json([
+            'mensaje' => 'Turno reactivado',
+            'data' => $turno,
         ]);
     }
 }

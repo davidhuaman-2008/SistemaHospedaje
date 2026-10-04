@@ -21,6 +21,12 @@ import ProtectedRoute from "@/components/ProtectedRoute"
 
 import { TarifaPage } from "@/pages/configuracion/tarifa/TarifaPage"
 import { ClientePage } from "@/pages/clientes/cliente/ClientePage"
+import { ProveedorPage } from "@/pages/productos/proveedor/ProveedorPage"
+import { CategoriaProductoPage } from "@/pages/productos/categoriaProducto/CategoriaProductoPage"
+import { ProductoPage } from "@/pages/productos/producto/ProductoPage"
+import { PromocionClientePage } from "@/pages/promociones/promocionCliente/PromocionClientePage"
+import { CategoriaPromocionPage } from "@/pages/promociones/categoriaPromocion/CategoriaPromocionPage"
+import { PromocionPage } from "@/pages/promociones/promocion/PromocionPage"
 import { GravedadObservacionPage } from "@/pages/clientes/gravedadObservacion/GravedadObservacionPage"
 import { TipoObservacionPage } from "@/pages/clientes/tipoObservacion/TipoObservacionPage"
 function App() {
@@ -148,6 +154,22 @@ function App() {
         <Route path="/clientes" element={<ProtectedRoute><ClientePage /></ProtectedRoute>} />
         <Route path="/clientes/tipos-observacion" element={<ProtectedRoute><TipoObservacionPage /></ProtectedRoute>} />
         <Route path="/clientes/gravedades-observacion" element={<ProtectedRoute><GravedadObservacionPage /></ProtectedRoute>} />
+        {/* ============================================================== */}
+        {/* PRODUCTOS (Módulo 05 Fase 1)                                   */}
+        {/* ============================================================== */}
+
+        <Route path="/productos" element={<ProtectedRoute><ProductoPage /></ProtectedRoute>} />
+        <Route path="/productos/categorias" element={<ProtectedRoute><CategoriaProductoPage /></ProtectedRoute>} />
+        <Route path="/productos/proveedores" element={<ProtectedRoute><ProveedorPage /></ProtectedRoute>} />
+        {/* ============================================================== */}
+        {/* PROMOCIONES (Módulo 06)                                        */}
+        {/* ============================================================== */}
+
+        <Route path="/promociones" element={<ProtectedRoute><PromocionPage /></ProtectedRoute>} />
+        <Route path="/promociones/categorias" element={<ProtectedRoute><CategoriaPromocionPage /></ProtectedRoute>} />
+        <Route path="/promociones/asignadas" element={<ProtectedRoute><PromocionClientePage /></ProtectedRoute>} />
+
+
 
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -158,3 +180,5 @@ function App() {
 }
 
 export default App
+
+
