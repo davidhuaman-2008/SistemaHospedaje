@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Cliente;
-use App\Models\ClienteVisita;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ClienteService
 {
@@ -12,7 +12,12 @@ class ClienteService
     {
         return Cliente::with(['tipoDocumento', 'nivel'])
             ->orderByDesc('id_cliente')
-            ->get();
+            ->get()
+            ->map(function ($cliente) {
+                // Agregar conteo de observaciones pendientes para la tabla
+                $cliente->observaciones_pendientes_count = $cliente->observacionesPendientes()->count();
+                return $cliente;
+            });
     }
 
     public function listarActivos(): Collection
@@ -20,14 +25,42 @@ class ClienteService
         return Cliente::with(['tipoDocumento', 'nivel'])
             ->where('activo', true)
             ->orderBy('nombre')
-            ->get();
+            ->get()
+            ->map(function ($cliente) {
+                $cliente->observaciones_pendientes_count = $cliente->observacionesPendientes()->count();
+                return $cliente;
+            });
     }
 
     public function buscarPorDni(string $dni): ?Cliente
     {
-        return Cliente::with(['tipoDocumento', 'nivel', 'observacionesPendientes'])
+        $cliente = Cliente::with([
+            'tipoDocumento',
+            'nivel',
+            'observacionesPendientes.tipo',
+            'observacionesPendientes.gravedad',
+            'observacionesPendientes.usuario',
+        ])
             ->where('numero_documento', $dni)
             ->first();
+
+        if (!$cliente) {
+            return null;
+        }
+
+        // Buscar reserva activa (estado 'activa')
+        $reservaActiva = \App\Models\Reserva::with(['habitacion.tipo', 'habitacion.piso', 'tarifa'])
+            ->where('id_cliente', $cliente->id_cliente)
+            ->whereHas('estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->latest('id_reserva')
+            ->first();
+
+        // Adjuntar como atributo dinámico
+        $cliente->setAttribute('reserva_activa', $reservaActiva);
+
+        return $cliente;
     }
 
     public function obtener(int $id): Cliente
@@ -35,44 +68,37 @@ class ClienteService
         return Cliente::with([
             'tipoDocumento',
             'nivel',
-            'visitas',
-            'observaciones.tipo',
-            'observaciones.gravedad',
-        ])->findOrFail($id);
+            'observacionesPendientes.tipo',
+            'observacionesPendientes.gravedad',
+            'observacionesPendientes.usuario',
+        ])
+            ->findOrFail($id);
     }
 
     public function crear(array $datos): Cliente
     {
-        // Asignar nivel Bronce por defecto si no viene
-        if (!isset($datos['id_nivel'])) {
-            $bronce = \App\Models\ClienteNivel::where('nombre', 'Bronce')->first();
-            if ($bronce) {
-                $datos['id_nivel'] = $bronce->id_nivel;
-            }
-        }
-
         return Cliente::create($datos)->load(['tipoDocumento', 'nivel']);
     }
 
     public function actualizar(int $id, array $datos): Cliente
     {
-        $item = Cliente::findOrFail($id);
-        $item->update($datos);
-        return $item->fresh()->load(['tipoDocumento', 'nivel']);
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update($datos);
+        return $cliente->fresh()->load(['tipoDocumento', 'nivel']);
     }
 
     public function desactivar(int $id): Cliente
     {
-        $item = Cliente::findOrFail($id);
-        $item->update(['activo' => false]);
-        return $item;
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update(['activo' => false]);
+        return $cliente;
     }
 
     public function reactivar(int $id): Cliente
     {
-        $item = Cliente::findOrFail($id);
-        $item->update(['activo' => true]);
-        return $item;
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update(['activo' => true]);
+        return $cliente;
     }
 
     public function eliminar(int $id): void
@@ -80,10 +106,24 @@ class ClienteService
         Cliente::findOrFail($id)->delete();
     }
 
-    public function listarVisitas(int $idCliente): Collection
+    /**
+     * Recalcula el nivel del cliente según sus visitas.
+     */
+    public function recalcularNivel(int $idCliente): void
     {
-        return ClienteVisita::where('id_cliente', $idCliente)
-            ->orderByDesc('fecha_entrada')
-            ->get();
+        $cliente = Cliente::findOrFail($idCliente);
+        $nivel = DB::table('clientes_niveles')
+            ->where('activo', true)
+            ->where('visitas_min', '<=', $cliente->visitas)
+            ->where(function ($q) use ($cliente) {
+                $q->whereNull('visitas_max')
+                  ->orWhere('visitas_max', '>=', $cliente->visitas);
+            })
+            ->orderByDesc('visitas_min')
+            ->first();
+
+        if ($nivel) {
+            $cliente->update(['id_nivel' => $nivel->id_nivel]);
+        }
     }
 }

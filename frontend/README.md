@@ -1,8 +1,8 @@
-¡Perfecto! 🎯 Ahora sí, el **README del frontend COMPLETO** con todo el contexto actualizado hasta el Módulo 09.
+¡Perfecto! 🎯 Ahora te doy el **README frontend completo, sin redundancias**, con TODO lo que construimos hasta ahora explicado al detalle.
 
 ---
 
-## 📄 README.md frontend — COMPLETO PARA COPIAR Y PEGAR
+## 📄 README.md frontend — COMPLETO Y DEFINITIVO
 
 **Abrí `frontend/README.md` en VS Code:**
 1. **Ctrl+A** (seleccionar todo)
@@ -22,7 +22,6 @@
 **HTTP:** Axios 1.20
 **Notificaciones:** Sonner 2
 **Iconos:** Lucide React 1.49
-**Estado global:** Módulos 01-09 completados
 
 ---
 
@@ -31,7 +30,7 @@
 SPA (Single Page Application) para gestión completa de un hospedaje de rotación rápida. Consume la API REST del backend Laravel (Sanctum Bearer tokens). Interfaz completa en modo oscuro.
 
 **Arquitectura:**
-- Componentes por página (Page/Form/Tabla)
+- Componentes por página (Page/Form/Tabla/Modal)
 - Cada `Page.tsx` incluye `<AppLayout>` (que contiene `<Sidebar />`)
 - Servicios para llamadas API (axios)
 - Zustand para estado de autenticación
@@ -45,9 +44,8 @@ SPA (Single Page Application) para gestión completa de un hospedaje de rotació
 
 ### R1 — Nada hardcodeado
 Todo sale de la BD. Si puede cambiar sin tocar código → va a BD.
-Los datos de estado, tipos, categorías, métodos de pago, etc. vienen del backend.
 
-**Ejemplo:** El select de "Categoría de Paquete" en `PaqueteDecoracionForm` carga desde `categoriaPaqueteService.listarActivos()`, NO tiene categorías hardcodeadas.
+**Ejemplo:** El select de "Categoría de Paquete" en `PaqueteDecoracionForm` carga desde `categoriaPaqueteService.listarActivos()`. NO tiene categorías hardcodeadas.
 
 ### R2 — Poco código por archivo
 100 archivos de 30 líneas > 10 archivos de 300 líneas.
@@ -61,6 +59,7 @@ Si algo es "elegante pero confuso" → simplificar.
 - `<IconoDinamico />` → renderiza un ícono Lucide por nombre
 - `<ConfirmDialog />` → modal de confirmación
 - `<ProtectedRoute />` → guard de rutas autenticadas
+- `<AlertaClienteObservaciones />` → banner rojo de alertas
 
 ### R5 — Servicios: GET vs POST/PUT
 - **GET** → devuelve `data` directo
@@ -85,7 +84,7 @@ function normalizarFecha(valor: string | null): string {
 
 ### R8 — Z-index para modales anidados
 - Modal principal: `z-50`
-- Submodales (anidados): `z-[60]`
+- Submodales (anidados): `z-60`
 - **NUNCA** renderizar submodal dentro del modal principal. Usar `if (mostrarSubmodal) return <Submodal />` ANTES del return principal.
 
 ### R9 — El backend es la fuente de verdad
@@ -105,6 +104,17 @@ function normalizarFecha(valor: string | null): string {
 | Inactiva | ⚫ Gris | `#475569` |
 
 **Los colores vienen del BACKEND** (`EstadoHabitacionService`), el frontend solo los aplica con `style={{ background: color }}`.
+
+### R11 — Manejo de errores
+- **Nunca** `any` en catch → usar `catch (e: unknown)`
+- **Nunca** `alert()` → usar `toast.error()`
+- **Nunca** `window.confirm()` → usar `<ConfirmDialog />`
+- Usar `mensajeDeError(e)` para extraer el mensaje del backend
+
+### R12 — Iconos dinámicos
+- Todos los CRUDs con campo `icono` DEBEN usar `<IconPicker />` para editar
+- Todas las tablas con columna `icono` DEBEN usar `<IconoDinamico />` para mostrar
+- Los `icono` son strings Lucide (`banknote`, `credit-card`, `smartphone`, etc.)
 
 ---
 
@@ -145,7 +155,7 @@ frontend/
 │   │   │   ├── turno/
 │   │   │   └── rol/
 │   │   │
-│   │   ├── configuracion/                 (Módulos 02, 03 y 08)
+│   │   ├── configuracion/                 (Módulos 02, 03, 08 y 09C)
 │   │   │   ├── piso/
 │   │   │   ├── tipoHabitacion/
 │   │   │   ├── tipoDocumento/
@@ -153,12 +163,13 @@ frontend/
 │   │   │   ├── categoriaMovimiento/
 │   │   │   ├── clienteNivel/
 │   │   │   ├── tarifa/
-│   │   │   └── habitacion/                (Módulo 08)
-│   │   │       ├── HabitacionPage.tsx
-│   │   │       ├── HabitacionForm.tsx
-│   │   │       └── HabitacionTabla.tsx
+│   │   │   ├── habitacion/                (Módulo 08)
+│   │   │   │   ├── HabitacionPage.tsx
+│   │   │   │   ├── HabitacionForm.tsx
+│   │   │   │   └── HabitacionTabla.tsx
+│   │   │   └── ConfiguracionSistemaPage.tsx  (Módulo 09C)
 │   │   │
-│   │   ├── clientes/                      (Módulo 04)
+│   │   ├── clientes/                      (Módulo 04 + Observaciones)
 │   │   │   ├── tipoObservacion/
 │   │   │   ├── gravedadObservacion/
 │   │   │   └── cliente/
@@ -166,7 +177,10 @@ frontend/
 │   │   │       ├── ClienteForm.tsx
 │   │   │       ├── ClienteTabla.tsx
 │   │   │       ├── ClienteHistorial.tsx
-│   │   │       └── ClienteVisitaDialog.tsx
+│   │   │       ├── ClienteVisitaDialog.tsx
+│   │   │       ├── AgregarObservacionModal.tsx
+│   │   │       ├── AlertaClienteObservaciones.tsx
+│   │   │       └── ClienteObservaciones.tsx
 │   │   │
 │   │   ├── productos/                     (Módulo 05)
 │   │   │   ├── categoriaProducto/
@@ -182,15 +196,18 @@ frontend/
 │   │   │   ├── categoriaPaquete/
 │   │   │   └── paqueteDecoracion/
 │   │   │
-│   │   └── recepcion/                     (Módulo 09)
+│   │   └── recepcion/                     (Módulos 09A + 09C + Pagos)
 │   │       ├── RecepcionPage.tsx          (mapa visual)
 │   │       ├── TarjetaHabitacion.tsx      (tarjeta con tiempo)
 │   │       ├── ModalHabitacionOcupada.tsx (modal principal)
-│   │       ├── RegistrarIngresoPage.tsx   (walk-in)
-│   │       ├── CheckoutPage.tsx           (check-out + consumos)
+│   │       ├── RegistrarIngresoPage.tsx   (walk-in + cobro)
+│   │       ├── CheckoutPage.tsx           (check-out + consumos + pagos + vuelto)
 │   │       ├── CambiarHabitacionModal.tsx (cambio con dinero)
 │   │       ├── AnularReservaModal.tsx     (anular)
-│   │       └── AgregarConsumoModal.tsx    (agregar productos)
+│   │       ├── AgregarConsumoModal.tsx    (agregar productos)
+│   │       ├── ModalExtensionTiempo.tsx   (extensión de horas)
+│   │       ├── AgregarPagoModal.tsx       (pago adicional)
+│   │       └── EntregarVueltoModal.tsx    (vuelto al cliente)
 │   │
 │   ├── services/
 │   │   ├── api.ts
@@ -208,6 +225,7 @@ frontend/
 │   │   ├── tipoObservacionService.ts
 │   │   ├── gravedadObservacionService.ts
 │   │   ├── clienteService.ts
+│   │   ├── clienteObservacionService.ts
 │   │   ├── categoriaProductoService.ts
 │   │   ├── proveedorService.ts
 │   │   ├── productoService.ts
@@ -217,6 +235,7 @@ frontend/
 │   │   ├── categoriaPaqueteService.ts
 │   │   ├── paqueteDecoracionService.ts
 │   │   ├── habitacionService.ts
+│   │   ├── configuracionSistemaService.ts
 │   │   └── reservaService.ts
 │   │
 │   ├── types/
@@ -356,6 +375,7 @@ export default defineConfig({
 | `/configuracion/clientes-niveles` | ClienteNivelPage | Sí |
 | `/configuracion/tarifas` | TarifaPage | Sí |
 | `/configuracion/habitaciones` | HabitacionPage | Sí |
+| `/configuracion/sistema` | ConfiguracionSistemaPage | Sí |
 | `/clientes` | ClientePage | Sí |
 | `/clientes/tipos-observacion` | TipoObservacionPage | Sí |
 | `/clientes/gravedades-observacion` | GravedadObservacionPage | Sí |
@@ -397,7 +417,8 @@ export default defineConfig({
 │   ├── Categorías Movimiento   → /configuracion/categorias-movimiento
 │   ├── Niveles de Cliente      → /configuracion/clientes-niveles
 │   ├── Tarifas                 → /configuracion/tarifas
-│   └── Habitaciones            → /configuracion/habitaciones
+│   ├── Habitaciones            → /configuracion/habitaciones
+│   └── Config. Sistema         → /configuracion/sistema
 ├── Clientes (dropdown)
 │   ├── Clientes                → /clientes
 │   ├── Tipos Observación       → /clientes/tipos-observacion
@@ -475,6 +496,26 @@ Modal de confirmación.
 
 **⚠️ REGLA:** Nunca usar `window.confirm()`. Siempre `<ConfirmDialog />`.
 
+### `<AlertaClienteObservaciones />`
+
+Banner rojo con alertas de cliente. Se usa en `RegistrarIngresoPage` y `ClienteForm`.
+
+**Props:**
+```tsx
+interface Props {
+  observaciones: ClienteObservacion[]
+  onContinuar?: () => void
+  onCancelar?: () => void
+  mostrarBotones?: boolean
+}
+```
+
+**Variantes visuales:**
+- 🟡 1 obs Baja/Media → banner amarillo
+- 🟠 1 obs Alta → banner naranja
+- 🔴 2+ obs → "CLIENTE NO GRATO"
+- ⛔ Bloqueo permanente/Crítica → "CLIENTE VETADO"
+
 ---
 
 ## 📄 Módulo 01 — AUTH (✅ CERRADO)
@@ -536,9 +577,9 @@ src/pages/configuracion/xxx/
 
 ### Componentes
 - `cliente/ClientePage.tsx` — con búsqueda
-- `cliente/ClienteForm.tsx` — buscador por DNI
-- `cliente/ClienteTabla.tsx` — 5 botones por fila
-- `cliente/ClienteHistorial.tsx` — modal visitas
+- `cliente/ClienteForm.tsx` — buscador por DNI + banner de observaciones
+- `cliente/ClienteTabla.tsx` — 6 botones por fila + badge de obs
+- `cliente/ClienteHistorial.tsx` — modal con pestañas Visitas/Observaciones
 - `cliente/ClienteVisitaDialog.tsx` — registrar visita
 - `tipoObservacion/TipoObservacionPage.tsx`
 - `gravedadObservacion/GravedadObservacionPage.tsx`
@@ -547,6 +588,100 @@ src/pages/configuracion/xxx/
 - Buscar por DNI → si existe, cambiar a modo Editar automáticamente
 - `normalizarFecha()` para `<input type="date">`
 - `formatearFecha()` para mostrar `DD/MM/YYYY`
+- **Cliente con reserva activa** → banner rojo "1 cliente = 1 reserva activa" + form bloqueado
+- **Cliente con observaciones pendientes** → banner de alerta (amarillo/naranja/rojo según gravedad)
+
+---
+
+## 👁️ MÓDULO OBSERVACIONES DE CLIENTE (✅ CERRADO)
+
+### Componentes
+
+| Componente | Función |
+|------------|---------|
+| `AgregarObservacionModal.tsx` | Modal reutilizable para crear observación |
+| `AlertaClienteObservaciones.tsx` | Banner rojo con alertas (4 variantes visuales) |
+| `ClienteObservaciones.tsx` | Lista de observaciones con botones resolver/eliminar |
+
+### Cómo funciona
+
+**Al buscar un DNI en `/recepcion/registrar/X`:**
+
+1. `clienteService.buscarPorDni(dni)` devuelve `{ cliente, reserva_activa }`
+2. Si `cliente` existe:
+   - Setea el cliente
+   - **Si `reserva_activa` NO es null** → muestra el banner rojo "CLIENTE CON RESERVA ACTIVA" + bloquea el form
+   - **Si tiene observaciones pendientes** → muestra el banner correspondiente
+
+### Banner "CLIENTE CON RESERVA ACTIVA"
+
+```
+┌─────────────────────────────────────────────────┐
+│ 🚫 CLIENTE CON RESERVA ACTIVA                   │
+│                                                  │
+│ DAVID EFRAIN HUAMAN ROMERO                      │
+│                                                  │
+│ Ya está hospedado en:                           │
+│ 🏨 Habitación 105                               │
+│    Estándar · Piso 1                            │
+│ Entrada: 04/10/2026, ...                        │
+│ Código: WK-XXXXXX                               │
+│                                                  │
+│ 💡 Solución: Si necesitás otra habitación,      │
+│    registrala a nombre de otra persona.         │
+│                                                  │
+│ [Entendido — Limpiar y buscar otro DNI]         │
+└─────────────────────────────────────────────────┘
+```
+
+### Banner "CLIENTE NO GRATO" (2+ observaciones)
+
+```
+┌─────────────────────────────────────────────────┐
+│ 🚨 CLIENTE NO GRATO — 2 OBSERVACIONES           │
+│ ⚠️ Se recomienda NO darle servicio              │
+│                                                  │
+│ 🔴 Deuda · ALTA — "Se fue sin pagar 2h" — S/20 │
+│ 🔴 Deuda · ALTA — "Se fue sin pagar vino" — S/35│
+│ ────────────────────────────────────────────    │
+│ TOTAL ADEUDADO: S/ 55.00                        │
+│                                                  │
+│ [Continuar de todas formas]  [Cancelar]         │
+└─────────────────────────────────────────────────┘
+```
+
+### `AgregarObservacionModal.tsx`
+
+**Props:**
+```tsx
+interface Props {
+  idCliente: number
+  nombreCliente?: string
+  motivoInicial?: string
+  onClose: () => void
+  onSuccess?: () => void
+}
+```
+
+**Comportamiento:**
+- Carga tipos y gravedades de `tipoObservacionService.listarActivos()` y `gravedadObservacionService.listarActivos()`
+- Muestra campo "Monto de deuda" si el tipo es `deuda` o `dano_habitacion`
+- Al guardar → POST `/clientes/{id}/observaciones`
+
+### Botones de acción en `ClienteTabla.tsx`
+
+Cada fila tiene 6 botones:
+- 🟡 Editar
+- 🟢 + Visita
+- 🟣 Historial
+- 🔴 ⚠️ Obs (agregar observación)
+- 🔵 Desactivar/Activar
+- 🔴 Eliminar
+
+**Si el cliente tiene observaciones pendientes:**
+- La fila tiene fondo rojo (`bg-red-950/30`)
+- El nombre tiene un ⚠️ adelante
+- La columna "Obs." muestra un badge rojo con el count
 
 ---
 
@@ -614,7 +749,7 @@ src/pages/configuracion/xxx/
 
 ---
 
-## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)
+## 🎯 Módulo 09A — RECEPCIÓN / WALK-IN (✅ CERRADO)
 
 ### Componentes
 
@@ -624,7 +759,7 @@ src/pages/configuracion/xxx/
 | `TarjetaHabitacion.tsx` | — | Tarjeta con tiempo transcurrido |
 | `ModalHabitacionOcupada.tsx` | — | Modal con 3 acciones |
 | `RegistrarIngresoPage.tsx` | `/recepcion/registrar/:id` | Walk-in (cliente actual) |
-| `CheckoutPage.tsx` | `/recepcion/checkout/:id` | Check-out + consumos |
+| `CheckoutPage.tsx` | `/recepcion/checkout/:id` | Check-out + consumos + pagos |
 | `CambiarHabitacionModal.tsx` | — | Cambio con lógica de dinero |
 | `AnularReservaModal.tsx` | — | Anular registro |
 | `AgregarConsumoModal.tsx` | — | Agregar productos a la cuenta |
@@ -691,40 +826,48 @@ src/pages/configuracion/xxx/
 
 **⚠️ REGLA R8:** Cuando se abre un submodal, el modal principal **se desmonta** (return temprano). NO renderiza ambos al mismo tiempo.
 
-#### 4. `RegistrarIngresoPage.tsx` — Walk-in
+#### 4. `RegistrarIngresoPage.tsx` — Walk-in + Cobro
 
 **Formulario:**
-- **Datos del Cliente:**
-  - DNI + botón buscar
-  - Si existe → muestra verde con datos
-  - Si NO existe → form de cliente nuevo (nombre, apellido, fecha nacimiento, email)
-  - Cantidad de personas
-  - Teléfono
-- **Datos del Alquiler:**
-  - Tarifa (select dinámico según tipo de habitación)
-  - Total (precio base)
-  - Adelanto
-  - Método de pago
-  - **Resumen:** Total, Adelanto, Vuelto / Saldo pendiente
-  - Notas
 
-**Regla de oro:** El cliente DEBE pagar el total de la habitación. El campo adelanto debe ser >= total. Salvo que sea cambio de habitación.
+**Datos del Cliente:**
+- DNI + botón buscar
+- Si existe → muestra verde con datos + banner de observaciones/reserva activa
+- Si NO existe → form de cliente nuevo (nombre, apellido, fecha nacimiento, email)
+- Cantidad de personas
+- Teléfono
 
-#### 5. `CheckoutPage.tsx` — Check-out + Consumos
+**Datos del Alquiler (COBRO):**
+- Tarifa (select dinámico según tipo de habitación)
+- **Toggle "Un solo método" / "Varios métodos"**
+- **Modo único:** Monto + select de método
+- **Modo varios métodos:** Lista de pagos (método + monto cada uno), botón "+ Agregar otro método"
+- **Sección "¿Qué hacer con el vuelto?"** (si `clientePaga > total`):
+  - 🅰️ Guardar como saldo a favor (default)
+  - 🅱️ Entregar ahora al cliente → select de método de devolución
+- **Resumen final:**
+  - Total habitación
+  - Cliente paga
+  - 💵 VUELTO (verde) o 🔴 CLIENTE DEBE (rojo)
+
+**Reglas:**
+- **Modo único:** el monto es obligatorio, el método también (si el monto > 0)
+- **Modo varios métodos:** la suma de pagos debe coincidir con el total (si el total > 0)
+- Si elige "Entregar ahora" → se llama a `entregarVuelto()` después de crear la reserva
+
+#### 5. `CheckoutPage.tsx` — Check-out Completo
 
 **Layout:**
-- **Izquierda:** Info del cliente + lista de consumos + botón "Agregar Consumo"
-- **Derecha:** Resumen de pago con:
-  - Habitación
-  - Consumos
-  - Horas extra
-  - Ajustes
-  - Descuento
-  - **Total**
-  - Pagado
-  - **💵 Vuelto final a entregar** (o 🔴 Cliente debe)
-  - Input monto final a cobrar
+- **Izquierda:**
+  - Info del cliente (con botón "Agregar Observación al Cliente")
+  - Sección "Pagos registrados" (con íconos + botón "Agregar pago")
+  - Sección "Consumos" (con botón "+ Agregar")
+- **Derecha:**
+  - Resumen de pago con desglose completo
+  - **Vuelto final a entregar** (o 🔴 Cliente debe)
+  - Input monto final
   - Botón "Finalizar Check-out"
+  - **Botón "💵 Entregar Vuelto"** (si hay vuelto pendiente)
 
 **Reglas:**
 - El vuelto final se calcula como `pagado - total`
@@ -774,6 +917,444 @@ src/pages/configuracion/xxx/
 - El stock se descuenta automáticamente
 - Si el producto no tiene stock → no se puede agregar
 - Si paga ahora → se registra pago + no afecta `monto_consumos`
+
+#### 9. `AgregarPagoModal.tsx`
+
+**Props:**
+```tsx
+interface Props {
+  idReserva: number
+  montoSugerido?: number
+  onClose: () => void
+  onSuccess: () => void
+}
+```
+
+**Uso:**
+```tsx
+<AgregarPagoModal
+  idReserva={Number(idReserva)}
+  montoSugerido={vueltoFinal < 0 ? Math.abs(vueltoFinal) : undefined}
+  onClose={() => setMostrarAgregarPago(false)}
+  onSuccess={() => { setMostrarAgregarPago(false); cargar() }}
+/>
+```
+
+**Función:** Registrar pago adicional (parcial, saldo) con método + monto.
+
+#### 10. `EntregarVueltoModal.tsx`
+
+**Props:**
+```tsx
+interface Props {
+  idReserva: number
+  vueltoPendiente: number
+  onClose: () => void
+  onSuccess: () => void
+}
+```
+
+**Función:** Entrega el vuelto al cliente. Se registra como pago NEGATIVO.
+
+**Campos:**
+- Monto a entregar (por defecto = vueltoPendiente, editable para entrega parcial)
+- Método de devolución (Efectivo por defecto)
+- Botón "Entregar Vuelto"
+
+---
+
+## 💵 MÓDULO PAGOS MIXTOS + VUELTO (✅ CERRADO)
+
+### Concepto
+
+El recepcionista puede registrar:
+- **Pago único:** 1 método + 1 monto
+- **Pago mixto:** N métodos + N montos
+
+**El vuelto** se maneja así:
+- Si el cliente pide vuelto → se registra como **pago NEGATIVO**
+- `pagado = SUM(pagos_reserva.monto)` (con negativos)
+- Se puede entregar en partes
+
+### Flujo visual
+
+**En `RegistrarIngresoPage`:**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 💵 Cobro                                             │
+│                                                      │
+│ [💵 Un solo método]  [💳 Varios métodos]           │
+│                                                      │
+│ (Modo "Varios métodos"):                             │
+│ #1 [Efectivo ▾]           S/ [20.00]      [🗑️]      │
+│ #2 [Yape Hospedaje ▾]     S/ [50.00]      [🗑️]      │
+│ [+ Agregar otro método]                              │
+│                                                      │
+│ ──────────────────────────────────────               │
+│ Total habitación:  S/ 70.00                          │
+│ Cliente paga:      S/ 100.00                         │
+│ 💵 VUELTO:         S/ 30.00                          │
+│                                                      │
+│ ¿Qué hacer con el vuelto?                            │
+│ ● Guardar como saldo a favor (recomendado)          │
+│ ○ Entregar ahora al cliente                          │
+└─────────────────────────────────────────────────────┘
+```
+
+**En `CheckoutPage` (Pagos registrados):**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 💳 Pagos registrados                                 │
+│                                                      │
+│ 💵 Efectivo           + S/ 100.00  [ADELANTO]       │
+│ 📱 Yape Hospedaje     + S/  50.00                    │
+│ 💸 Vuelto al cliente  - S/  30.00                    │
+│ ────────────────────────────                         │
+│ Total pagado:         S/ 120.00                      │
+└─────────────────────────────────────────────────────┘
+```
+
+**Íconos dinámicos:** vienen del campo `metodo_pago.icono` (Lucide name) + `metodo_pago.color`.
+
+**Pagos negativos:** se muestran en amarillo con signo `-`.
+
+### Servicios
+
+```ts
+export const reservaService = {
+  // ...
+  agregarPago: async (id: number, datos: { id_metodo_pago: number; monto: number; observaciones?: string }): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/pagos`, datos)
+    return data.data
+  },
+
+  anularPago: async (idReserva: number, idPago: number, motivo: string): Promise<Reserva> => {
+    const { data } = await api.delete(`/reservas/${idReserva}/pagos/${idPago}`, {
+      data: { motivo },
+    })
+    return data.data
+  },
+
+  entregarVuelto: async (id: number, datos: { monto: number; id_metodo_pago: number }): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/entregar-vuelto`, datos)
+    return data.data
+  },
+}
+```
+
+### Tipos TypeScript
+
+```ts
+export interface PagoMixto {
+  id_metodo_pago: number
+  monto: number
+}
+
+export interface WalkInRequest {
+  id_cliente: number
+  id_habitacion: number
+  id_tarifa: number
+  cantidad_personas?: number
+  fecha_entrada?: string
+  adelanto?: number
+  id_metodo_pago?: number
+  pagos?: PagoMixto[]
+  telefono?: string
+  notas?: string
+  observaciones?: string
+}
+
+export interface PagoReserva {
+  id_pago: number
+  id_reserva: number
+  id_metodo_pago: number
+  monto: number  // puede ser NEGATIVO (vuelto)
+  es_adelanto: boolean
+  fecha_pago: string
+  observaciones: string | null
+  anulado: boolean
+  metodo_pago?: {
+    id_metodo: number
+    nombre: string
+    icono: string | null
+    color: string | null
+    es_de_caja: boolean
+  }
+  usuario?: { id: number; nombre: string }
+}
+```
+
+---
+
+## 🕐 Módulo 09C — EXTENSIONES DE TIEMPO (✅ CERRADO)
+
+### Visión general
+
+Sistema visual para detectar y cobrar automáticamente las **horas extra** cuando un cliente excede el tiempo contratado. Muestra **historial de extensiones**, **desglose de pagos** y **opciones configurables**.
+
+### Componentes del Módulo 09C
+
+| Componente | Ruta | Función |
+|------------|------|---------|
+| `ModalExtensionTiempo.tsx` | (modal) | Aplicar extensión con historial |
+| `ConfiguracionSistemaPage.tsx` | `/configuracion/sistema` | Editar parámetros globales |
+
+### `ModalExtensionTiempo.tsx`
+
+**Cuándo se abre:**
+- Click en botón amarillo **"⏱️ Aplicar Extensión de Tiempo"** en el CheckoutPage
+- Solo aparece si `horasExtra > 0`
+
+**Props:**
+```tsx
+interface Props {
+  idReserva: number
+  idCliente?: number
+  nombreCliente?: string
+  onClose: () => void
+  onSuccess: () => void
+}
+```
+
+**Estados visuales:**
+
+**Caso 1 — Sin exceso (dentro de tolerancia):**
+```
+┌──────────────────────────────────────────┐
+│ ✅ Sin exceso                             │
+│ El cliente está dentro de la tolerancia  │
+│ de 30 minutos.                            │
+│ [Cerrar]                                  │
+└──────────────────────────────────────────┘
+```
+
+**Caso 2 — Primera extensión:**
+```
+┌──────────────────────────────────────────────────────────┐
+│ ⚠️ Extensión de Tiempo                                    │
+│ Exceso total: 2h 20m (base 8h)                            │
+├──────────────────────────────────────────────────────────┤
+│ Transcurrido: 10h 20m  Contratado: 8h  Exceso: 2h 20m    │
+│                                                           │
+│ Tolerancia: 30 min · Precio hora extra: S/ 10.00         │
+│ Máx: 3h · Turno adicional: S/ 135.00                     │
+│                                                           │
+│ Nueva extensión a aplicar:                                │
+│ ○ No cobrar (con observación)              —              │
+│ ● 1 hora extra            SUGERIDA      + S/ 10.00        │
+│ ○ 2 horas extra                          + S/ 20.00       │
+│ ○ 3 horas extra (máximo)                 + S/ 30.00       │
+│                                                           │
+│ Forma de pago:                                            │
+│ ● Cargar a la cuenta (paga al retirarse)                  │
+│ ○ Pagar ahora (entra a caja si aplica)                    │
+│                                                           │
+│ Observaciones: [_______________________]                  │
+│                                                           │
+│ [Aplicar Extensión]  [Cancelar]                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Caso 3 — Con historial (ya aplicaste 3h):**
+```
+┌──────────────────────────────────────────────────────────┐
+│ ⚠️ Extensión de Tiempo                                    │
+│ Exceso total: 3h 34m (base 8h)                            │
+├──────────────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────────────┐   │
+│ │ 🕐 Ya aplicado anteriormente                       │   │
+│ │ Horas extra:    3h                                 │   │
+│ │ Monto aplicado: S/ 30.00                           │   │
+│ │   └─ A cuenta:  S/ 30.00  ← pendiente de cobro    │   │
+│ └────────────────────────────────────────────────────┘   │
+│                                                           │
+│ Nueva extensión a aplicar:                                │
+│ ○ No cobrar (con observación)              —              │
+│ ● 1 hora extra            SUGERIDA      + S/ 10.00        │
+│ ○ 2 horas extra                          + S/ 20.00       │
+│ ...                                                       │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Caso 4 — Excede el máximo:**
+```
+┌──────────────────────────────────────────────────────────┐
+│ ⚠️ Excede el máximo de 3h extra                           │
+│ Se recomienda cobrar turno adicional completo            │
+├──────────────────────────────────────────────────────────┤
+│ ○ 3 horas extra (máximo):      + S/ 30.00                │
+│ ○ 4 horas extra (excede):      + S/ 40.00  ⚠️             │
+│ ● Turno adicional completo:    + S/ 135.00 SUGERIDA      │
+└──────────────────────────────────────────────────────────┘
+```
+
+**⚠️ Reglas del modal:**
+- Si `dentro_tolerancia = true` → muestra pantalla "Sin exceso" y cierra
+- Si `opciones.length === 0` → no hay nada que aplicar
+- Si `excede_maximo = true` → la opción sugerida es **Turno adicional**
+- La opción **"No cobrar"** requiere observación obligatoria
+- **Pagar ahora** requiere seleccionar método de pago
+- Si elige **"No cobrar"**, se pide también **tipo + gravedad de observación** (integración con Módulo Observaciones)
+
+### `ConfiguracionSistemaPage.tsx`
+
+**Ruta:** `/configuracion/sistema`
+
+**Función:** Editar los parámetros globales del hospedaje.
+
+**Estructura:**
+```
+┌──────────────────────────────────────────────────────────┐
+│ ⚙️ Configuraciones del Sistema                            │
+│ Parámetros globales del hospedaje                         │
+├──────────────────────────────────────────────────────────┤
+│ RESERVAS                                                  │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ tolerancia_extension_minutos                          │ │
+│ │ Minutos de tolerancia antes de cobrar hora extra      │ │
+│ │ [30____] [💾 Guardar]                                 │ │
+│ ├──────────────────────────────────────────────────────┤ │
+│ │ buffer_limpieza_minutos                               │ │
+│ │ Buffer entre reservas (limpieza)                      │ │
+│ │ [30____] [💾 Guardar]                                 │ │
+│ ├──────────────────────────────────────────────────────┤ │
+│ │ tolerancia_no_show_minutos                            │ │
+│ │ Tiempo para marcar No-Show                            │ │
+│ │ [60____] [💾 Guardar]                                 │ │
+│ └──────────────────────────────────────────────────────┘ │
+│                                                           │
+│ COMPROBANTES                                              │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ igv_porcentaje                                        │ │
+│ │ IGV aplicado a comprobantes                           │ │
+│ │ [18____] [💾 Guardar]                                 │ │
+│ └──────────────────────────────────────────────────────┘ │
+│                                                           │
+│ GENERAL                                                   │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ moneda_simbolo                                        │ │
+│ │ Símbolo de moneda                                     │ │
+│ │ [S/____] [💾 Guardar]                                 │ │
+│ └──────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Datos que consume:**
+
+`GET /api/configuraciones` → lista todas
+`GET /api/configuraciones/grupo/{grupo}` → filtradas
+`PUT /api/configuraciones/{clave}` → editar valor
+
+**Al guardar:** recarga la lista (para reflejar el cambio).
+
+### Servicio `configuracionSistemaService.ts`
+
+```ts
+export const configuracionSistemaService = {
+  listar: async (): Promise<Configuracion[]> => {
+    const { data } = await api.get('/configuraciones')
+    return data
+  },
+
+  porGrupo: async (grupo: string): Promise<Configuracion[]> => {
+    const { data } = await api.get(`/configuraciones/grupo/${grupo}`)
+    return data
+  },
+
+  actualizar: async (clave: string, valor: string): Promise<Configuracion> => {
+    const { data } = await api.put(`/configuraciones/${clave}`, { valor })
+    return data.data
+  },
+}
+```
+
+### Métodos agregados a `reservaService.ts`
+
+```ts
+calculoExtension: async (id: number): Promise<CalculoExtension> => {
+  const { data } = await api.get(`/reservas/${id}/calculo-extension`)
+  return data
+},
+
+agregarExtension: async (id: number, datos: AgregarExtensionRequest): Promise<Reserva> => {
+  const { data } = await api.post(`/reservas/${id}/extensiones`, datos)
+  return data.data
+},
+
+listarExtensiones: async (id: number): Promise<ExtensionReserva[]> => {
+  const { data } = await api.get(`/reservas/${id}/extensiones`)
+  return data
+},
+```
+
+### Tipos TypeScript
+
+```ts
+export interface OpcionExtension {
+  horas: number
+  monto: number
+  es_turno_adicional: boolean
+  label: string
+  sugerida: boolean
+  advertencia?: boolean
+}
+
+export interface CalculoExtension {
+  horas_base: number
+  minutos_transcurridos: number
+  minutos_base: number
+  minutos_exceso_total: number
+  horas_exceso_total: number
+  horas_extra_ya_aplicadas: number
+  monto_ya_aplicado: number
+  monto_ya_pagado: number
+  monto_cargado_a_cuenta: number
+  turnos_adicionales_aplicados: number
+  minutos_exceso_pendiente: number
+  minutos_ya_cubiertos: number
+  horas_extra_sugeridas_nuevas: number
+  monto_sugerido_nuevo: number
+  tolerancia_minutos: number
+  dentro_tolerancia: boolean
+  excede_maximo: boolean
+  max_horas_extra: number
+  precio_hora_extra: number
+  precio_turno_adicional: number
+  opciones: OpcionExtension[]
+}
+
+export interface ExtensionReserva {
+  id_extension: number
+  id_reserva: number
+  horas_extra: number
+  monto: number
+  es_turno_adicional: boolean
+  minutos_exceso: number
+  precio_hora_extra_aplicado: number
+  tolerancia_minutos: number
+  pagado_inmediato: boolean
+  cargado_a_cuenta: boolean
+  id_metodo_pago: number | null
+  id_usuario: number
+  fecha_extension: string
+  observaciones: string | null
+  metodo_pago?: MetodoPago
+  usuario?: { id: number; nombre: string }
+}
+
+export interface Configuracion {
+  id_configuracion: number
+  clave: string
+  valor: string
+  tipo: "INT" | "DECIMAL" | "STRING" | "BOOLEAN"
+  descripcion: string | null
+  grupo: string
+  created_at?: string
+  updated_at?: string
+}
+```
 
 ---
 
@@ -849,12 +1430,64 @@ export const xxxService = {
 - **GET** → devuelve `data` directo
 - **POST/PUT/PATCH** → devuelve `data.data` (porque el backend anida `{ mensaje, data }`)
 
+### `mensajeDeError` mejorado
+
+```ts
+export function mensajeDeError(e: unknown): string {
+  if (typeof e === 'object' && e !== null) {
+    const err = e as {
+      response?: {
+        data?: {
+          message?: string
+          mensaje?: string
+          error?: string
+          errors?: Record<string, string[]>
+        }
+      }
+      message?: string
+    }
+
+    // 1. Laravel default: { message: "..." }
+    if (err.response?.data?.message) return err.response.data.message
+
+    // 2. Formato custom: { mensaje: "..." }
+    if (err.response?.data?.mensaje) return err.response.data.mensaje
+
+    // 3. Errores de validación: { errors: { campo: ["msg"] } }
+    if (err.response?.data?.errors) {
+      const firstError = Object.values(err.response.data.errors)[0]
+      if (Array.isArray(firstError) && firstError[0]) return firstError[0]
+    }
+
+    // 4. Fallback: { error: "..." }
+    if (err.response?.data?.error) return err.response.data.error
+
+    // 5. Fallback final: mensaje de axios
+    if (err.message) return err.message
+  }
+  return 'Error inesperado'
+}
+```
+
+**Captura todos los formatos posibles** de respuesta de error de Laravel.
+
 ### Servicios especiales
 
-**`clienteService`:**
-- `buscarPorDni(dni)` → `GET /clientes/buscar?dni=X` → devuelve `{ existe, cliente }`
-- `listarVisitas(idCliente)` → `GET /clientes/{id}/visitas`
-- `crearVisita(idCliente, datos)` → `POST /clientes/{id}/visitas`
+**`clienteService.buscarPorDni(dni)`:**
+```ts
+buscarPorDni: async (dni: string): Promise<{ cliente: Cliente | null; reservaActiva: any }> => {
+  const { data } = await api.get('/clientes/buscar', { params: { dni } })
+  if (data && data.existe && data.cliente) {
+    return {
+      cliente: data.cliente,
+      reservaActiva: data.reserva_activa || null,
+    }
+  }
+  return { cliente: null, reservaActiva: null }
+}
+```
+
+**⚠️ Devuelve un objeto, no el cliente directo.** El frontend debe extraer `.cliente` y `.reservaActiva`.
 
 **`metodoPagoService`:**
 - `listarDeCaja()` → solo métodos con `es_de_caja = true`
@@ -873,6 +1506,9 @@ export const xxxService = {
 - `cambiarHabitacion(id, datos)` → `PATCH /reservas/{id}/cambiar-habitacion`
 - `agregarConsumo(id, datos)` → `POST /reservas/{id}/consumos`
 - `eliminarConsumo(idReserva, idConsumo)` → `DELETE /reservas/{id}/consumos/{idConsumo}`
+- `agregarPago(id, datos)` → `POST /reservas/{id}/pagos`
+- `anularPago(idReserva, idPago, motivo)` → `DELETE /reservas/{id}/pagos/{idPago}`
+- `entregarVuelto(id, datos)` → `POST /reservas/{id}/entregar-vuelto`
 
 **`habitacionMapaService`:**
 - `listar()` → `GET /habitaciones-mapa` → devuelve las 32 con estado calculado
@@ -891,17 +1527,17 @@ export const xxxService = {
 **Colores semánticos de botones:**
 - Verde (`bg-green-600`) → éxito, crear, + Visita
 - Azul (`bg-blue-600`) → acción neutral, actualizar
-- Amarillo (`bg-yellow-600`) → editar
-- Rojo (`bg-red-600`) → eliminar, desactivar
+- Amarillo (`bg-yellow-600`) → editar, extender tiempo
+- Rojo (`bg-red-600`) → eliminar, desactivar, observaciones
 - Cyan (`bg-cyan-600`) → buscar por DNI
 - Purple (`bg-purple-600`) → historial
-- Rojo oscuro (`bg-red-700`) → anular
+- Rojo oscuro (`bg-red-700`) → anular, vetado
 
 **Badges de estado:**
 - `bg-green-900 text-green-300` → CAJA / Activo / Ingreso
-- `bg-yellow-900 text-yellow-300` → DUEÑA / Por vencer
-- `bg-red-900 text-red-300` → Egreso / Inactivo / Vencida
-- `bg-blue-900 text-blue-300` → Pre-cuenta
+- `bg-yellow-900 text-yellow-300` → DUEÑA / Por vencer / Vuelto
+- `bg-red-900 text-red-300` → Egreso / Inactivo / Vencida / Obs
+- `bg-blue-900 text-blue-300` → Pre-cuenta / Adelanto
 - Colores dinámicos de `clientes_niveles.color` → Nivel del cliente
 - Colores dinámicos del backend → Estado de habitación
 
@@ -1072,6 +1708,37 @@ function formatearTiempo(minutos: number): string {
 **Causa:** PowerShell regex falló silenciosamente al agregar la ruta.
 **Solución:** Verificar con `php artisan route:list --path=api/xxx` en el backend.
 
+### Error 15 — 500 en `/clientes` por `$appends`
+**Causa:** El modelo `Cliente` tenía `protected $appends = ['reserva_activa']` pero no existía `getReservaActivaAttribute()`. Laravel fallaba al serializar la colección.
+**Solución:** Remover `$appends`, usar `setAttribute('reserva_activa', ...)` + `getAttribute('reserva_activa')` en el Controller.
+
+### Error 16 — Pagos mixtos no se guardan
+**Causa:** El Controller no validaba `'pagos' => 'nullable|array'` y Laravel descartaba el array.
+**Solución:** Agregar la validación en el Controller + manejo en el Service.
+
+### Error 17 — "No hay vuelto pendiente para esta reserva"
+**Causa:** `entregarVuelto()` calculaba `SUM(pagos) = 0` porque los pagos mixtos nunca se guardaron.
+**Solución:** Fix del bug #16 + verificar que `crearWalkIn` cree los pagos mixtos.
+
+### Error 18 — Error de parseo JSX en `CheckoutPage`
+**Causa:** Un `<span>` que abre, mete un ternario, y cierra con `/>`. Rompe el JSX.
+**Solución:** Remover el `<span>` innecesario, dejar el ternario directo:
+```tsx
+{p.metodo_pago?.icono ? (
+  <IconoDinamico nombre={p.metodo_pago.icono} size={16} style={{ color: p.metodo_pago.color }} />
+) : (
+  <span className="w-2 h-2 rounded-full" style={{ background: p.metodo_pago?.color }} />
+)}
+```
+
+### Error 19 — PowerShell regex no matchea por encoding
+**Causa:** Los regex con caracteres especiales fallan por saltos de línea Windows vs Unix.
+**Solución:** Usar `Get-Content | Where-Object { $_ -notmatch 'patrón' }` para filtrar líneas por línea.
+
+### Error 20 — `Undefined variable: $total` en Service
+**Causa:** Bloque duplicado que usaba `$total` en métodos donde no existe (`agregarPago`, `anularPago`).
+**Solución:** Usar `$reserva->total` (que siempre existe).
+
 ---
 
 ## 🔧 Comandos útiles
@@ -1114,12 +1781,13 @@ npx shadcn@latest add [componente]
 | Modales anidados | Early return, no renderizar en paralelo |
 | Fechas | Normalizar ISO → `YYYY-MM-DD` |
 | Tiempo | Formatear minutos con `formatearTiempo()` |
+| Errores | `mensajeDeError(e)` en catch |
 
 ### Estructura de capas
 - `pages/` → una página por ruta. Si >100 líneas → dividir en Page/Form/Tabla
 - `components/ui/` → shadcn (NO modificar)
 - `components/layout/` → Sidebar, AppLayout
-- `components/` → componentes reutilizables (IconPicker, IconoDinamico, ConfirmDialog)
+- `components/` → componentes reutilizables (IconPicker, IconoDinamico, ConfirmDialog, AlertaClienteObservaciones)
 - `services/` → llamadas HTTP (nunca lógica en componentes)
 - `hooks/` → estado global (Zustand)
 - `types/` → interfaces TypeScript
@@ -1148,7 +1816,9 @@ npx shadcn@latest add [componente]
 | 08 | HABITACIONES | ✅ | ✅ | CERRADO |
 | 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
 | 09B | RESERVAS FUTURAS | ✅ | ⏳ | Pendiente frontend |
-| 09C | EXTENSIONES / HUÉSPEDES | ⏳ | ⏳ | Pendiente |
+| 09C | EXTENSIONES DE TIEMPO | ✅ | ✅ | CERRADO |
+| OBS | OBSERVACIONES CLIENTE | ✅ | ✅ | CERRADO |
+| PAGOS | PAGOS MIXTOS + VUELTO | ✅ | ✅ | CERRADO |
 | 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
 | 11 | CAJA | ⏳ | ⏳ | Pendiente |
 | 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
@@ -1210,6 +1880,39 @@ npx shadcn@latest add [componente]
 - Botón "Finalizar" (EN_PROCESO → COMPLETADA)
 - Al finalizar → habitación vuelve a Disponible automáticamente
 - Personal de limpieza ve esta pantalla desde su celular
+- Auto-refresh cada 20s
+- **Responsive prioritario** (celular)
+
+**Servicio a crear:** `limpiezaService.ts`
+
+```ts
+export const limpiezaService = {
+  listar: async () => {
+    const { data } = await api.get('/limpieza')
+    return data
+  },
+
+  listarPendientes: async () => {
+    const { data } = await api.get('/limpieza/pendientes')
+    return data
+  },
+
+  iniciar: async (id: number) => {
+    const { data } = await api.patch(`/limpieza/${id}/iniciar`)
+    return data.data
+  },
+
+  finalizar: async (id: number) => {
+    const { data } = await api.patch(`/limpieza/${id}/finalizar`)
+    return data.data
+  },
+}
+```
+
+**Agregar al Sidebar:**
+```
+🧹 Limpieza   ← /limpieza (link directo, con contador de pendientes)
+```
 
 ### Módulo 11 — CAJA
 
@@ -1321,6 +2024,14 @@ npx shadcn@latest add [componente]
 | D18 | El vuelto final se muestra en CheckoutPage | Se calcula como `pagado - total` |
 | D19 | Formatear tiempo con `formatearTiempo()` | Evita decimales gigantes |
 | D20 | Cálculo de diferencia en cambio habitación se hace en frontend + confirmación en backend | UX ágil + seguridad backend |
+| **D21** | **Servicios devuelven un objeto `{cliente, reservaActiva}`** para `buscarPorDni` | Backend devuelve 2 cosas |
+| **D22** | **Banner de "reserva activa" + observaciones** al buscar DNI | UX proactiva |
+| **D23** | **Toggle "Un solo método / Varios métodos"** en cobro | Claridad mental |
+| **D24** | **Pago negativo** se muestra en amarillo con `-` | Diferenciar vuelto de pago |
+| **D25** | **Íconos dinámicos de métodos de pago** | Identificación visual rápida |
+| **D26** | **Sección "¿Qué hacer con el vuelto?"** al registrar | Decisión en el momento |
+| **D27** | **Botón "Entregar Vuelto"** en Checkout | Permite entregar después |
+| **D28** | **Integración "No cobrar" con modal de observación** | Registra motivo cuando no cobra |
 
 ---
 
@@ -1334,8 +2045,9 @@ npx shadcn@latest add [componente]
 - **Componentes "tontos":** Form y Tabla reciben datos por props
 - **Páginas "inteligentes":** Page tiene el estado, hace llamadas API, maneja eventos
 - **Nada hardcodeado:** todos los catálogos vienen de la BD
-- **Componentes reutilizables:** IconPicker, IconoDinamico, ConfirmDialog
+- **Componentes reutilizables:** IconPicker, IconoDinamico, ConfirmDialog, AlertaClienteObservaciones
 - **Sistema en tiempo real:** auto-refresh donde sea necesario
+- **Errores claros:** `mensajeDeError(e)` captura todos los formatos
 
 ---
 
@@ -1353,705 +2065,20 @@ Proyecto privado — Sistema de Hospedaje.
 
 ---
 
-**Última actualización:** 03/10/2026
-**Módulos completados:** 9 de 21
+**Última actualización:** 04/10/2026
+**Módulos completados:** 11 de 21 (09A, 09C, OBS, PAGOS + 01-08)
 ````
 
 ---
 
-## 📸 Pegame
+## 📸 Pegame:
 
-1. **Salida del commit + push** (los 2 READMEs)
-2. **¿Seguimos con algún módulo nuevo?** (09B reservas futuras, 14 limpieza, 11 caja)
-3. **¿O paramos acá y hacemos commit?**
+1. **Screenshot del README frontend guardado**
+2. **¿Guardaste bien?** (Ctrl+S)
 
-**Con eso cerramos la documentación completa y seguimos con lo que elijas.** 🚀
+**Después:**
+- 🅰️ Commit de los 2 READMEs
+- 🅱️ Seguir con módulo 14 (Limpieza frontend) o 09B (Reservas futuras)
+- 🅲 Otra cosa
 
-**¿Dale?**
-¡Perfecto! 🎯 Ahora el bloque para **ANEXAR al README del frontend**.
-
----
-
-## 📄 Bloque para AGREGAR al README frontend
-
-**Abrí `frontend/README.md` en VS Code** y:
-
-1. **Buscá** la sección `## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)`
-2. **Buscá** donde termina la sección (antes de `## 🧠 Estado global`)
-3. **Pegá TODO el bloque de abajo JUSTO ANTES de `## 🧠 Estado global`**
-
----
-
-## 📝 BLOQUE PARA PEGAR
-
-```markdown
-## 🕐 Módulo 09C — EXTENSIONES DE TIEMPO (✅ CERRADO)
-
-### Visión general
-
-Sistema visual para detectar y cobrar automáticamente las **horas extra** cuando un cliente excede el tiempo contratado. Muestra **historial de extensiones**, **desglose de pagos** y **opciones configurables**.
-
-### Componentes del Módulo 09C
-
-| Componente | Ruta | Función |
-|------------|------|---------|
-| `ModalExtensionTiempo.tsx` | (modal) | Aplicar extensión con historial |
-| `ConfiguracionSistemaPage.tsx` | `/configuracion/sistema` | Editar parámetros globales |
-
-### `ModalExtensionTiempo.tsx`
-
-**Cuándo se abre:**
-- Click en botón amarillo **"⏱️ Aplicar Extensión de Tiempo"** en el CheckoutPage
-- Solo aparece si `horasExtra > 0`
-
-**Estados visuales:**
-
-**Caso 1 — Sin exceso (dentro de tolerancia):**
-```
-┌──────────────────────────────────────────┐
-│ ✅ Sin exceso                             │
-│ El cliente está dentro de la tolerancia  │
-│ de 30 minutos.                            │
-│ [Cerrar]                                  │
-└──────────────────────────────────────────┘
-```
-
-**Caso 2 — Primera extensión:**
-```
-┌──────────────────────────────────────────────────────────┐
-│ ⚠️ Extensión de Tiempo                                    │
-│ Exceso total: 2h 20m (base 8h)                            │
-├──────────────────────────────────────────────────────────┤
-│ Transcurrido: 10h 20m  Contratado: 8h  Exceso: 2h 20m    │
-│                                                           │
-│ Tolerancia: 30 min · Precio hora extra: S/ 10.00         │
-│ Máx: 3h · Turno adicional: S/ 135.00                     │
-│                                                           │
-│ Nueva extensión a aplicar:                                │
-│ ○ No cobrar (con observación)              —              │
-│ ● 1 hora extra            SUGERIDA      + S/ 10.00        │
-│ ○ 2 horas extra                          + S/ 20.00       │
-│ ○ 3 horas extra (máximo)                 + S/ 30.00       │
-│                                                           │
-│ Forma de pago:                                            │
-│ ● Cargar a la cuenta (paga al retirarse)                  │
-│ ○ Pagar ahora (entra a caja si aplica)                    │
-│                                                           │
-│ Observaciones: [_______________________]                  │
-│                                                           │
-│ [Aplicar Extensión]  [Cancelar]                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Caso 3 — Con historial (ya aplicaste 3h):**
-```
-┌──────────────────────────────────────────────────────────┐
-│ ⚠️ Extensión de Tiempo                                    │
-│ Exceso total: 3h 34m (base 8h)                            │
-├──────────────────────────────────────────────────────────┤
-│ ┌────────────────────────────────────────────────────┐   │
-│ │ 🕐 Ya aplicado anteriormente                       │   │
-│ │ Horas extra:    3h                                 │   │
-│ │ Monto aplicado: S/ 30.00                           │   │
-│ │   └─ A cuenta:  S/ 30.00  ← pendiente de cobro    │   │
-│ └────────────────────────────────────────────────────┘   │
-│                                                           │
-│ Nueva extensión a aplicar:                                │
-│ ○ No cobrar (con observación)              —              │
-│ ● 1 hora extra            SUGERIDA      + S/ 10.00        │
-│ ○ 2 horas extra                          + S/ 20.00       │
-│ ○ 3 horas extra (máximo)                 + S/ 30.00       │
-│ ...                                                       │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Caso 4 — Excede el máximo:**
-```
-┌──────────────────────────────────────────────────────────┐
-│ ⚠️ Excede el máximo de 3h extra                           │
-│ Se recomienda cobrar turno adicional completo            │
-├──────────────────────────────────────────────────────────┤
-│ ○ 3 horas extra (máximo):      + S/ 30.00                │
-│ ○ 4 horas extra (excede):      + S/ 40.00  ⚠️             │
-│ ● Turno adicional completo:    + S/ 135.00 SUGERIDA      │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Datos que consume del backend:**
-
-`GET /api/reservas/{id}/calculo-extension` → devuelve:
-```json
-{
-  "horas_base": 8,
-  "minutos_transcurridos": 620,
-  "minutos_exceso_total": 140,
-  "horas_exceso_total": 2.33,
-  "horas_extra_ya_aplicadas": 0,
-  "monto_ya_aplicado": 0,
-  "monto_ya_pagado": 0,
-  "monto_cargado_a_cuenta": 0,
-  "turnos_adicionales_aplicados": 0,
-  "minutos_exceso_pendiente": 140,
-  "minutos_ya_cubiertos": 0,
-  "horas_extra_sugeridas_nuevas": 2,
-  "monto_sugerido_nuevo": 20.00,
-  "tolerancia_minutos": 30,
-  "dentro_tolerancia": false,
-  "excede_maximo": false,
-  "max_horas_extra": 3,
-  "precio_hora_extra": 10.00,
-  "precio_turno_adicional": 70.00,
-  "opciones": [
-    { "horas": 0, "monto": 0, "label": "No cobrar (con observación)", "sugerida": false },
-    { "horas": 1, "monto": 10, "label": "1 hora extra", "sugerida": false },
-    { "horas": 2, "monto": 20, "label": "2 horas extra", "sugerida": true },
-    { "horas": 3, "monto": 30, "label": "3 horas extra (máximo)", "sugerida": false }
-  ]
-}
-```
-
-**Al aplicar:**
-- POST a `/api/reservas/{id}/extensiones`
-- Toast verde "Extensión aplicada"
-- Cierra el modal
-- Recarga el CheckoutPage con los nuevos montos
-
-**⚠️ Reglas del modal:**
-- Si `dentro_tolerancia = true` → muestra pantalla "Sin exceso" y cierra
-- Si `opciones.length === 0` → no hay nada que aplicar
-- Si `excede_maximo = true` → la opción sugerida es **Turno adicional**
-- La opción **"No cobrar"** requiere observación obligatoria
-- **Pagar ahora** requiere seleccionar método de pago
-
-### `ConfiguracionSistemaPage.tsx`
-
-**Ruta:** `/configuracion/sistema`
-
-**Función:** Editar los parámetros globales del hospedaje.
-
-**Estructura:**
-```
-┌──────────────────────────────────────────────────────────┐
-│ ⚙️ Configuraciones del Sistema                            │
-│ Parámetros globales del hospedaje                         │
-├──────────────────────────────────────────────────────────┤
-│                                                           │
-│ RESERVAS                                                  │
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ tolerancia_extension_minutos                          │ │
-│ │ Minutos de tolerancia antes de cobrar hora extra      │ │
-│ │ [30____] [💾 Guardar]                                 │ │
-│ ├──────────────────────────────────────────────────────┤ │
-│ │ buffer_limpieza_minutos                               │ │
-│ │ Buffer entre reservas (limpieza)                      │ │
-│ │ [30____] [💾 Guardar]                                 │ │
-│ ├──────────────────────────────────────────────────────┤ │
-│ │ tolerancia_no_show_minutos                            │ │
-│ │ Tiempo para marcar No-Show                            │ │
-│ │ [60____] [💾 Guardar]                                 │ │
-│ └──────────────────────────────────────────────────────┘ │
-│                                                           │
-│ COMPROBANTES                                              │
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ igv_porcentaje                                        │ │
-│ │ IGV aplicado a comprobantes                           │ │
-│ │ [18____] [💾 Guardar]                                 │ │
-│ └──────────────────────────────────────────────────────┘ │
-│                                                           │
-│ GENERAL                                                   │
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ moneda_simbolo                                        │ │
-│ │ Símbolo de moneda                                     │ │
-│ │ [S/____] [💾 Guardar]                                 │ │
-│ └──────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Datos que consume:**
-
-`GET /api/configuraciones` → lista todas
-`GET /api/configuraciones/grupo/{grupo}` → filtradas
-`PUT /api/configuraciones/{clave}` → editar valor
-
-**Al guardar:** recarga la lista (para reflejar el cambio).
-
-### Cambios en `CheckoutPage.tsx`
-
-**Se agregó:**
-- Botón **"⏱️ Aplicar Extensión de Tiempo"** dentro del aviso amarillo cuando `horasExtra > 0`
-- Estado `mostrarExtension` para el modal
-- Al finalizar la extensión → recarga la reserva
-
-**Resumen de pago actualizado:**
-```
-Habitación:             S/ 135.00
-Horas extra:            S/ 30.00    (3 extensiones)
-Consumos:               S/ 20.00
-─────────────────────────────────────
-Total:                  S/ 185.00
-
-Pagado:                 S/ 40.00
-Cliente debe:           S/ 145.00
-```
-
-### Cambios en el Sidebar
-
-**Nuevo item en "Configuración":**
-```
-Configuración ▾
-├── Pisos
-├── Tipos de Habitación
-├── Tipos de Documento
-├── Métodos de Pago
-├── Categorías Movimiento
-├── Niveles de Cliente
-├── Tarifas
-├── Habitaciones
-└── Config. Sistema    ← NUEVO (ruta /configuracion/sistema)
-```
-
-**Icono:** `Settings`.
-
-### Servicio `configuracionSistemaService.ts`
-
-```ts
-export const configuracionSistemaService = {
-  listar: async (): Promise<Configuracion[]> => {
-    const { data } = await api.get('/configuraciones')
-    return data
-  },
-
-  porGrupo: async (grupo: string): Promise<Configuracion[]> => {
-    const { data } = await api.get(`/configuraciones/grupo/${grupo}`)
-    return data
-  },
-
-  actualizar: async (clave: string, valor: string): Promise<Configuracion> => {
-    const { data } = await api.put(`/configuraciones/${clave}`, { valor })
-    return data.data
-  },
-}
-```
-
-### Métodos agregados a `reservaService.ts`
-
-```ts
-calculoExtension: async (id: number): Promise<CalculoExtension> => {
-  const { data } = await api.get(`/reservas/${id}/calculo-extension`)
-  return data
-},
-
-agregarExtension: async (id: number, datos: AgregarExtensionRequest): Promise<Reserva> => {
-  const { data } = await api.post(`/reservas/${id}/extensiones`, datos)
-  return data.data
-},
-
-listarExtensiones: async (id: number): Promise<ExtensionReserva[]> => {
-  const { data } = await api.get(`/reservas/${id}/extensiones`)
-  return data
-},
-```
-
----
-
-## 🧹 Módulo 14 — LIMPIEZA (frontend pendiente)
-
-### Backend: LISTO ✅
-
-Endpoints ya funcionando:
-```
-GET    /api/limpieza                          → todas las limpiezas
-GET    /api/limpieza/pendientes               → solo PENDIENTE + EN_PROCESO
-PATCH  /api/limpieza/{id}/iniciar             → PENDIENTE → EN_PROCESO
-PATCH  /api/limpieza/{id}/finalizar           → EN_PROCESO → COMPLETADA
-```
-
-### Frontend pendiente
-
-**Vistas a crear:**
-- `/limpieza` → cola de tareas pendientes
-
-**Componentes:**
-- `LimpiezaPage.tsx`
-- `LimpiezaTabla.tsx`
-
-**Diseño de la pantalla:**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ 🧹 Cola de Limpieza                                       │
-│ 5 tareas pendientes · 1 en proceso                        │
-├──────────────────────────────────────────────────────────┤
-│                                                           │
-│ TAREAS PENDIENTES                                         │
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ 🛏️ Habitación 101 · Piso 1 · ESTÁNDAR                │ │
-│ │ Solicitada: hace 15 min                              │ │
-│ │ Estado: PENDIENTE                                     │ │
-│ │ [Iniciar]                                             │ │
-│ ├──────────────────────────────────────────────────────┤ │
-│ │ 🛏️ Habitación 102 · Piso 1 · ESTÁNDAR                │ │
-│ │ Solicitada: hace 22 min                              │ │
-│ │ Estado: PENDIENTE                                     │ │
-│ │ [Iniciar]                                             │ │
-│ ├──────────────────────────────────────────────────────┤ │
-│ │ 🛏️ Habitación 302 · Piso 3 · PREMIUM                 │ │
-│ │ Solicitada: hace 5 min                                │ │
-│ │ Estado: PENDIENTE                                     │ │
-│ │ [Iniciar]                                             │ │
-│ └──────────────────────────────────────────────────────┘ │
-│                                                           │
-│ TAREAS EN PROCESO                                         │
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ 🛏️ Habitación 205 · Piso 2 · ROMÁNTICA               │ │
-│ │ Iniciada: hace 8 min                                 │ │
-│ │ Estado: EN_PROCESO (por Juan)                        │ │
-│ │ [Finalizar]                                           │ │
-│ └──────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Reglas UX:**
-- Ordenado por antigüedad (más antigua primero)
-- Botón "Iniciar" → PATCH `/limpieza/{id}/iniciar`
-- Botón "Finalizar" → PATCH `/limpieza/{id}/finalizar`
-- Al finalizar → toast + recarga automática
-- Auto-refresh cada 20 segundos
-- Personal de limpieza lo usa desde el celular → **responsive prioritario**
-
-**Servicio a crear:** `limpiezaService.ts`
-
-```ts
-export const limpiezaService = {
-  listar: async () => {
-    const { data } = await api.get('/limpieza')
-    return data
-  },
-
-  listarPendientes: async () => {
-    const { data } = await api.get('/limpieza/pendientes')
-    return data
-  },
-
-  iniciar: async (id: number) => {
-    const { data } = await api.patch(`/limpieza/${id}/iniciar`)
-    return data.data
-  },
-
-  finalizar: async (id: number) => {
-    const { data } = await api.patch(`/limpieza/${id}/finalizar`)
-    return data.data
-  },
-}
-```
-
-**Agregar al Sidebar:**
-```
-🧹 Limpieza   ← /limpieza (link directo, con contador de pendientes)
-```
-
-**⚠️ IMPORTANTE:** Este módulo es **crítico** porque:
-- El personal de limpieza lo usa desde el celular
-- Al finalizar, la habitación vuelve a Disponible automáticamente
-- Sin este módulo, las habitaciones quedan trabadas en Limpieza
-
----
-
-## 🎯 Roadmap actualizado (frontend)
-
-| # | Módulo | Backend | Frontend | Estado |
-|---|--------|---------|----------|--------|
-| 01-08 | AUTH, CONFIG, TARIFAS, CLIENTES, PRODUCTOS, PROMOCIONES, DECORACIÓN, HABITACIONES | ✅ | ✅ | CERRADOS |
-| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
-| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Pendiente frontend |
-| **09C** | **EXTENSIONES DE TIEMPO** | ✅ | ✅ | **CERRADO** |
-| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
-| 11 | CAJA | ⏳ | ⏳ | Pendiente |
-| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
-| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
-| **14** | **LIMPIEZA (pantalla)** | ✅ | ⏳ | **Backend listo** |
-| 15 | MANTENIMIENTO | ⏳ | ⏳ | Pendiente |
-| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
-| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
-| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
-| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
-| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
-| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
-
----
-
-## 🎯 Próximos módulos a implementar (frontend)
-
-### Módulo 09B — RESERVAS FUTURAS
-
-**Vistas a crear:**
-- `/reservas` (listado con filtros)
-- `/reservas/nueva` (form con fecha futura)
-- `/reservas/:id` (detalle con opción check-in)
-
-**Componentes:**
-- `ReservasPage.tsx`
-- `ReservasTabla.tsx`
-- `NuevaReservaPage.tsx`
-- `DetalleReservaPage.tsx`
-
-**Backend listo. Frontend: 1-2 sesiones.**
-
-### Módulo 14 — LIMPIEZA (pantalla)
-
-**Vistas a crear:**
-- `/limpieza` (cola de tareas)
-
-**Componentes:**
-- `LimpiezaPage.tsx`
-- `LimpiezaTabla.tsx`
-
-**Backend listo. Frontend: 30 min.**
-
-### Módulo 11 — CAJA
-
-**Vistas a crear:**
-- `/caja` (caja actual)
-- `/caja/historial`
-
-**Backend a crear (6 tablas):**
-- `cajas`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `devoluciones`
-
-**Backend: 2-3 sesiones. Frontend: 1-2 sesiones.**
-
-### Módulo 16 — COMPROBANTES
-
-**Vistas a crear:**
-- `/comprobantes`
-- `/comprobantes/:id`
-
-**Backend a crear (5 tablas):**
-- `tipos_comprobante`, `series_comprobante`, `facturas`, `facturas_detalle`, `notas_credito`
-
-### Otros módulos futuros
-
-- 10: DECORACIONES APLICADAS
-- 12: INVENTARIO / KARDEX
-- 13: CUENTAS POR PAGAR
-- 15: MANTENIMIENTO
-- 17: ALERTAS
-- 18: REPORTES
-- 19: AUDITORÍA
-- 20: ASISTENCIA
-- 21: RENIEC
-
----
-
-## 🎯 Componentes reutilizables nuevos
-
-### `ModalExtensionTiempo.tsx`
-
-**Props:**
-```tsx
-interface Props {
-  idReserva: number
-  onClose: () => void
-  onSuccess: () => void
-}
-```
-
-**Uso:**
-```tsx
-<ModalExtensionTiempo
-  idReserva={Number(idReserva)}
-  onClose={() => setMostrarExtension(false)}
-  onSuccess={() => { setMostrarExtension(false); cargar() }}
-/>
-```
-
-**Características:**
-- Carga el cálculo automáticamente al abrir
-- Muestra historial si hay extensiones previas
-- Persiste la forma de pago elegida
-- Requiere observación si "no cobrar"
-
-### `ConfiguracionSistemaPage.tsx`
-
-**Props:** ninguna (standalone)
-
-**Uso:**
-```tsx
-<Route path="/configuracion/sistema" element={<ConfiguracionSistemaPage />} />
-```
-
-**Características:**
-- Agrupa configuraciones por `grupo`
-- Guardado por campo individual
-- Recarga toda la lista al guardar
-
----
-
-## 🎯 Tipos TypeScript nuevos
-
-**En `src/types/reserva.ts`:**
-
-```ts
-export interface OpcionExtension {
-  horas: number
-  monto: number
-  es_turno_adicional: boolean
-  label: string
-  sugerida: boolean
-  advertencia?: boolean
-}
-
-export interface CalculoExtension {
-  horas_base: number
-  minutos_transcurridos: number
-  minutos_base: number
-  minutos_exceso_total: number
-  horas_exceso_total: number
-  horas_extra_ya_aplicadas: number
-  monto_ya_aplicado: number
-  monto_ya_pagado: number
-  monto_cargado_a_cuenta: number
-  turnos_adicionales_aplicados: number
-  minutos_exceso_pendiente: number
-  minutos_ya_cubiertos: number
-  horas_extra_sugeridas_nuevas: number
-  monto_sugerido_nuevo: number
-  tolerancia_minutos: number
-  dentro_tolerancia: boolean
-  excede_maximo: boolean
-  max_horas_extra: number
-  precio_hora_extra: number
-  precio_turno_adicional: number
-  opciones: OpcionExtension[]
-}
-
-export interface AgregarExtensionRequest {
-  horas_extra: number
-  cargar_a_cuenta: boolean
-  id_metodo_pago?: number | null
-  es_turno_adicional?: boolean
-  observaciones?: string | null
-}
-
-export interface ExtensionReserva {
-  id_extension: number
-  id_reserva: number
-  horas_extra: number
-  monto: number
-  es_turno_adicional: boolean
-  minutos_exceso: number
-  precio_hora_extra_aplicado: number
-  tolerancia_minutos: number
-  pagado_inmediato: boolean
-  cargado_a_cuenta: boolean
-  id_metodo_pago: number | null
-  id_usuario: number
-  fecha_extension: string
-  observaciones: string | null
-  metodo_pago?: MetodoPago
-  usuario?: { id: number; nombre: string }
-}
-
-export interface Configuracion {
-  id_configuracion: number
-  clave: string
-  valor: string
-  tipo: "INT" | "DECIMAL" | "STRING" | "BOOLEAN"
-  descripcion: string | null
-  grupo: string
-  created_at?: string
-  updated_at?: string
-}
-```
-
----
-
-## 🎯 Flujo completo del recepcionista (Módulo 09C)
-
-```
-1. Cliente alquila habitación 8h (S/ 70)
-2. Paga S/ 100 → vuelto calculado S/ 30 (queda como saldo a favor)
-3. Pasan las 8h → el sistema marca "Por vencer" en el mapa (amarillo)
-4. Recepcionista ve el mapa → click en habitación
-5. Modal → "Ir a Pre-Cuenta"
-6. En el CheckoutPage: "⚠️ Excedió 1h — cobrar extra"
-7. Click "⏱️ Aplicar Extensión de Tiempo"
-8. Modal: muestra opciones (1h, 2h, 3h sugeridas según cálculo)
-9. Selecciona "2 horas extra" → "Cargar a la cuenta"
-10. Aplica → total sube de S/ 70 a S/ 90
-11. Cliente sigue en la habitación (extensión aplicada)
-12. Cliente se retira 2h después
-13. Recepcionista vuelve al CheckoutPage:
-    - Total: S/ 90
-    - Pagado: S/ 100
-    - Vuelto final: S/ 10
-14. Click "Finalizar Check-out" → habitación pasa a Limpieza
-15. Personal de limpieza marca como completada → habitación disponible
-```
-
----
-
-## 🎯 Casos de uso reales
-
-### Caso 1 — Cliente se pasa 20 min
-
-- El mapa NO cambia (sigue rojo, dentro de tolerancia)
-- Al hacer check-out, "⏱️ Aplicar Extensión":
-  - Modal muestra "✅ Sin exceso"
-  - No se cobra nada
-
-### Caso 2 — Cliente se pasa 1h 30m
-
-- Mapa muestra "🔴 Excedido 1h 30m"
-- Modal sugiere "2 horas extra" (S/ 20)
-- Recepcionista puede cobrar ahora o cargar a cuenta
-
-### Caso 3 — Cliente se pasa 3h 30m (excede máximo)
-
-- Mapa muestra "🔴 Excedido 3h 30m"
-- Modal muestra:
-  - ⚠️ Aviso "Excede máximo"
-  - Opciones: 3h máximo, 4h excede, turno adicional completo
-  - Turno adicional viene **sugerido** por defecto
-
-### Caso 4 — Múltiples extensiones
-
-- Cliente pide 1h → recepcionista aplica
-- Cliente pide 1h más → recepcionista aplica de nuevo
-- El modal **muestra el historial** con el total ya aplicado
-- El cálculo resta lo ya aplicado para sugerir la nueva extensión
-
----
-
-**Última actualización:** 04/10/2026
-**Módulos completados:** 9 de 21 (09C agregado)
-```
-
----
-
-## 📸 Después de pegar
-
-1. **Guardá** (`Ctrl+S`)
-2. **Hacé commit** de los 2 READMEs
-
-```bash
-cd /c/Users/David/Desktop/hospedaje
-git add backend/README.md frontend/README.md
-git commit -m "docs: actualizo READMEs con Modulo 09C (extensiones de tiempo) + Limpieza"
-git push
-```
-
----
-
-## 📸 Pegame
-
-1. **Screenshot del README frontend** con la sección nueva
-2. **Salida del commit + push**
-3. **¿Qué hacemos ahora?**
-   - 🅰️ Módulo 14 — LIMPIEZA (frontend, rápido)
-   - 🅱️ Módulo 09B — RESERVAS FUTURAS
-   - 🅲 Módulo de Observaciones del cliente (que pediste antes)
-   - 🅳 Otro
-
-**Con eso cerramos la documentación del Módulo 09C.** 🚀
-
-**¿Dale?**
+**¿Dale?** 🚀

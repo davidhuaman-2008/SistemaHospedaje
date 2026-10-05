@@ -59,6 +59,19 @@ export const reservaService = {
     return data.reserva
   },
 
+  agregarConsumosMultiple: async (
+    id: number,
+    datos: {
+      consumos: Array<{ id_producto: number; cantidad: number }>
+      pagos?: Array<{ id_metodo_pago: number; monto: number }>
+      cargar_a_cuenta: boolean
+      observaciones?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/consumos-multiple`, datos)
+    return data.data
+  },
+
   eliminarConsumo: async (idReserva: number, idConsumo: number): Promise<void> => {
     await api.delete(`/reservas/${idReserva}/consumos/${idConsumo}`)
   },
@@ -76,6 +89,54 @@ export const reservaService = {
   listarExtensiones: async (id: number): Promise<ExtensionReserva[]> => {
     const { data } = await api.get(`/reservas/${id}/extensiones`)
     return data
+  },
+
+  agregarPago: async (id: number, datos: { id_metodo_pago: number; monto: number; observaciones?: string }): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/pagos`, datos)
+    return data.data
+  },
+
+  anularPago: async (idReserva: number, idPago: number, motivo: string): Promise<Reserva> => {
+    const { data } = await api.delete(`/reservas/${idReserva}/pagos/${idPago}`, {
+      data: { motivo },
+    })
+    return data.data
+  },
+
+  entregarVuelto: async (
+    id: number,
+    datos: { monto: number; id_metodo_pago: number }
+  ): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/entregar-vuelto`, datos)
+    return data.data
+  },
+
+  checkOutConVuelto: async (
+    id: number,
+    datos: {
+      monto_final?: number
+      decision_tipo: "ENTREGADO" | "NO_RECLAMADO" | "OTRO"
+      id_metodo_pago?: number | null
+      observaciones?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-out-con-vuelto`, datos)
+    return data.data
+  },
+
+  checkOutConDeuda: async (
+    id: number,
+    datos: {
+      monto_final?: number
+      decision_tipo: "PAGO" | "NO_PAGO"
+      monto_pago?: number
+      id_metodo_pago?: number | null
+      id_gravedad?: number | null
+      motivo?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-out-con-deuda`, datos)
+    return data.data
   },
 }
 

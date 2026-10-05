@@ -32,6 +32,11 @@ export function ModalHabitacionOcupada({ habitacion, onClose, onRefresh }: Props
 
   const esVencida = habitacion.estado === "Vencida"
 
+  // Estado de pago
+  const pagado = Number(habitacion.pagado) || 0
+  const total = Number(habitacion.total) || 0
+  const diferencia = pagado - total
+
   const irAPreCuenta = () => {
     if (id_reserva) {
       navigate(`/recepcion/checkout/${id_reserva}`)
@@ -104,6 +109,28 @@ export function ModalHabitacionOcupada({ habitacion, onClose, onRefresh }: Props
               </p>
             </div>
           </div>
+
+          {/* Estado de pago */}
+          {total > 0 && (
+            <>
+              {Math.abs(diferencia) < 0.01 ? (
+                <div className="bg-green-900/40 border border-green-700 p-3 rounded flex justify-between items-center">
+                  <span className="text-green-300 text-sm font-semibold">✅ Todo pagado</span>
+                  <span className="text-green-300 text-xs">S/ {total.toFixed(2)}</span>
+                </div>
+              ) : diferencia > 0 ? (
+                <div className="bg-yellow-900/40 border border-yellow-700 p-3 rounded flex justify-between items-center">
+                  <span className="text-yellow-300 text-sm font-semibold">💵 VUELTO A FAVOR</span>
+                  <span className="text-yellow-300 font-bold text-lg">S/ {diferencia.toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="bg-red-900/40 border border-red-700 p-3 rounded flex justify-between items-center">
+                  <span className="text-red-300 text-sm font-semibold">🔴 CLIENTE DEBE</span>
+                  <span className="text-red-300 font-bold text-lg">S/ {Math.abs(diferencia).toFixed(2)}</span>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Botones */}
           <div className="space-y-2 pt-2">

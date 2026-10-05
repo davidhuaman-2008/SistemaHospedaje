@@ -31,6 +31,9 @@ class ReservaController extends Controller
             'fecha_entrada' => 'nullable|date',
             'adelanto' => 'nullable|numeric|min:0',
             'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
             'telefono' => 'nullable|string|max:20',
             'notas' => 'nullable|string',
             'observaciones' => 'nullable|string',
@@ -57,6 +60,9 @@ class ReservaController extends Controller
             'fecha_entrada' => 'required|date|after:now',
             'adelanto' => 'nullable|numeric|min:0',
             'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
             'telefono' => 'nullable|string|max:20',
             'notas' => 'nullable|string',
             'observaciones' => 'nullable|string',
@@ -235,4 +241,180 @@ class ReservaController extends Controller
     public function listarExtensiones(int $id): JsonResponse
     {
         return response()->json($this->service->listarExtensiones($id));
-    }}
+    }
+    /**
+     * POST /api/reservas/{id}/pagos
+     * Agrega un pago adicional a una reserva.
+     */
+    public function agregarPago(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+            'monto' => 'required|numeric|min:0.01',
+            'observaciones' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $reserva = $this->service->agregarPago($id, $datos, $request->user()->id);
+            return response()->json([
+                'mensaje' => 'Pago registrado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * DELETE /api/reservas/{id}/pagos/{idPago}
+     * Anula un pago especifico.
+     */
+    public function anularPago(Request $request, int $id, int $idPago): JsonResponse
+    {
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        try {
+            $reserva = $this->service->anularPago($idPago, $request->user()->id, $datos['motivo']);
+            return response()->json([
+                'mensaje' => 'Pago anulado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * POST /api/reservas/{id}/entregar-vuelto
+     * Entrega el vuelto al cliente (registra pago negativo).
+     */
+    public function entregarVuelto(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+        ]);
+
+        try {
+            $reserva = $this->service->entregarVuelto(
+                $id,
+                (float) $datos['monto'],
+                (int) $datos['id_metodo_pago'],
+                $request->user()->id
+            );
+
+            return response()->json([
+                'mensaje' => 'Vuelto entregado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * PATCH /api/reservas/{id}/check-out-con-vuelto
+     * Check-out con decisión sobre el vuelto pendiente.
+     */
+    public function checkOutConVuelto(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto_final' => 'nullable|numeric|min:0',
+            'decision_tipo' => 'required|in:ENTREGADO,NO_RECLAMADO,OTRO',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $reserva = $this->service->checkOutConVuelto(
+                $id,
+                Auth::id(),
+                $datos['monto_final'] ?? null,
+                $datos['decision_tipo'],
+                $datos['id_metodo_pago'] ?? null,
+                $datos['observaciones'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Check-out realizado con decisión de vuelto',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * PATCH /api/reservas/{id}/check-out-con-deuda
+     * Check-out con decisión sobre deuda pendiente.
+     */
+    public function checkOutConDeuda(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto_final' => 'nullable|numeric|min:0',
+            'decision_tipo' => 'required|in:PAGO,NO_PAGO',
+            'monto_pago' => 'nullable|numeric|min:0.01',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'id_gravedad' => 'nullable|exists:gravedades_observacion,id_gravedad',
+            'motivo' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $reserva = $this->service->checkOutConDeuda(
+                $id,
+                Auth::id(),
+                $datos['monto_final'] ?? null,
+                $datos['decision_tipo'],
+                $datos['monto_pago'] ?? null,
+                $datos['id_metodo_pago'] ?? null,
+                $datos['id_gravedad'] ?? null,
+                $datos['motivo'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Check-out realizado con decisión de deuda',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * POST /api/reservas/{id}/consumos-multiple
+     * Agrega MÚLTIPLES consumos con soporte para pagos parciales/mixtos.
+     */
+    public function agregarConsumosMultiple(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'consumos' => 'required|array|min:1',
+            'consumos.*.id_producto' => 'required|exists:productos,id_producto',
+            'consumos.*.cantidad' => 'required|integer|min:1',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
+            'cargar_a_cuenta' => 'boolean',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $reserva = $this->service->agregarConsumosMultiple(
+                $id,
+                $datos['consumos'],
+                $datos['pagos'] ?? [],
+                $datos['cargar_a_cuenta'] ?? true,
+                Auth::id(),
+                $datos['observaciones'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Consumos agregados correctamente',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}

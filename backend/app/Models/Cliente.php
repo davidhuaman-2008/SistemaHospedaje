@@ -18,6 +18,7 @@ class Cliente extends Model
         'id_nivel', 'activo',
     ];
 
+
     protected $casts = [
         'activo' => 'boolean',
         'visitas' => 'integer',

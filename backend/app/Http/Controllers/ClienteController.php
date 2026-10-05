@@ -24,14 +24,22 @@ class ClienteController extends Controller
     {
         $dni = $request->query('dni');
         if (!$dni) {
-            return response()->json(['existe' => false, 'cliente' => null]);
+            return response()->json([
+                'existe' => false,
+                'cliente' => null,
+                'reserva_activa' => null,
+            ]);
         }
 
         $cliente = $this->service->buscarPorDni($dni);
 
+        // Extraer reserva_activa del cliente (antes de serializar)
+        $reservaActiva = $cliente ? $cliente->getAttribute('reserva_activa') : null;
+
         return response()->json([
             'existe' => $cliente !== null,
             'cliente' => $cliente,
+            'reserva_activa' => $reservaActiva,
         ]);
     }
 

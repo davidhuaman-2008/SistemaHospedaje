@@ -338,7 +338,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('reservas/{id}/anular', [ReservaController::class, 'anular']);
     Route::patch('reservas/{id}/cambiar-habitacion', [ReservaController::class, 'cambiarHabitacion']);
     Route::post('reservas/{id}/consumos', [ReservaController::class, 'agregarConsumo']);
+    Route::post('reservas/{id}/consumos-multiple', [ReservaController::class, 'agregarConsumosMultiple']);
     Route::delete('reservas/{id}/consumos/{idConsumo}', [ReservaController::class, 'eliminarConsumo']);
+    Route::post('reservas/{id}/pagos', [ReservaController::class, 'agregarPago']);
+    Route::delete('reservas/{id}/pagos/{idPago}', [ReservaController::class, 'anularPago']);
+    Route::post('reservas/{id}/entregar-vuelto', [ReservaController::class, 'entregarVuelto']);
+    Route::patch('reservas/{id}/check-out-con-vuelto', [ReservaController::class, 'checkOutConVuelto']);
+    Route::patch('reservas/{id}/check-out-con-deuda', [ReservaController::class, 'checkOutConDeuda']);
 });
 
 // ============================================================================
@@ -348,8 +354,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('limpieza', [LimpiezaController::class, 'index']);
     Route::get('limpieza/pendientes', [LimpiezaController::class, 'pendientes']);
+    Route::post('limpieza', [LimpiezaController::class, 'store']);
     Route::patch('limpieza/{id}/iniciar', [LimpiezaController::class, 'iniciar']);
     Route::patch('limpieza/{id}/finalizar', [LimpiezaController::class, 'finalizar']);
+    Route::patch('limpieza/finalizar-todas', [LimpiezaController::class, 'finalizarTodas']);
 });
 
 // ============================================================================
@@ -370,4 +378,40 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reservas/{id}/calculo-extension', [ReservaController::class, 'calculoExtension']);
     Route::get('reservas/{id}/extensiones', [ReservaController::class, 'listarExtensiones']);
     Route::post('reservas/{id}/extensiones', [ReservaController::class, 'agregarExtension']);
+});
+// ============================================================================
+// MANTENIMIENTO
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    // --- Tipos de Mantenimiento ---
+    Route::get('tipos-mantenimiento', [\App\Http\Controllers\TipoMantenimientoController::class, 'index']);
+    Route::get('tipos-mantenimiento/activos', [\App\Http\Controllers\TipoMantenimientoController::class, 'activos']);
+    Route::get('tipos-mantenimiento/{id}', [\App\Http\Controllers\TipoMantenimientoController::class, 'show']);
+    Route::post('tipos-mantenimiento', [\App\Http\Controllers\TipoMantenimientoController::class, 'store']);
+    Route::put('tipos-mantenimiento/{id}', [\App\Http\Controllers\TipoMantenimientoController::class, 'update']);
+    Route::patch('tipos-mantenimiento/{id}/desactivar', [\App\Http\Controllers\TipoMantenimientoController::class, 'desactivar']);
+    Route::patch('tipos-mantenimiento/{id}/reactivar', [\App\Http\Controllers\TipoMantenimientoController::class, 'reactivar']);
+    Route::delete('tipos-mantenimiento/{id}', [\App\Http\Controllers\TipoMantenimientoController::class, 'destroy']);
+
+    // --- Prioridades de Mantenimiento ---
+    Route::get('prioridades-mantenimiento', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'index']);
+    Route::get('prioridades-mantenimiento/activos', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'activos']);
+    Route::get('prioridades-mantenimiento/{id}', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'show']);
+    Route::post('prioridades-mantenimiento', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'store']);
+    Route::put('prioridades-mantenimiento/{id}', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'update']);
+    Route::patch('prioridades-mantenimiento/{id}/desactivar', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'desactivar']);
+    Route::patch('prioridades-mantenimiento/{id}/reactivar', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'reactivar']);
+    Route::delete('prioridades-mantenimiento/{id}', [\App\Http\Controllers\PrioridadMantenimientoController::class, 'destroy']);
+
+    // --- Mantenimiento (registros) ---
+    Route::get('mantenimiento', [\App\Http\Controllers\MantenimientoController::class, 'index']);
+    Route::get('mantenimiento/pendientes', [\App\Http\Controllers\MantenimientoController::class, 'pendientes']);
+    Route::get('mantenimiento/habitacion/{idHabitacion}', [\App\Http\Controllers\MantenimientoController::class, 'porHabitacion']);
+    Route::get('mantenimiento/{id}', [\App\Http\Controllers\MantenimientoController::class, 'show']);
+    Route::post('mantenimiento', [\App\Http\Controllers\MantenimientoController::class, 'store']);
+    Route::patch('mantenimiento/{id}/iniciar', [\App\Http\Controllers\MantenimientoController::class, 'iniciar']);
+    Route::patch('mantenimiento/{id}/resolver', [\App\Http\Controllers\MantenimientoController::class, 'resolver']);
+    Route::patch('mantenimiento/{id}/cancelar', [\App\Http\Controllers\MantenimientoController::class, 'cancelar']);
+    Route::delete('mantenimiento/{id}', [\App\Http\Controllers\MantenimientoController::class, 'destroy']);
 });

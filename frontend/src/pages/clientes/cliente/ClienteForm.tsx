@@ -1,7 +1,9 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { clienteService } from '@/services/clienteService'
-import type { Cliente, ClienteRequest } from '@/types/cliente'
+import { clienteObservacionService } from '@/services/clienteObservacionService'
+import type { Cliente, ClienteRequest, ClienteObservacion } from '@/types/cliente'
+import { AlertaClienteObservaciones } from './AlertaClienteObservaciones'
 
 interface Props {
   inicial: Cliente | null
@@ -24,29 +26,46 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
   const [fechaNacimiento, setFechaNacimiento] = useState(normalizarFecha(inicial?.fecha_nacimiento))
   const [direccion, setDireccion] = useState(inicial?.direccion || '')
   const [buscando, setBuscando] = useState(false)
-  // id del cliente existente encontrado al buscar (para editar en vez de crear)
   const [idExistente, setIdExistente] = useState<number | null>(null)
   const [visitasExistentes, setVisitasExistentes] = useState<number | null>(null)
+  const [observacionesPendientes, setObservacionesPendientes] = useState<ClienteObservacion[]>([])
 
   const buscarDni = async () => {
     if (!numeroDocumento) return
     setBuscando(true)
     try {
       const resp = await clienteService.buscarPorDni(numeroDocumento)
-      if (resp.existe && resp.cliente) {
-        const c = resp.cliente
-        setNombre(c.nombre)
-        setApellido(c.apellido || '')
-        setCelular(c.celular || '')
-        setEmail(c.email || '')
-        setFechaNacimiento(normalizarFecha(c.fecha_nacimiento))
-        setDireccion(c.direccion || '')
-        setIdExistente(c.id_cliente)
-        setVisitasExistentes(c.visitas)
-        toast.info(`${c.nombre} ya existe con ${c.visitas} visitas. Podes actualizar sus datos.`)
+
+      if (resp) {
+        // Cliente encontrado
+        setNombre(resp.nombre)
+        setApellido(resp.apellido || '')
+        setCelular(resp.celular || '')
+        setEmail(resp.email || '')
+        setFechaNacimiento(normalizarFecha(resp.fecha_nacimiento))
+        setDireccion(resp.direccion || '')
+        setIdExistente(resp.id_cliente)
+        setVisitasExistentes(resp.visitas)
+
+        try {
+          const obs = await clienteObservacionService.porCliente(resp.id_cliente)
+          const pendientes = obs.filter(o => !o.resuelto)
+          setObservacionesPendientes(pendientes)
+
+          if (pendientes.length > 0) {
+            toast.warning(`${resp.nombre} tiene ${pendientes.length} observación(es) pendiente(s)`)
+          } else {
+            toast.info(`${resp.nombre} ya existe con ${resp.visitas} visitas.`)
+          }
+        } catch {
+          setObservacionesPendientes([])
+          toast.info(`${resp.nombre} ya existe con ${resp.visitas} visitas.`)
+        }
       } else {
+        // Cliente nuevo
         setIdExistente(null)
         setVisitasExistentes(null)
+        setObservacionesPendientes([])
         toast.success('Cliente nuevo. Complete los datos.')
       }
     } catch {
@@ -73,7 +92,13 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
 
   return (
     <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
-      {idExistente && (
+      {observacionesPendientes.length > 0 && (
+        <div className="mb-4">
+          <AlertaClienteObservaciones observaciones={observacionesPendientes} />
+        </div>
+      )}
+
+      {idExistente && observacionesPendientes.length === 0 && (
         <div className="mb-4 bg-cyan-900 border border-cyan-700 text-cyan-200 p-3 rounded text-sm">
           ⚠️ Este cliente <strong>ya existe</strong> con <strong>{visitasExistentes}</strong> visitas.
           Estás en modo <strong>edición</strong>.

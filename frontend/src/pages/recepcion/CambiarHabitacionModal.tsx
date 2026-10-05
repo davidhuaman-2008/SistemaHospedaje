@@ -124,7 +124,7 @@ export function CambiarHabitacionModal({ habitacion, onClose, onSuccess }: Props
 
   if (cargando) {
     return (
-      <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4">
         <div className="bg-slate-800 rounded-lg p-6">
           <p className="text-slate-300">Cargando...</p>
         </div>
@@ -133,7 +133,7 @@ export function CambiarHabitacionModal({ habitacion, onClose, onSuccess }: Props
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-800 rounded-lg max-w-2xl w-full" onClick={e => e.stopPropagation()}>
         <div className="bg-slate-900 p-4 rounded-t-lg flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">🔄 Cambiar Habitación</h3>

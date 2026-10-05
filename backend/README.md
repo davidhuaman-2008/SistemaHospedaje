@@ -1,13 +1,13 @@
-¡Perfecto! 🎯 Vamos con el README backend completo y actualizado. Va a ser un documento extenso pero **completo** para que cualquier IA futura entienda todo el contexto.
+¡Perfecto! 🎯 Entendido. Voy a darte el **README backend completo y definitivo**, sin redundancias, con TODO lo que construimos hasta ahora, explicado al detalle para que otra IA entienda el contexto en una sola lectura.
 
 ---
 
-## 📄 README.md backend — COMPLETO PARA COPIAR Y PEGAR
+## 📄 README.md backend — COMPLETO Y DEFINITIVO
 
 **Abrí `backend/README.md` en VS Code:**
 1. **Ctrl+A** (seleccionar todo)
 2. **Delete** (borrar)
-3. **Pegar todo lo de abajo**
+3. **Pegar TODO lo de abajo**
 4. **Ctrl+S** (guardar)
 
 ````markdown
@@ -17,13 +17,13 @@
 **PHP:** 8.2.12
 **Base de datos:** MySQL 8 (MariaDB 10.4)
 **Autenticación:** Laravel Sanctum (Bearer tokens)
-**Estado global:** Módulos 01-09 completados
+**Estado global:** Módulos 01-09C + Observaciones + Pagos Mixtos + Vuelto completados
 
 ---
 
 ## 📌 Descripción
 
-API REST para gestión completa de un hospedaje de rotación rápida (por horas / corta estadía). Cubre autenticación, usuarios, roles, turnos, configuración base, tarifas, clientes con fidelización, habitaciones, recepción (walk-in), consumos, cambio de habitación, limpieza, y próximamente caja, inventario, comprobantes, alertas y reportes.
+API REST para gestión completa de un hospedaje de rotación rápida (por horas / corta estadía). Cubre autenticación, usuarios, roles, turnos, configuración base, tarifas, clientes con fidelización, habitaciones, recepción (walk-in), extensiones de tiempo, consumos, cambio de habitación, pagos (simples/mixtos), vuelto, observaciones de cliente, limpieza, y próximamente caja, inventario, comprobantes, alertas y reportes.
 
 **Arquitectura:** Controllers delgados + Services (CRUD + lógica de negocio) + Models Eloquent + Reglas (lógica compleja futura).
 
@@ -94,7 +94,8 @@ backend/
 │   │       ├── ReservaController.php
 │   │       ├── EstadoHabitacionController.php
 │   │       ├── EstadoReservaController.php
-│   │       └── LimpiezaController.php
+│   │       ├── LimpiezaController.php
+│   │       └── ConfiguracionController.php
 │   │
 │   ├── Models/
 │   │   ├── Usuario.php
@@ -128,6 +129,8 @@ backend/
 │   │   ├── PagoReserva.php
 │   │   ├── ReservaConsumo.php
 │   │   ├── ReservaAjuste.php
+│   │   ├── ExtensionReserva.php
+│   │   ├── Configuracion.php
 │   │   └── Limpieza.php
 │   │
 │   ├── Services/
@@ -158,7 +161,9 @@ backend/
 │   │   ├── HabitacionService.php
 │   │   ├── ReservaService.php
 │   │   ├── EstadoHabitacionService.php
-│   │   └── DisponibilidadService.php
+│   │   ├── DisponibilidadService.php
+│   │   ├── ExtensionService.php
+│   │   └── ConfiguracionService.php
 │   │
 │   └── Providers/
 │       └── AppServiceProvider.php
@@ -186,7 +191,7 @@ backend/
 
 ## 🗄️ Base de datos — Estado actual
 
-### Tablas creadas (Módulos 01-09)
+### Tablas creadas (todos los módulos hasta ahora)
 
 | Tabla | Filas | Módulo | Propósito |
 |-------|-------|--------|-----------|
@@ -196,8 +201,8 @@ backend/
 | `personal_access_tokens` | 0+ | 01 | Tokens Sanctum |
 | `pisos` | 4 | 02 | Pisos del hospedaje |
 | `tipos_habitacion` | 8 | 02 | Tipos de habitación |
-| `tipos_documento` | 5 | 02 | DNI, RUC, CE, Pasaporte, LIC |
-| `metodos_pago` | 10 | 02 | Métodos de pago |
+| `tipos_documento` | 4 | 02 | DNI, RUC, CE, Pasaporte |
+| `metodos_pago` | 10 | 02 | Métodos de pago (con `es_de_caja`, `icono`, `color`) |
 | `categorias_movimiento` | 23 | 02 | Categorías ingreso/egreso |
 | `clientes_niveles` | 4 | 02 | Niveles de fidelización |
 | `tarifas` | 15 | 03 | Precios por tipo y horas |
@@ -219,10 +224,12 @@ backend/
 | `reservas` | - | 09 | Reservas (walk-in + futuras) |
 | `ocupacion_habitacion` | - | 09 | Bloqueo real de rangos |
 | `registros_estadia` | - | 09 | Check-in/check-out |
-| `pagos_reserva` | - | 09 | Pagos del cliente |
+| `pagos_reserva` | - | 09 | Pagos del cliente (soporta negativos para vuelto) |
 | `reserva_consumos` | - | 09 | Consumos de productos |
 | `reserva_ajustes` | - | 09 | Ajustes por cambio de habitación |
-| `limpieza` | - | 09 | Cola de limpieza |
+| `extensiones_reserva` | - | 09C | Historial de extensiones |
+| `configuraciones` | 5 | 09C | Configuraciones globales |
+| `limpieza` | - | 09A | Cola de limpieza |
 
 ### Tablas de Laravel
 - `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `migrations`
@@ -234,35 +241,15 @@ backend/
 ### Tablas
 
 #### `roles` (5 filas)
-- `id` PK
-- `nombre` UNIQUE
-- `descripcion` NULL
-- `activo` BOOLEAN DEFAULT true
-- `created_at`, `updated_at`
-
+`id`, `nombre` UNIQUE, `descripcion` NULL, `activo` BOOLEAN DEFAULT true, timestamps.
 **Semilla:** admin, encargado, recepcionista, limpieza, cajero.
 
 #### `turnos` (3 filas)
-- `id` PK
-- `nombre`
-- `hora_inicio` TIME
-- `hora_fin` TIME
-- `descripcion` NULL
-- `activo` BOOLEAN
-
+`id`, `nombre`, `hora_inicio` TIME, `hora_fin` TIME, `descripcion` NULL, `activo`.
 **Semilla:** Mañana (08:00-20:00), Noche (20:00-08:00), Libre (00:00-23:59).
 
 #### `usuarios`
-- `id` PK
-- `nombre`, `apellido`
-- `nombre_usuario` UNIQUE (login)
-- `password` (bcrypt)
-- `id_rol` FK → roles
-- `id_turno` FK NULL → turnos
-- `activo` BOOLEAN
-- `ultimo_login` TIMESTAMP NULL
-- `remember_token`
-
+`id`, `nombre`, `apellido`, `nombre_usuario` UNIQUE, `password` (bcrypt), `id_rol` FK, `id_turno` FK NULL, `activo`, `ultimo_login` NULL, `remember_token`.
 **Semilla:** nancy/admin123 (admin, Libre).
 
 ### Endpoints Módulo 01
@@ -312,16 +299,16 @@ PATCH  /api/turnos/{id}/reactivar
 ### Tablas
 
 #### `pisos` (4 filas)
-`id_piso`, `nombre` UNIQUE, `descripcion`, `orden`, `activo`, `timestamps`.
+`id_piso`, `nombre` UNIQUE, `descripcion`, `orden`, `activo`, timestamps.
 **Semilla:** Piso 1, 2, 3, 4.
 
 #### `tipos_habitacion` (8 filas)
-`id_tipo`, `nombre` UNIQUE, `slug` UNIQUE, `descripcion`, `capacidad` (2), `camas` (1), `tiene_jacuzzi` BOOLEAN, `activo`, `timestamps`.
+`id_tipo`, `nombre` UNIQUE, `slug` UNIQUE, `descripcion`, `capacidad` (2), `camas` (1), `tiene_jacuzzi` BOOLEAN, `activo`, timestamps.
 **Semilla:** Simple, Estándar, Premium, Safari, Marina, Romántica, Jacuzzi VIP, Jacuzzi Estelar.
 
-#### `tipos_documento` (5 filas)
+#### `tipos_documento` (4 filas)
 `id_documento`, `nombre` UNIQUE, `abreviatura` UNIQUE, `longitud`, `activo`.
-**Semilla:** DNI (8), RUC (11), Carné de Extranjería (12), Pasaporte (NULL), Licencia de Conducir (8).
+**Semilla:** DNI (8), RUC (11), Carné de Extranjería (12), Pasaporte (NULL).
 
 #### `metodos_pago` (10 filas)
 `id_metodo`, `nombre` UNIQUE, `descripcion`, **`es_de_caja`** (⚡ REGLA R39), `icono`, `color`, `orden`, `activo`.
@@ -329,18 +316,20 @@ PATCH  /api/turnos/{id}/reactivar
 **⚠️ Regla R39:** `es_de_caja = true` → entra a caja física. `es_de_caja = false` → va a la cuenta personal de la dueña, NO entra a caja.
 
 **Semilla:**
-| id | nombre | es_de_caja |
-|----|--------|-----------|
-| 1 | Efectivo | true |
-| 2 | Tarjeta (POS) | true |
-| 3 | Yape Hospedaje | true |
-| 4 | Yape Dueña | false |
-| 5 | Plin Hospedaje | true |
-| 6 | Plin Dueña | false |
-| 7 | Depósito Hospedaje | true |
-| 8 | Depósito Dueña | false |
-| 9 | Transferencia Hospedaje | true |
-| 10 | Transferencia Dueña | false |
+| id | nombre | es_de_caja | icono | color |
+|----|--------|-----------|-------|-------|
+| 1 | Efectivo | true | banknote | #16a34a |
+| 2 | Tarjeta (POS) | true | credit-card | #2563eb |
+| 3 | Yape Hospedaje | true | smartphone | #7c3aed |
+| 4 | Yape Dueña | false | smartphone | #f59e0b |
+| 5 | Plin Hospedaje | true | smartphone | #06b6d4 |
+| 6 | Plin Dueña | false | smartphone | #f59e0b |
+| 7 | Depósito Hospedaje | true | building | #0891b2 |
+| 8 | Depósito Dueña | false | building | #f59e0b |
+| 9 | Transferencia Hospedaje | true | arrow-right-left | #7c3aed |
+| 10 | Transferencia Dueña | false | arrow-right-left | #f59e0b |
+
+**El campo `icono` es un nombre Lucide** (banknote, credit-card, smartphone, building, arrow-right-left).
 
 #### `categorias_movimiento` (23 filas)
 `id_categoria`, `nombre`, `tipo` ENUM('Ingreso','Egreso'), `descripcion`, `orden`, `activo`.
@@ -385,6 +374,7 @@ DELETE /api/{recurso}/{id}
 - Todos los catálogos son CRUD (nada hardcodeado)
 - Soft delete vía `activo = false`
 - `metodos_pago.es_de_caja` define R39
+- El frontend usa `IconoDinamico` para renderizar el `icono` de cada método
 
 ---
 
@@ -453,11 +443,12 @@ DELETE /api/tarifas/{id}
 
 **Tipos Observación (8):** CRUD + `/desactivar`, `/reactivar`
 **Gravedades (8):** CRUD + `/desactivar`, `/reactivar`
-**Clientes (10):**
+
+**Clientes (11):**
 ```
 GET    /api/clientes
 GET    /api/clientes/activos
-GET    /api/clientes/buscar?dni=X     ← devuelve { existe, cliente }
+GET    /api/clientes/buscar?dni=X     ← devuelve { existe, cliente, reserva_activa }
 GET    /api/clientes/{id}
 POST   /api/clientes
 PUT    /api/clientes/{id}
@@ -465,10 +456,17 @@ PATCH  /api/clientes/{id}/desactivar
 PATCH  /api/clientes/{id}/reactivar
 DELETE /api/clientes/{id}
 GET    /api/clientes/{id}/visitas
+GET    /api/clientes/{id}/observaciones
+POST   /api/clientes/{id}/observaciones
 ```
 
-**Visitas (5):** CRUD + filtros por cliente
-**Observaciones (6):** CRUD + `/resolver`
+**Observaciones (4):**
+```
+GET    /api/cliente-observaciones
+GET    /api/cliente-observaciones/{id}
+PATCH  /api/cliente-observaciones/{id}/resolver
+DELETE /api/cliente-observaciones/{id}
+```
 
 ### Reglas de negocio Módulo 04
 
@@ -478,6 +476,7 @@ GET    /api/clientes/{id}/visitas
 - **R-CLI-4:** Al recalcular visitas → actualizar automáticamente el `nivel`
 - **R-CLI-5:** Cliente con observación pendiente → mostrar alerta al buscar por DNI
 - **R-CLI-6:** Los tipos de observación y gravedades son dinámicos (CRUD)
+- **R-CLI-7:** Cliente con reserva activa → mostrar banner rojo "1 cliente = 1 reserva activa"
 
 ### Lógica de visitas — `ClienteVisitaService::registrar()`
 
@@ -490,6 +489,26 @@ GET    /api/clientes/{id}/visitas
 ```
 
 **Este servicio es llamado desde `ReservaService::crearWalkIn()`.**
+
+### Búsqueda con reserva activa
+
+`GET /api/clientes/buscar?dni=X` devuelve:
+```json
+{
+  "existe": true,
+  "cliente": { ... },
+  "reserva_activa": {
+    "id_reserva": 13,
+    "codigo_reserva": "WK-...",
+    "habitacion": { "numero": "105", ... },
+    "fecha_entrada": "..."
+  } | null
+}
+```
+
+**El `ClienteService::buscarPorDni()` adjunta `reserva_activa` como atributo dinámico** (NO usa `$appends` para evitar el error 500 en `listar()`).
+
+**El `ClienteController::buscar()` extrae ese atributo y lo devuelve como campo separado** para que el frontend pueda accederlo sin problemas.
 
 ---
 
@@ -510,6 +529,7 @@ GET    /api/clientes/{id}/visitas
 
 **Categorías (8):** CRUD + desactivar/reactivar
 **Proveedores (8):** CRUD + desactivar/reactivar
+
 **Productos (10):**
 ```
 GET    /api/productos
@@ -549,6 +569,7 @@ DELETE /api/productos/{id}
 ### Endpoints Módulo 06
 
 **Categorías (8):** CRUD + desactivar/reactivar
+
 **Promociones (10):**
 ```
 GET    /api/promociones
@@ -582,7 +603,7 @@ DELETE /api/promociones/{id}
 **Semilla:** Romántico, Fantasía, Aniversario, Premium.
 
 #### `paquetes_decoracion` (6 filas)
-`id_paquete`, `nombre`, `slug` UNIQUE, `descripcion`, `precio_total`, `ganancia_local`, `ganancia_proveedor`, `id_proveedor` FK NULL, `id_categoria_paquete` FK NULL, `id_tipo_habitacion` FK NULL, `imagen`, `categoria_servicio` ENUM, `horas_incluidas`, `incluye_jacuzzi`, `incluye_vino`, `incluye_decoracion`, `incluye_sexshop`, `incluye_netflix`, `activo`. Solo `created_at` (sin `updated_at`).
+`id_paquete`, `nombre`, `slug` UNIQUE, `descripcion`, `precio_total`, `ganancia_local`, `ganancia_proveedor`, `id_proveedor` FK NULL, `id_categoria_paquete` FK NULL, `id_tipo_habitacion` FK NULL, `imagen`, `categoria_servicio` ENUM, `horas_incluidas`, `incluye_jacuzzi`, `incluye_vino`, `incluye_decoracion`, `incluye_sexshop`, `incluye_netflix`, `activo`. Solo `created_at`.
 
 **Fórmula (R11):** `precio_total = ganancia_local + ganancia_proveedor`
 
@@ -596,11 +617,10 @@ DELETE /api/promociones/{id}
 | 5 | Fantasía N°5 - Safari | Safari | 159 | 25 | 134 |
 | 6 | Aniversario N°6 - Estelar | Jacuzzi Estelar | 299 | 45 | 254 |
 
-**⚠️ NOTA:** La tabla `decoraciones` (aplicadas a reservas) se creará en el Módulo 10 cuando se haga el flujo de "reserva con decoración". Hoy solo existe el catálogo.
-
 ### Endpoints Módulo 07
 
 **Categorías (8):** CRUD
+
 **Paquetes (9):**
 ```
 GET    /api/paquetes-decoracion
@@ -624,8 +644,7 @@ DELETE /api/paquetes-decoracion/{id}
 ## 🏨 Módulo 08 — HABITACIONES (✅ CERRADO)
 
 ### Tabla `habitaciones` (32 filas)
-`id_habitacion`, `id_piso` FK → pisos, `id_tipo` FK → tipos_habitacion, `numero` UNIQUE VARCHAR(10), `orden` INT, `activo` BOOLEAN.
-Índices: `id_piso`, `id_tipo`, `activo`.
+`id_habitacion`, `id_piso` FK, `id_tipo` FK, `numero` UNIQUE VARCHAR(10), `orden` INT, `activo` BOOLEAN.
 
 **⚠️ NO guarda `estado`** → se calcula en vivo (R4/R8).
 
@@ -654,23 +673,23 @@ DELETE /api/habitaciones/{id}
 
 ---
 
-## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)
+## 🎯 Módulo 09A — RECEPCIÓN / WALK-IN (✅ CERRADO)
 
 ### Visión general
 
 Este módulo maneja **2 flujos**:
 1. **WALK-IN** (cliente físico ahora) → `/api/reservas/walk-in`
-2. **RESERVA futura** (cliente llama para agendar) → `/api/reservas`
+2. **RESERVA futura** (cliente llama) → `/api/reservas`
 
 Ambos usan la **misma tabla `reservas`** con `tipo_reserva`.
 
-**Estado actual:** Walk-in 100% funcional. Reserva futura a medias (backend listo, frontend pendiente).
+**Estado actual:** Walk-in 100% funcional. Reserva futura backend listo, frontend pendiente.
 
 ### Tablas
 
 #### `estados_reserva` (7 filas)
 `id_estado`, `nombre` UNIQUE, `slug` UNIQUE, `color`, `descripcion`, `orden`, `activo`.
-**Semilla:** Pendiente, Confirmada, Activa, Finalizada, Cancelada, No-Show, **Anulada**.
+**Semilla:** Pendiente, Confirmada, Activa, Finalizada, Cancelada, No-Show, Anulada.
 
 #### `reservas`
 ```
@@ -691,14 +710,14 @@ horas_extra INT
 horas_totales INT
 monto_habitacion DECIMAL
 monto_horas_extra DECIMAL
-monto_consumos DECIMAL          ← NUEVO
-monto_ajustes DECIMAL           ← NUEVO
+monto_consumos DECIMAL
+monto_ajustes DECIMAL
 descuento DECIMAL
 descuento_porcentaje DECIMAL
 total DECIMAL                    ← monto_habitacion + consumos + horas_extra + ajustes - descuento
-pagado DECIMAL                   ← suma de todos los pagos (reemplaza adelanto)
+pagado DECIMAL                   ← SUM(pagos_reserva.monto WHERE anulado=false) — INCLUYE NEGATIVOS
 saldo DECIMAL                    ← max(0, total - pagado)
-vuelto_entregado DECIMAL         ← vuelto YA entregado (0 = guardado como saldo a favor)
+vuelto_entregado DECIMAL         ← DEPRECADO (se calcula desde pagos_reserva)
 telefono VARCHAR(20) NULL
 notas TEXT NULL
 observaciones TEXT NULL
@@ -708,7 +727,7 @@ motivo_anulacion VARCHAR(255) NULL
 timestamps
 ```
 
-**REGLA DE ORO:** Al crear walk-in, `pagado` DEBE ser >= `total` (para cubrir la habitación). Salvo cambio de habitación a más barata.
+**⚠️ IMPORTANTE:** `pagado` ahora se calcula como `SUM(pagos_reserva.monto)` donde `monto` puede ser **negativo** (para vueltos entregados). El campo `vuelto_entregado` quedó **deprecado** (ya no se usa).
 
 #### `ocupacion_habitacion`
 `id_ocupacion`, `id_habitacion` FK, `id_reserva` FK, `fecha_inicio`, `fecha_fin`, `estado` ENUM('ACTIVA','LIBERADA','CANCELADA').
@@ -716,10 +735,12 @@ timestamps
 **Es el bloqueo real** (no `reservas`). Índice clave: `(id_habitacion, fecha_inicio, fecha_fin, estado)`.
 
 #### `registros_estadia`
-`id_registro`, `id_reserva` FK UNIQUE (1:1), `fecha_entrada`, `fecha_salida` NULL, `horas_reales` NULL, `id_usuario_checkin` FK, `id_usuario_checkout` FK NULL, `monto_final` NULL, `observaciones`.
+`id_registro`, `id_reserva` FK UNIQUE, `fecha_entrada`, `fecha_salida` NULL, `horas_reales` NULL, `id_usuario_checkin` FK, `id_usuario_checkout` FK NULL, `monto_final` NULL, `observaciones`.
 
 #### `pagos_reserva`
-`id_pago`, `id_reserva` FK, `id_metodo_pago` FK, `monto`, `es_adelanto` BOOLEAN, `fecha_pago`, `id_usuario` FK, `observaciones`, `anulado` BOOLEAN, `id_usuario_anulacion` NULL, `fecha_anulacion` NULL, `motivo_anulacion`.
+`id_pago`, `id_reserva` FK, `id_metodo_pago` FK, `monto` (puede ser NEGATIVO), `es_adelanto` BOOLEAN, `fecha_pago`, `id_usuario` FK, `observaciones`, `anulado` BOOLEAN, `id_usuario_anulacion` NULL, `fecha_anulacion` NULL, `motivo_anulacion`.
+
+**⚡ REGLA:** Los vueltos se registran como **pagos negativos** (`monto < 0`) con `observaciones = "Vuelto entregado al cliente"`.
 
 #### `reserva_consumos`
 `id_consumo`, `id_reserva` FK, `id_producto` FK, `cantidad`, `precio_unitario`, `subtotal`, `pagado` BOOLEAN, `id_metodo_pago` FK NULL, `id_usuario` FK, `fecha_consumo`, `observaciones`.
@@ -744,19 +765,22 @@ GET /api/habitaciones-mapa           ← devuelve las 32 con estado calculado
 GET /api/habitaciones-mapa/{id}
 ```
 
-**Reservas (11):**
+**Reservas (14):**
 ```
 GET    /api/reservas
 POST   /api/reservas                              ← reserva futura
 POST   /api/reservas/walk-in                      ← cliente actual
 GET    /api/reservas/{id}
-PATCH  /api/reservas/{id}/check-in                ← convierte reserva en activa
-PATCH  /api/reservas/{id}/check-out               ← finaliza estadía + crea limpieza
-PATCH  /api/reservas/{id}/cancelar                ← cancela (con motivo)
-PATCH  /api/reservas/{id}/anular                  ← anula (no SUNAT, no caja)
-PATCH  /api/reservas/{id}/cambiar-habitacion      ← cambio con lógica de dinero
-POST   /api/reservas/{id}/consumos                ← agregar consumo
-DELETE /api/reservas/{id}/consumos/{idConsumo}    ← eliminar consumo
+PATCH  /api/reservas/{id}/check-in
+PATCH  /api/reservas/{id}/check-out
+PATCH  /api/reservas/{id}/cancelar
+PATCH  /api/reservas/{id}/anular
+PATCH  /api/reservas/{id}/cambiar-habitacion
+POST   /api/reservas/{id}/consumos
+DELETE /api/reservas/{id}/consumos/{idConsumo}
+POST   /api/reservas/{id}/pagos                   ← pago adicional (parcial/mixto posterior)
+DELETE /api/reservas/{id}/pagos/{idPago}          ← anular pago
+POST   /api/reservas/{id}/entregar-vuelto         ← registra pago negativo
 ```
 
 **Limpieza (4):**
@@ -778,9 +802,13 @@ PATCH  /api/limpieza/{id}/finalizar
 - `checkOut(int $idReserva, int $idUsuario, ?float $montoFinal)` → finaliza + crea limpieza
 - `cancelar(int $idReserva, int $idUsuario, string $motivo)`
 - `anular(int $idReserva, int $idUsuario, string $motivo)` → anula pagos, no SUNAT
-- `cambiarHabitacion(int $idReserva, int $idNuevaHabitacion, int $idUsuario, string $modoDiferencia, ?int $idMetodoPago)` → crea `reserva_ajuste` + limpieza en la vieja
+- `cambiarHabitacion(...)` → crea `reserva_ajuste` + limpieza en la vieja
 - `agregarConsumo(...)` → descuenta stock + suma a cuenta o registra pago
 - `eliminarConsumo(int $idConsumo, int $idUsuario)` → devuelve stock + revierte montos
+- `agregarPago(int $idReserva, array $datos, int $idUsuario)` → registra pago positivo
+- `anularPago(int $idPago, int $idUsuario, string $motivo)` → marca `anulado = true`
+- `entregarVuelto(int $idReserva, float $monto, int $idMetodoPago, int $idUsuario)` → registra pago NEGATIVO
+- `clienteTieneReservaActiva(int $idCliente): ?Reserva` → valida R-CLI-7
 
 **Todas las operaciones multi-tabla usan `DB::transaction()`.**
 
@@ -790,7 +818,7 @@ Calcula el estado **EN VIVO** de cada habitación. Devuelve:
 ```php
 [
     'estado' => 'Disponible' | 'Ocupada' | 'Por vencer' | 'Vencida' | 'Reservada' | 'Limpieza' | 'Inactiva',
-    'color' => '#10b981',   // hex
+    'color' => '#10b981',
     'cliente' => 'nombre o null',
     'id_reserva' => 123,
     'fecha_entrada' => ISO8601,
@@ -830,7 +858,7 @@ Calcula el estado **EN VIVO** de cada habitación. Devuelve:
 - **R1** Habitación alquilada no se re-alquila hasta liberación
 - **R2** Reserva Pendiente/Confirmada bloquea en su rango
 - **R3** Sistema rechaza reservas que se crucen
-- **R4** Buffer de limpieza configurable (30 min)
+- **R4** Buffer de limpieza configurable (30 min default)
 - **R5** Salida anticipada no devuelve dinero pero libera antes
 - **R6** No-Show libera bloqueo y retiene adelanto
 - **R7** DNI genera Boleta, RUC genera Factura
@@ -844,11 +872,11 @@ Calcula el estado **EN VIVO** de cada habitación. Devuelve:
 
 #### Cambio de habitación
 - Al cambiar, se crea `reserva_ajuste` con `monto_anterior`, `monto_nuevo`, `diferencia`
-- La habitación **vieja** pasa a **LIMPIEZA** (el personal debe verificar)
+- La habitación **vieja** pasa a **LIMPIEZA**
 - El tiempo **NO se resetea** (mantiene `fecha_inicio` original)
 - Si la nueva no tiene tarifa con `horas_base`, se ajusta a la **más chica disponible**
 - Si la diferencia es positiva y el modo es `AHORA` → cobra + `pago_reserva`
-- Si la diferencia es negativa y el modo es `AHORA` → devuelve (ajusta `pagado`)
+- Si la diferencia es negativa y el modo es `AHORA` → ajusta `pagado`
 
 #### Consumos
 - Al agregar: descuenta `productos.stock_actual`
@@ -856,27 +884,37 @@ Calcula el estado **EN VIVO** de cada habitación. Devuelve:
 - Si `pagado = false` → suma a `monto_consumos` + recalcula `total`
 - Al eliminar: devuelve stock + revierte montos
 
-#### Vuelto (Regla de oro)
-- **Al crear walk-in, `pagado` DEBE ser >= `total`** (para cubrir la habitación)
-- Si el cliente paga más → `pagado > total` → vuelto calculado = `pagado - total`
-- El vuelto **NO se entrega al inicio** (queda como **saldo a favor**)
-- Se descuenta con consumos y horas extra automáticamente
-- Al hacer **check-out**, se entrega el **vuelto real**: `pagado - total`
+#### Vuelto (R-DINERO-1 a R-DINERO-5)
+
+- **R-DINERO-1:** El vuelto se registra como **pago NEGATIVO** en `pagos_reserva`
+- **R-DINERO-2:** El campo `pagado` = `SUM(pagos_reserva.monto WHERE anulado = false)` (puede bajar)
+- **R-DINERO-3:** Se puede entregar vuelto **parcial** (múltiples veces)
+- **R-DINERO-4:** Al entregar vuelto, se pide método de devolución (efectivo, yape, etc.)
+- **R-DINERO-5:** El campo `vuelto_entregado` quedó deprecado (ya no se usa)
 
 **Ejemplo:**
 ```
-Cliente alquila Premium 8h (S/ 55)
-Paga S/ 100
-→ total = S/ 55, pagado = S/ 100, vuelto calculado = S/ 45 (guardado)
+Cliente paga S/ 100 por hab. S/ 55
+→ pagos_reserva: [+100 Efectivo]
+→ pagado = 100
 
-Cliente consume 2 cervezas (S/ 16 a cuenta)
-→ total = S/ 71, monto_consumos = S/ 16
+Se entrega vuelto de S/ 45:
+→ pagos_reserva: [+100 Efectivo, -45 Efectivo]
+→ pagado = 55 ✅
+```
 
-Cliente se pasa 1h (S/ 5)
-→ total = S/ 76, monto_horas_extra = S/ 5
+#### Pagos mixtos (R-PAGO-1 a R-PAGO-4)
 
-Al check-out:
-→ Vuelto final = S/ 100 - S/ 76 = S/ 24 (se entrega)
+- **R-PAGO-1:** El recepcionista puede registrar N pagos con distintos métodos para una misma reserva
+- **R-PAGO-2:** El frontend envía el array `pagos[]` con `[{id_metodo_pago, monto}, ...]`
+- **R-PAGO-3:** El Controller valida `pagos.*.id_metodo_pago` y `pagos.*.monto`
+- **R-PAGO-4:** El Service itera y crea N `PagoReserva` + recalcula `pagado`
+
+**Ejemplo:**
+```
+Cliente paga S/ 45 = S/ 5 Pin Dueña + S/ 10 Yape Dueña + S/ 30 Depósito
+→ pagos_reserva: [+5, +10, +30]
+→ pagado = 45
 ```
 
 #### Limpieza
@@ -885,15 +923,182 @@ Al check-out:
 - Al finalizar limpieza → habitación vuelve a Disponible
 - **Importante:** El cálculo del estado prioriza Limpieza sobre Disponible
 
+#### 1 cliente = 1 reserva activa (R-CLI-7)
+- Al crear walk-in → validar `clienteTieneReservaActiva()`
+- Si el cliente ya tiene reserva activa → error 422
+- Mensaje: *"Este cliente ya tiene una reserva activa en la habitación {X}. Si necesita otra habitación, regístrela a nombre de otra persona (familiar)."*
+
 ---
 
-## 🎯 Reglas de negocio globales (R1-R53)
+## 🕐 Módulo 09C — EXTENSIONES DE TIEMPO (✅ CERRADO)
+
+### Visión general
+
+Sistema que detecta automáticamente cuando un cliente **excede el tiempo contratado** y ofrece opciones para cobrar las horas extra con **múltiples formas de pago**, **historial de extensiones**, y **tolerancia configurable**.
+
+### Tablas
+
+#### `configuraciones` (5 filas)
+Tabla de configuraciones globales del sistema (NO hardcodeadas).
+
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_configuracion | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| clave | VARCHAR(100) | UNIQUE, NOT NULL |
+| valor | VARCHAR(255) | NOT NULL |
+| tipo | VARCHAR(20) | INT/DECIMAL/STRING/BOOLEAN |
+| descripcion | VARCHAR(255) | NULL |
+| grupo | VARCHAR(50) | default 'general' |
+| timestamps | | |
+
+**Semilla:**
+| clave | valor | tipo | grupo |
+|-------|-------|------|-------|
+| tolerancia_extension_minutos | 30 | INT | reservas |
+| buffer_limpieza_minutos | 30 | INT | reservas |
+| tolerancia_no_show_minutos | 60 | INT | reservas |
+| igv_porcentaje | 18 | DECIMAL | comprobantes |
+| moneda_simbolo | S/ | STRING | general |
+
+**Método helper:** `Configuracion::obtener($clave, $default)` → lee el valor casteado.
+
+#### `extensiones_reserva`
+Registra cada extensión de tiempo aplicada a una reserva.
+
+`id_extension`, `id_reserva` FK, `horas_extra`, `monto`, `es_turno_adicional` BOOLEAN, `minutos_exceso`, `precio_hora_extra_aplicado`, `tolerancia_minutos`, `pagado_inmediato` BOOLEAN, `cargado_a_cuenta` BOOLEAN, `id_metodo_pago` FK NULL, `id_usuario` FK, `fecha_extension`, `observaciones`.
+
+### Lógica de cálculo (ExtensionService)
+
+```
+minutos_transcurridos = ahora - fecha_entrada
+minutos_base = horas_base × 60
+minutos_exceso_total = minutos_transcurridos - minutos_base
+
+horas_extra_ya_aplicadas = SUM(extensiones.horas_extra)
+minutos_ya_cubiertos = horas_extra_ya_aplicadas × 60
+
+minutos_exceso_pendiente = minutos_exceso_total - minutos_ya_cubiertos
+
+dentro_tolerancia = minutos_exceso_pendiente <= tolerancia_minutos
+
+si !dentro_tolerancia:
+    minutos_a_cobrar = minutos_exceso_pendiente - tolerancia_minutos
+    horas_extra_sugeridas_nuevas = ceil(minutos_a_cobrar / 60)
+
+monto = horas_extra_sugeridas_nuevas × precio_hora_extra
+```
+
+### Reglas RG-Extensión
+
+- **RG-E1:** Tolerancia de 30 min configurable antes de cobrar
+- **RG-E2:** Horas extra = `ceil((exceso - tolerancia) / 60)`
+- **RG-E3:** El recepcionista puede cobrar más/menos/no cobrar (con observación)
+- **RG-E4:** Formas de pago: cargar a cuenta o pagar ahora
+- **RG-E5:** Si es "de dueña" → NO entra a caja (R39)
+- **RG-E6:** Cada extensión se registra en `extensiones_reserva`
+- **RG-E7:** Los precios vienen de `tarifas`
+- **RG-E8:** La tolerancia viene de `configuraciones`
+- **RG-E9:** Múltiples extensiones por reserva permitidas
+- **RG-E10:** El cálculo resta las extensiones ya aplicadas (evita doble cobro)
+- **RG-E11:** Si excede máximo → ofrece turno adicional completo
+
+### Endpoints Módulo 09C
+
+**Configuraciones (3):**
+```
+GET    /api/configuraciones
+GET    /api/configuraciones/grupo/{grupo}
+PUT    /api/configuraciones/{clave}
+```
+
+**Extensiones (3):**
+```
+GET    /api/reservas/{id}/calculo-extension          → previsualizar
+GET    /api/reservas/{id}/extensiones                → historial
+POST   /api/reservas/{id}/extensiones                → aplicar
+```
+
+### Servicios Módulo 09C
+
+- `ExtensionService::calcular(Reserva $reserva): array`
+- `ReservaService::agregarExtension(...)`
+- `ReservaService::listarExtensiones(int $idReserva)`
+
+---
+
+## 👁️ MÓDULO OBSERVACIONES DE CLIENTE (✅ CERRADO)
+
+### Visión general
+
+Sistema de alertas sobre clientes problemáticos. Cuando el recepcionista busca un DNI en recepción, si el cliente tiene observaciones pendientes → muestra una alerta roja **inmediata** (antes de llenar el resto del formulario).
+
+### Reglas de negocio
+
+- **OBS-1:** Cliente con 1+ observación pendiente → banner rojo
+- **OBS-2:** Cliente con 2+ observaciones → "CLIENTE NO GRATO" (rojo más fuerte)
+- **OBS-3:** Tipo = "Bloqueo permanente" o gravedad = "Crítica" → "CLIENTE VETADO" (rojo oscuro)
+- **OBS-4:** Se pueden resolver las observaciones (PATCH `/resolver`)
+- **OBS-5:** El backend expone `observaciones_pendientes` en `buscarPorDni`
+
+### Campos de alerta visual
+
+El frontend muestra:
+- 🟡 1 obs Baja/Media → banner amarillo
+- 🟠 1 obs Alta → banner naranja
+- 🔴 2+ obs → "CLIENTE NO GRATO"
+- ⛔ Bloqueo permanente/Crítica → "CLIENTE VETADO"
+
+---
+
+## 🧹 MÓDULO 14 — LIMPIEZA (backend listo, frontend pendiente)
+
+### Tabla `limpieza`
+
+Cola de tareas de limpieza por habitación.
+
+| Campo | Tipo | Restricciones |
+|-------|------|---------------|
+| id_limpieza | BIGINT UNSIGNED PK | AUTO_INCREMENT |
+| id_habitacion | BIGINT FK | → habitaciones, cascade |
+| id_reserva | BIGINT FK NULL | → reservas, set null |
+| id_usuario_asignado | BIGINT FK NULL | → usuarios, set null |
+| estado | ENUM('PENDIENTE','EN_PROCESO','COMPLETADA') | default PENDIENTE |
+| tipo | ENUM('NORMAL','PROFUNDA') | default NORMAL |
+| fecha_solicitud | DATETIME | cuándo se pidió |
+| fecha_inicio | DATETIME NULL | cuándo empezó |
+| fecha_fin | DATETIME NULL | cuándo terminó |
+| observaciones | TEXT | NULL |
+| timestamps | | |
+
+### Cuándo se crea (automático)
+
+1. **Al check-out** → PENDIENTE
+2. **Al cambiar de habitación** → PENDIENTE para la vieja
+3. **Al finalizar mantenimiento** → (futuro)
+
+### Endpoints
+
+```
+GET    /api/limpieza
+GET    /api/limpieza/pendientes
+PATCH  /api/limpieza/{id}/iniciar             → PENDIENTE → EN_PROCESO
+PATCH  /api/limpieza/{id}/finalizar           → EN_PROCESO → COMPLETADA
+```
+
+### Integración con EstadoHabitacionService
+
+- Si hay limpieza PENDIENTE o EN_PROCESO → estado = **Limpieza** (#06b6d4)
+- Al finalizar → habitación vuelve a Disponible
+
+---
+
+## 🎯 Reglas de negocio globales (R1-R71 + RG-* + R-DINERO-* + R-PAGO-* + OBS-*)
 
 ### Reservas (Módulo 09)
 - **R1** Habitación alquilada no se re-alquila hasta liberación
 - **R2** Reserva Pendiente/Confirmada bloquea en su rango
 - **R3** Sistema rechaza reservas que se crucen
-- **R4** Buffer de limpieza configurable (30 min default)
+- **R4** Buffer de limpieza configurable (30 min)
 - **R5** Salida anticipada no devuelve dinero pero libera antes
 - **R6** No-Show libera bloqueo y retiene adelanto
 - **R7** DNI genera Boleta, RUC genera Factura
@@ -905,14 +1110,25 @@ Al check-out:
 - **R11** En Limpieza no se puede alquilar
 - **R12** En Mantenimiento no se puede alquilar
 
-### Extensiones (futuro Módulo 09B)
+### Extensiones
 - **R13** Máximo de horas extra según tipo (3 por defecto)
 - **R14** Al exceder máximo → turno adicional
 - **R15** Turno adicional cuesta el bloque completo
 - **R16** Cada extensión se registra en `extensiones_reserva`
+- **R54** Tolerancia configurable (default 30 min)
+- **R55** Horas extra = `ceil((exceso - tolerancia) / 60)`
+- **R56** Precio hora extra viene de `tarifas`
+- **R57** Máximo horas extra viene de `tarifas`
+- **R58** Excede máximo → ofrecer turno adicional
+- **R59** Cada extensión se registra (auditoría)
+- **R60** Múltiples extensiones permitidas
+- **R61** Cálculo resta extensiones ya aplicadas
+- **R62** Formas de pago: cargar a cuenta o pagar ahora
+- **R63** Se puede "no cobrar" con observación
+- **R64** Precios y tolerancia NO se hardcodean
 
-### Caja (futuro Módulo 11)
-- **R17** Solo una caja abierta a la vez
+### Caja (Módulo 11)
+- **R17** Solo 1 caja abierta a la vez
 - **R18** Todo movimiento pertenece a caja abierta
 - **R19** Vuelto NO es egreso
 - **R20** Movimientos no se borran, se anulan
@@ -920,7 +1136,7 @@ Al check-out:
 - **R22** Arqueo por método de pago
 - **R23** Egresos requieren responsable
 
-### IGV y Comprobantes (futuro Módulo 16)
+### IGV y Comprobantes (Módulo 16)
 - **R24** Precios incluyen IGV
 - **R25** IGV = 18% (configurable)
 - **R26** Base = Total / 1.18
@@ -935,45 +1151,69 @@ Al check-out:
 - **R33** Los demás datos se enriquecen después
 - **R34** Nivel según visitas
 - **R35** Descuento por nivel se aplica automáticamente
+- **R-CLI-7:** 1 cliente = 1 reserva activa
 
 ### Promociones
 - **R36** Por defecto se aplica la mejor promo
 - **R37** Solo acumulables se suman
 - **R38** Uso se registra en `promociones_cliente`
 
-### ⚡ Regla Crítica R39
-**R39 — Yape/Plin/Depósito/Transferencia Dueña NO entran a caja**
-Los métodos de pago con `es_de_caja = false` van a la cuenta personal de la dueña. NO se registran en `movimientos_caja`.
+### ⚡ R39 — Métodos "de dueña" NO entran a caja
+Los métodos con `es_de_caja = false` NO se registran en `movimientos_caja`.
 
 ### Inventario
 - **R40** Cada movimiento → kardex
-- **R41** Consumo descuenta stock ✅ (implementado)
+- **R41** Consumo descuenta stock ✅
 - **R42** Stock bajo → alerta
 - **R43** Inventario físico → ajustes
 
 ### Alertas
-- **R44** Cronjob cada minuto
-- **R45** Alertas críticas por WebSocket
-- **R46** Alertas se resuelven al desaparecer condición
-- **R47** Clave única anti-duplicados
+- **R44-R47** Cronjob + WebSocket + anti-duplicados
 
 ### Auditoría
-- **R48** Todo cambio sensible se audita
-- **R49** IP + user-agent + fecha
-- **R50** Cambios campo a campo en `auditoria_cambios`
+- **R48-R50** Todo cambio sensible se audita con IP + user-agent
 
 ### Productos
-- **R51** Producto con `stock_actual <= stock_minimo` → "stock bajo"
-- **R52** Los productos NO se eliminan si tienen movimientos en kardex
-- **R53** Los proveedores NO se eliminan si tienen productos asociados
+- **R51-R53** Stock bajo, no eliminar productos/proveedores con dependencias
 
-### Reglas propias del Hospedaje (negocio real)
-- **RG1** Regla de oro: al alquilar, SIEMPRE debe pagar la habitación completa
-- **RG2** El vuelto inicial puede quedar como saldo a favor (no se entrega hasta el final)
-- **RG3** El vuelto se descuenta automáticamente con consumos y horas extra
-- **RG4** Al cambiar de habitación, la vieja va a LIMPIEZA (el personal verifica)
-- **RG5** Al cambiar de habitación, el tiempo NO se resetea
-- **RG6** Si la nueva no tiene la tarifa exacta, se ajusta a la más chica disponible
+### ⚡ R-DINERO-1 a R-DINERO-5 — Vuelto
+- **R-DINERO-1:** Vuelto = pago negativo en `pagos_reserva`
+- **R-DINERO-2:** `pagado = SUM(pagos.monto WHERE anulado = false)`
+- **R-DINERO-3:** Se puede entregar parcial
+- **R-DINERO-4:** Se pide método de devolución
+- **R-DINERO-5:** `vuelto_entregado` deprecado
+
+### ⚡ R-PAGO-1 a R-PAGO-4 — Pagos mixtos
+- **R-PAGO-1:** N pagos con distintos métodos para misma reserva
+- **R-PAGO-2:** Frontend envía array `pagos[]`
+- **R-PAGO-3:** Controller valida `pagos.*.id_metodo_pago` y `pagos.*.monto`
+- **R-PAGO-4:** Service itera + recalcula `pagado`
+
+### ⚡ OBS-1 a OBS-5 — Observaciones cliente
+- **OBS-1:** 1+ obs → banner rojo
+- **OBS-2:** 2+ obs → "CLIENTE NO GRATO"
+- **OBS-3:** Tipo bloqueo/crítica → "CLIENTE VETADO"
+- **OBS-4:** PATCH `/resolver`
+- **OBS-5:** Backend expone `observaciones_pendientes`
+
+### Configuraciones (R65-R67)
+- **R65:** Parámetros globales viven en tabla `configuraciones`
+- **R66:** Cambiar una config aplica al instante
+- **R67:** Parámetros iniciales: tolerancia, buffer, no-show, IGV, moneda
+
+### Limpieza (R68-R71)
+- **R68:** Al check-out → INSERT en `limpieza`
+- **R69:** Al cambiar habitación → limpieza para la vieja
+- **R70:** Vuelve a Disponible solo cuando se completa
+- **R71:** Limpieza tiene prioridad sobre Disponible
+
+### Reglas propias del Hospedaje (RG-*)
+- **RG1** Al alquilar, SIEMPRE debe pagar la habitación completa
+- **RG2** El vuelto puede quedar como saldo a favor
+- **RG3** El vuelto se descuenta automáticamente con consumos/horas extra
+- **RG4** Al cambiar hab, la vieja va a LIMPIEZA
+- **RG5** Al cambiar hab, el tiempo NO se resetea
+- **RG6** Si no hay tarifa exacta, se ajusta a la más chica
 
 ---
 
@@ -1007,7 +1247,7 @@ Los métodos de pago con `es_de_caja = false` van a la cuenta personal de la due
 | Tipos | PHP 8.2 estricto |
 | Transacciones | `DB::transaction()` para operaciones multi-tabla |
 | Soft delete | Vía `activo = false` |
-| Timestamps | Siempre (excepto paquetes_decoracion que solo created_at) |
+| Timestamps | Siempre (excepto paquetes_decoracion) |
 
 ### Convenciones
 
@@ -1025,7 +1265,11 @@ Los métodos de pago con `es_de_caja = false` van a la cuenta personal de la due
 - **POST/PUT/PATCH** → devuelve `{ mensaje, data }`
 - **DELETE** → devuelve `{ mensaje }`
 
+**⚠️ Excepción:** `GET /api/clientes/buscar?dni=X` devuelve `{ existe, cliente, reserva_activa }` (formato especial).
+
 **Por qué:** El frontend lee `data` en GET y `data.data` en POST/PUT/PATCH.
+
+**⚠️ Importante sobre `$appends`:** NO usar `$appends` con atributos que se setean dinámicamente (como `reserva_activa`). Rompe la serialización de colecciones. En su lugar, extraer el atributo en el Controller y devolverlo como campo separado.
 
 ---
 
@@ -1040,10 +1284,37 @@ $token = $resp.token
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/habitaciones-mapa" -Headers @{ Authorization = "Bearer $token" }
 ```
 
-### Postman
-1. `POST http://localhost:8000/api/login` con `{ "nombre_usuario": "nancy", "password": "admin123" }`
-2. Copiar `token` de la respuesta
-3. Endpoints protegidos: `Authorization: Bearer {token}`
+### Tinker
+
+**IMPORTANTE:** Tinker **no acepta bloques multilínea**. Hay que pegar **una línea a la vez**.
+
+```powershell
+cd C:\Users\David\Desktop\hospedaje\backend
+php artisan tinker
+```
+
+Una línea a la vez:
+```php
+app(\App\Services\ClienteService::class)->listar()->count();
+```
+
+```php
+$r = \App\Models\Reserva::find(2);
+```
+
+```php
+$r->pagos
+```
+
+```php
+exit
+```
+
+**Para scripts largos:** crear un archivo `.php`, guardarlo, y ejecutarlo con:
+```powershell
+Get-Content "script.php" | php artisan tinker
+Remove-Item "script.php"
+```
 
 ---
 
@@ -1081,6 +1352,7 @@ php artisan db:seed --class=CategoriaPaqueteSeeder
 php artisan db:seed --class=PaqueteDecoracionSeeder
 php artisan db:seed --class=HabitacionSeeder
 php artisan db:seed --class=EstadoReservaSeeder
+php artisan db:seed --class=ConfiguracionSistemaSeeder
 
 php artisan serve
 ```
@@ -1124,148 +1396,77 @@ php artisan tinker
 | 01 | AUTH | ✅ | ✅ | CERRADO |
 | 02 | CONFIG-BASE (6 tablas) | ✅ | ✅ | CERRADO |
 | 03 | TARIFAS | ✅ | ✅ | CERRADO |
-| 04 | CLIENTES (5 tablas) | ✅ | ✅ | CERRADO |
-| 05 | PRODUCTOS (Fase 1) | ✅ | ✅ | CERRADO |
+| 04 | CLIENTES | ✅ | ✅ | CERRADO |
+| 05 | PRODUCTOS Fase 1 | ✅ | ✅ | CERRADO |
 | 06 | PROMOCIONES | ✅ | ✅ | CERRADO |
 | 07 | PAQUETES DE DECORACIÓN | ✅ | ✅ | CERRADO (catálogo) |
 | 08 | HABITACIONES | ✅ | ✅ | CERRADO |
 | 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
-| 09B | RESERVAS FUTURAS | ⏳ | ⏳ | Pendiente |
-| 09C | EXTENSIONES / HUÉSPEDES | ⏳ | ⏳ | Pendiente |
-| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente (necesita 09B) |
-| 11 | CAJA | ⏳ | ⏳ | Pendiente (necesita 09) |
+| **09B** | **RESERVAS FUTURAS** | ✅ | ⏳ | Backend listo |
+| **09C** | **EXTENSIONES DE TIEMPO** | ✅ | ✅ | CERRADO |
+| **OBS** | **OBSERVACIONES CLIENTE** | ✅ | ✅ | CERRADO |
+| **PAGOS** | **PAGOS MIXTOS + VUELTO** | ✅ | ✅ | CERRADO |
+| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
+| 11 | CAJA | ⏳ | ⏳ | Pendiente |
 | 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
 | 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
-| 14 | LIMPIEZA (pantalla) | ⏳ | ⏳ | Pendiente (backend listo) |
+| 14 | LIMPIEZA (pantalla) | ✅ | ⏳ | Backend listo |
 | 15 | MANTENIMIENTO | ⏳ | ⏳ | Pendiente |
 | 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
 | 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
 | 18 | REPORTES | ⏳ | ⏳ | Pendiente |
 | 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
 | 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
-| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente (producción) |
+| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
 
 ---
 
 ## 📝 Módulos futuros — detalle
 
-### Módulo 09B — RESERVAS FUTURAS
+### Módulo 09B — RESERVAS FUTURAS (frontend pendiente)
 
-**Backend:** YA ESTÁ HECHO (`ReservaService::crearReserva()`).
+**Backend listo:** `POST /api/reservas`, `PATCH /api/reservas/{id}/check-in`.
 
 **Frontend pendiente:**
-- `/reservas` (listado)
+- `/reservas` (listado con filtros)
 - `/reservas/nueva` (form con fecha futura)
-- `/reservas/{id}` (detalle con opción check-in)
-
-**Reglas:**
-- Reserva pendiente/confirmada bloquea el rango en `ocupacion_habitacion`
-- Al llegar el cliente → check-in convierte a `estado = Activa`
-- Si no llega en 60 min → No-Show
-
-### Módulo 09C — EXTENSIONES Y HUÉSPEDES
-
-**Tablas faltantes:**
-- `extensiones_reserva` (id_reserva, horas_extra, monto, id_usuario, fecha)
-- `huespedes_adicionales` (id_reserva, dni, nombre, edad)
-- `intentos_contacto` (id_reserva, tipo, resultado, id_usuario, fecha)
-
-**Reglas:**
-- R13-R16: máximo 3h extra → después turno adicional
-- Se registra cada extensión
+- `/reservas/:id` (detalle con opción check-in)
 
 ### Módulo 10 — DECORACIONES APLICADAS
 
-**Tabla `decoraciones`:**
-```
-id_decoracion (PK)
-id_reserva (FK)
-id_cliente (FK)
-id_habitacion (FK)
-id_paquete (FK → paquetes_decoracion)
-id_proveedor (FK → proveedores)
-fecha_inicio, fecha_fin
-monto, ganancia_local, ganancia_proveedor
-adelanto, saldo
-frase, musica
-estado ENUM('Programada','En proceso','Finalizada','Cancelada')
-observaciones
-created_at (sin updated_at)
-```
+**Tabla `decoraciones`:** `id_decoracion`, `id_reserva` FK, `id_cliente` FK, `id_habitacion` FK, `id_paquete` FK, `id_proveedor` FK, `fecha_inicio`, `fecha_fin`, `monto`, `ganancia_local`, `ganancia_proveedor`, `adelanto`, `saldo`, `frase`, `musica`, `estado` ENUM, `observaciones`, `created_at`.
 
-**R11:** Al crear reserva con decoración → crear CuentaPagar al proveedor por `ganancia_proveedor`.
+**R11:** Al crear reserva con decoración → crear CuentaPagar al proveedor.
 
 ### Módulo 11 — CAJA
 
-**Tablas:**
-- `cajas` (id, id_usuario_apertura, fecha_apertura, monto_inicial, monto_final, id_usuario_cierre, fecha_cierre, observaciones, estado)
-- `movimientos_caja` (id, id_caja, tipo ENUM('Ingreso','Egreso'), monto, id_categoria FK, descripcion, id_metodo_pago FK, id_usuario, fecha, anulado, ...)
-- `arqueo_denominaciones` (id, id_caja, tipo, denominacion, cantidad)
-- `retiros_caja`
-- `devoluciones`
+**Tablas:** `cajas`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `devoluciones`.
 
-**Reglas R17-R23:**
-- Solo 1 caja abierta a la vez
-- R39: métodos `es_de_caja = false` NO entran a movimientos_caja
-- Arqueo por método de pago
-- Vuelto NO es egreso
+**Reglas R17-R23, R39.**
 
 ### Módulo 12 — INVENTARIO / KARDEX
 
-**Tablas:**
-- `kardex` (id, id_producto, tipo ENUM('ENTRADA','SALIDA','AJUSTE'), cantidad, motivo, id_referencia, id_usuario, fecha)
-- `inventario_fisico`, `inventario_detalle`
-
-**Reglas R40-R43.**
+**Tablas:** `kardex`, `inventario_fisico`, `inventario_detalle`.
 
 ### Módulo 13 — CUENTAS POR PAGAR
 
-**Tablas:**
-- `cuentas_por_pagar` (id, id_proveedor, id_reserva, monto, monto_pagado, saldo, fecha_emision, fecha_vencimiento, estado, motivo_anulacion)
-- `pagos_proveedor`
-
-**R11:** Se crea al contratar decoración.
+**Tablas:** `cuentas_por_pagar`, `pagos_proveedor`.
 
 ### Módulo 14 — LIMPIEZA (pantalla)
 
-**Backend LISTO. Falta frontend:**
-- `/limpieza` → cola de tareas pendientes
-- Botones: Iniciar / Finalizar
-- Al finalizar → habitación vuelve a Disponible
+**Backend listo.** Falta frontend: `/limpieza`, botones Iniciar/Finalizar.
 
 ### Módulo 15 — MANTENIMIENTO
 
-**Tabla `mantenimiento`:**
-```
-id_mantenimiento
-id_habitacion (FK)
-id_usuario_reporta (FK)
-id_usuario_asignado (FK)
-tipo (eléctrico, plomería, muebles, etc.)
-descripcion
-prioridad
-estado (reportado, en_proceso, resuelto)
-fecha_reporte, fecha_resolucion
-observaciones
-```
-
-Al reportar → habitación a Mantenimiento (bloqueada).
+**Tabla `mantenimiento`:** reportes de problemas, bloquea habitación.
 
 ### Módulo 16 — COMPROBANTES SUNAT
 
-**Tablas:**
-- `tipos_comprobante` (Boleta, Factura, NC, ND)
-- `series_comprobante` (B001, F001, NC01, ND01)
-- `facturas`, `facturas_detalle`, `notas_credito`
-
-**Reglas R24-R31:** IGV 18%, series, correlativos.
+**Tablas:** `tipos_comprobante`, `series_comprobante`, `facturas`, `facturas_detalle`, `notas_credito`.
 
 ### Módulo 17 — ALERTAS
 
-**Tablas:**
-- `alertas`, `reglas_alerta`, `canales_alerta`
-
-**Reglas R44-R47:** Cronjob cada minuto, WebSocket para críticas.
+**Tablas:** `alertas`, `reglas_alerta`, `canales_alerta`.
 
 ### Módulo 18 — REPORTES
 
@@ -1273,20 +1474,15 @@ Sin tablas nuevas. Consultas sobre tablas existentes.
 
 ### Módulo 19 — AUDITORÍA
 
-**Tablas:**
-- `auditoria`, `auditoria_cambios`
+**Tablas:** `auditoria`, `auditoria_cambios`.
 
-**Reglas R48-R50.**
+### Módulo 20 — ASISTENCIA PERSONAL
 
-### Módulo 20 — ASISTENCIA DE PERSONAL
+**Tablas:** `asistencia`, `horas_extra`.
 
-**Tablas:**
-- `asistencia` (marcas entrada/salida)
-- `horas_extra`
+### Módulo 21 — RENIEC
 
-### Módulo 21 — INTEGRACIÓN RENIEC
-
-Sin tablas. Solo `ReniecService::consultar($dni)`. Solo producción.
+Sin tablas. Solo `ReniecService::consultar($dni)` en producción.
 
 ---
 
@@ -1294,35 +1490,51 @@ Sin tablas. Solo `ReniecService::consultar($dni)`. Solo producción.
 
 | # | Decisión | Razón |
 |---|----------|-------|
-| D1 | Yape/Plin/Depósito Dueña NO entran a caja | El dinero va a la cuenta personal de la dueña |
-| D2 | Cobro de reserva en 2 pasos | Al crear reserva se abre modal de cobro |
+| D1 | Yape/Plin/Depósito Dueña NO entran a caja | Dinero va a cuenta personal de la dueña |
+| D2 | Cobro de reserva en 2 pasos | Modal de cobro al crear reserva |
 | D3 | Catálogos dinámicos | Métodos de pago y categorías vienen de BD |
 | D4 | Precios con IGV incluido | Regla de negocio peruana |
 | D5 | Buffer de limpieza = 30 min | Configurable |
 | D6 | Tolerancia No-Show = 60 min | Configurable |
 | D7 | Al anular pago se revierte caja | PagoService lo maneja |
-| D8 | Estado de habitación en vivo | `EstadoHabitacionService` calcula |
+| D8 | Estado de habitación en vivo | `EstadoHabitacionService` |
 | D9 | RENIEC solo en producción | Ahorro de costos |
-| D10 | Visitas se incrementan en walk-in/check-in | `ClienteVisitaService` lo maneja |
-| D11 | Vuelto se entrega al final, no al inicio | El cliente puede consumir/usar horas extra |
+| D10 | Visitas se incrementan en walk-in/check-in | `ClienteVisitaService` |
+| D11 | Vuelto se entrega al final, no al inicio | Cliente puede consumir/usar horas extra |
 | D12 | Cambio de habitación mantiene `fecha_inicio` | No se resetea el tiempo |
 | D13 | Al cambiar hab, la vieja va a LIMPIEZA | El personal debe verificar |
 | D14 | Si no hay tarifa exacta → usar la más chica | Adaptación automática |
-| D15 | `reserva_ajustes` registra todos los cambios | Auditoría de cambios de precio |
+| D15 | `reserva_ajustes` registra todos los cambios | Auditoría |
 | D16 | `reserva_consumos` descuenta stock | R41 |
 | D17 | Múltiples pagos por reserva | Permite adelanto + saldo + consumos |
+| **D18** | **Vuelto como pago NEGATIVO** | Cero migraciones + trazabilidad completa |
+| **D19** | **`pagado` = SUM(pagos) con negativos** | Refleja realidad neta |
+| **D20** | **NO usar `$appends` para atributos dinámicos** | Rompe serialización de colecciones |
+| **D21** | **Permitir pago parcial** | Realidad del negocio (cliente sin sencillo) |
+| **D22** | **1 cliente = 1 reserva activa** | Evita duplicidad en reportes |
+| **D23** | **Pago mixto con array `pagos[]`** | Trazabilidad por método |
 
 ---
 
 ## 🚨 Bugs resueltos (histórico)
 
-1. **Bug Rol update/delete** → `Route::apiResource` generaba `{role}`, no `{rol}`. Fix: `->parameters(['roles' => 'rol'])`.
+1. **Bug Rol update/delete** → `apiResource` generaba `{role}`, no `{rol}`. Fix: `->parameters(['roles' => 'rol'])`.
 2. **Bug vuelto no se guardaba** → frontend mandaba `Math.min(adelanto, total)`. Fix: quitar el `min()`.
-3. **Bug visitas no incrementaban** → faltaba llamar `ClienteVisitaService::registrar()` en walk-in. Fix: agregado.
+3. **Bug visitas no incrementaban** → faltaba llamar `ClienteVisitaService::registrar()`. Fix: agregado.
 4. **Bug limpieza no se creaba al check-out** → no existía la tabla. Fix: creada + insert.
 5. **Bug cambio habitación reseteaba tiempo** → se creaba nueva ocupación con `now()`. Fix: usar `$ocupacion->fecha_inicio` original.
 6. **Bug 422 al cambiar habitación** → no había tarifa de las mismas horas. Fix: buscar la más chica disponible.
 7. **Bug "No hay tarifa"** → Jacuzzi VIP tiene 8h/12h, no 6h. Fix: adaptar automáticamente.
+8. **Bug extensiones 500 "Class not found"** → faltaba `use` de `ExtensionReserva` y `Configuracion`. Fix: agregados.
+9. **Bug historial de extensiones** → no restaba las ya aplicadas. Fix: `minutos_exceso_pendiente = total - ya_cubiertos`.
+10. **Bug wording "ya cobrado"** → ambiguo. Fix: "ya aplicado" con desglose pagado/cargado.
+11. **Bug cálculo de horas extra** → no respetaba la tolerancia. Fix: `ceil((exceso - tolerancia) / 60)`.
+12. **Bug 500 en `/clientes` por `$appends = ['reserva_activa']`** → Laravel buscaba `getReservaActivaAttribute()` que no existía. **Fix: remover `$appends`, usar `setAttribute()` + `getAttribute()` en Controller.**
+13. **Bug 500 en `/clientes/buscar` por `$appends`** → mismo caso. Fix: idem.
+14. **Bug pagos mixtos NO se guardaban** → `crearWalkIn()` solo creaba pago si `isset($datos['id_metodo_pago'])`, pero en modo mixto viene `pagos[]` (sin `id_metodo_pago`). **Fix: agregar validación de `$tienePagosMixtos` + `foreach ($pagosMixtos)` en Service + agregar `'pagos' => 'nullable|array'` y `'pagos.*.*'` en Controller.**
+15. **Bug "No hay vuelto pendiente"** → `entregarVuelto()` calculaba SUM(pagos) pero los pagos mixtos nunca se guardaron. Fix: idem al #14.
+16. **Bug `$total` indefinido en `agregarPago` y `anularPago`** → bloque duplicado usaba `$total` que no existía en ese scope. Fix: usar `$reserva->total`.
+17. **Bug `validation.unique` al reintentar walk-in** → si falla el walk-in después de crear el cliente, al reintentar falla el `unique` del DNI. Fix: frontend debe manejar el caso (pendiente).
 
 ---
 
@@ -1340,673 +1552,20 @@ Proyecto privado — Sistema de Hospedaje.
 
 ---
 
-**Última actualización:** 03/10/2026
-**Módulos completados:** 9 de 21
+**Última actualización:** 04/10/2026
+**Módulos completados:** 09A, 09C, OBS, PAGOS + 01-08 (11 de 21)
 ````
 
 ---
 
-## 📸 Pegame
+## 📸 Pegame:
 
-1. **Screenshot del README.md** con la estructura nueva
-2. **Salida del commit** (si es que hacés commit primero)
+1. **Screenshot del README.md** guardado
+2. **¿Guardaste bien?** (Ctrl+S)
 
-**Después te armo el README del frontend completo.** 🚀
+**Después seguimos con lo que elijas:**
+- 🅰️ Módulo 14 — LIMPIEZA (frontend, es rápido)
+- 🅱️ Módulo 09B — RESERVAS FUTURAS
+- 🅲 Otra cosa
 
-**¿Dale?**
-¡Perfecto! 🎯 Vamos a documentar **TODO** lo nuevo del Módulo 09C (extensiones) + limpieza pendiente + seeder de prueba en el README backend.
-
----
-
-## 📄 Bloque para AGREGAR al README del backend
-
-**Abrí `backend/README.md` en VS Code** y:
-
-1. **Buscá** la sección `## 🎯 Módulo 09 — RECEPCIÓN / RESERVAS (✅ CERRADO parcial)`
-2. **Buscá** donde termina la sección (antes de `## 🎯 Reglas de negocio globales`)
-3. **Pegá TODO el bloque de abajo JUSTO ANTES de `## 🎯 Reglas de negocio globales`**
-
----
-
-## 📝 BLOQUE PARA PEGAR
-
-```markdown
-## 🕐 Módulo 09C — EXTENSIONES DE TIEMPO (✅ CERRADO)
-
-### Visión general
-
-Sistema que detecta automáticamente cuando un cliente **excede el tiempo contratado** y ofrece opciones para cobrar las horas extra con **múltiples formas de pago**, **historial de extensiones**, y **tolerancia configurable**.
-
-### Tablas
-
-#### `configuraciones`
-Tabla de configuraciones globales del sistema (NO hardcodeadas).
-
-| Campo | Tipo | Restricciones |
-|-------|------|---------------|
-| id_configuracion | BIGINT UNSIGNED PK | AUTO_INCREMENT |
-| clave | VARCHAR(100) | UNIQUE, NOT NULL |
-| valor | VARCHAR(255) | NOT NULL |
-| tipo | VARCHAR(20) | INT/DECIMAL/STRING/BOOLEAN, default 'INT' |
-| descripcion | VARCHAR(255) | NULL |
-| grupo | VARCHAR(50) | default 'general' |
-| created_at, updated_at | TIMESTAMP | NULL |
-
-**Datos semilla (5 filas):**
-| clave | valor | tipo | grupo | descripción |
-|-------|-------|------|-------|-------------|
-| tolerancia_extension_minutos | 30 | INT | reservas | Minutos de tolerancia antes de cobrar hora extra |
-| buffer_limpieza_minutos | 30 | INT | reservas | Buffer entre reservas |
-| tolerancia_no_show_minutos | 60 | INT | reservas | Tiempo para marcar No-Show |
-| igv_porcentaje | 18 | DECIMAL | comprobantes | IGV aplicado a comprobantes |
-| moneda_simbolo | S/ | STRING | general | Símbolo de moneda |
-
-**⚠️ Regla importante:** la tolerancia y otros parámetros se leen desde aquí, NO se hardcodean. Si la dueña cambia el valor, el sistema lo aplica al instante.
-
-#### `extensiones_reserva`
-Registra cada extensión de tiempo aplicada a una reserva.
-
-| Campo | Tipo | Restricciones |
-|-------|------|---------------|
-| id_extension | BIGINT UNSIGNED PK | AUTO_INCREMENT |
-| id_reserva | BIGINT FK | → reservas, onDelete cascade |
-| horas_extra | INT | Cantidad de horas cobradas |
-| monto | DECIMAL(10,2) | monto = horas × precio |
-| es_turno_adicional | BOOLEAN | true si fue turno completo |
-| minutos_exceso | INT | minutos reales de exceso (auditoría) |
-| precio_hora_extra_aplicado | DECIMAL(10,2) | snapshot del precio al momento |
-| tolerancia_minutos | INT | snapshot de la tolerancia al momento |
-| pagado_inmediato | BOOLEAN | true si se pagó al momento |
-| cargado_a_cuenta | BOOLEAN | true si se cargó al vuelto/saldo |
-| id_metodo_pago | BIGINT FK NULL | → metodos_pago (solo si pagó) |
-| id_usuario | BIGINT FK | → usuarios |
-| fecha_extension | DATETIME | cuándo se aplicó |
-| observaciones | TEXT | NULL |
-| created_at, updated_at | TIMESTAMP | NULL |
-
-**Índices:** `id_reserva`, `fecha_extension`.
-
-### Lógica de cálculo (ExtensionService)
-
-**Fórmula completa:**
-
-```
-minutos_transcurridos = ahora - fecha_entrada
-minutos_base = horas_base × 60
-minutos_exceso_total = minutos_transcurridos - minutos_base
-
-// Extensiones ya aplicadas
-horas_extra_ya_aplicadas = SUM(extensiones.horas_extra)
-minutos_ya_cubiertos = horas_extra_ya_aplicadas × 60
-
-// Pendiente
-minutos_exceso_pendiente = minutos_exceso_total - minutos_ya_cubiertos
-
-// ¿Dentro de tolerancia?
-dentro_tolerancia = minutos_exceso_pendiente <= tolerancia_minutos
-
-// Horas sugeridas NUEVAS
-si !dentro_tolerancia:
-    minutos_a_cobrar = minutos_exceso_pendiente - tolerancia_minutos
-    horas_extra_sugeridas_nuevas = ceil(minutos_a_cobrar / 60)
-
-// Monto
-monto = horas_extra_sugeridas_nuevas × precio_hora_extra
-```
-
-**Ejemplo concreto:**
-```
-Base: 8h (480 min)
-Entrada: 8:00 AM
-Ahora: 10:15 AM → minutos_transcurridos = 135 min (2h 15m)
-minutos_exceso_total = 135 - 480 = -345 → no hay exceso todavía
-```
-
-**Otro ejemplo (con exceso):**
-```
-Base: 8h
-Entrada: 8:00 AM
-Ahora: 8:20 PM → minutos_transcurridos = 740 min (12h 20m)
-minutos_exceso_total = 740 - 480 = 260 min (4h 20m)
-
-Tolerancia: 30 min
-minutos_a_cobrar = 260 - 30 = 230 min
-horas_extra_sugeridas = ceil(230/60) = 4h
-```
-
-### Regla de tolerancia (RG-Extensión)
-
-**RG-E1:** El sistema da una **tolerancia de 30 minutos** (configurable en `configuraciones.tolerancia_extension_minutos`) antes de empezar a cobrar.
-
-**Ejemplo:**
-```
-Base: 8h
-Cliente lleva: 8h 20m → exceso 20m
-Tolerancia: 30 min → DENTRO → NO se cobra nada
-
-Base: 8h
-Cliente lleva: 8h 45m → exceso 45m
-Tolerancia: 30 min → FUERA
-minutos_a_cobrar = 45 - 30 = 15 min
-horas_extra = ceil(15/60) = 1 hora
-```
-
-**RG-E2:** El sistema calcula automáticamente las horas a cobrar con la fórmula:
-```
-horas_extra = ceil((minutos_exceso_pendiente - tolerancia) / 60)
-```
-
-**RG-E3:** El recepcionista puede:
-- Cobrar la extensión **sugerida** por el sistema
-- Cobrar **más horas** (voluntad del cliente)
-- Cobrar **menos** (con observación obligatoria)
-- **No cobrar** (con observación obligatoria)
-- Aplicar **turno adicional completo** (si excede máximo)
-
-**RG-E4:** Formas de pago:
-- **Cargar a la cuenta** → suma a `total`, descuenta del vuelto
-- **Pagar ahora** → registra `pago_reserva` + `movimiento_caja` (si `es_de_caja = true`, R39)
-
-**RG-E5:** Si el cliente paga con Yape Dueña → NO entra a caja (R39).
-
-**RG-E6:** Cada extensión se registra en `extensiones_reserva` para auditoría.
-
-**RG-E7:** Los valores (`precio_hora_extra`, `max_horas_extra`, `precio_turno_adicional`) vienen de `tarifas`. Si la dueña los cambia, el próximo cálculo usa los nuevos valores.
-
-**RG-E8:** La `tolerancia_minutos` viene de `configuraciones`. Si la dueña la cambia, se aplica al instante.
-
-**RG-E9:** **Múltiples extensiones por reserva están permitidas.** Cada vez que el recepcionista aplica una extensión, se registra una fila nueva. El sistema lleva el historial completo.
-
-**RG-E10:** **Detección de "extensiones ya aplicadas".** El cálculo del pendiente resta las horas ya cobradas:
-```
-minutos_exceso_pendiente = minutos_exceso_total - (horas_ya_aplicadas × 60)
-```
-
-**RG-E11:** Si excede el máximo (`max_horas_extra`, default 3h):
-- El sistema avisa: "Excede máximo"
-- Ofrece opciones especiales:
-  - Cobrar las horas reales (aunque exceda)
-  - Cobrar turno adicional completo (recomendado)
-
-### Endpoints Módulo 09C
-
-**Configuraciones (3):**
-```
-GET    /api/configuraciones                          → todas
-GET    /api/configuraciones/grupo/{grupo}            → por grupo (reservas, comprobantes, general)
-PUT    /api/configuraciones/{clave}                  → editar valor
-```
-
-**Extensiones (3):**
-```
-GET    /api/reservas/{id}/calculo-extension          → previsualizar
-GET    /api/reservas/{id}/extensiones                → historial de extensiones
-POST   /api/reservas/{id}/extensiones                → aplicar extensión
-```
-
-**Response de `GET /api/reservas/{id}/calculo-extension`:**
-```json
-{
-    "horas_base": 8,
-    "minutos_transcurridos": 620,
-    "minutos_base": 480,
-    "minutos_exceso_total": 140,
-    "horas_exceso_total": 2.33,
-    "horas_extra_ya_aplicadas": 0,
-    "monto_ya_aplicado": 0,
-    "monto_ya_pagado": 0,
-    "monto_cargado_a_cuenta": 0,
-    "turnos_adicionales_aplicados": 0,
-    "minutos_exceso_pendiente": 140,
-    "minutos_ya_cubiertos": 0,
-    "horas_extra_sugeridas_nuevas": 2,
-    "monto_sugerido_nuevo": 20.00,
-    "tolerancia_minutos": 30,
-    "dentro_tolerancia": false,
-    "excede_maximo": false,
-    "max_horas_extra": 3,
-    "precio_hora_extra": 10.00,
-    "precio_turno_adicional": 70.00,
-    "opciones": [
-        { "horas": 0, "monto": 0, "label": "No cobrar (con observación)", "sugerida": false },
-        { "horas": 1, "monto": 10, "label": "1 hora extra", "sugerida": false },
-        { "horas": 2, "monto": 20, "label": "2 horas extra", "sugerida": true },
-        { "horas": 3, "monto": 30, "label": "3 horas extra (máximo)", "sugerida": false }
-    ]
-}
-```
-
-**Con extensiones ya aplicadas:**
-```json
-{
-    "minutos_exceso_total": 260,
-    "horas_extra_ya_aplicadas": 2,
-    "monto_ya_aplicado": 30.00,
-    "monto_ya_pagado": 10.00,
-    "monto_cargado_a_cuenta": 20.00,
-    "minutos_exceso_pendiente": 140,
-    "horas_extra_sugeridas_nuevas": 2,
-    "monto_sugerido_nuevo": 20.00
-}
-```
-
-**POST /api/reservas/{id}/extensiones:**
-```json
-{
-    "horas_extra": 2,
-    "cargar_a_cuenta": true,
-    "id_metodo_pago": null,
-    "es_turno_adicional": false,
-    "observaciones": "Cliente pidió 2 horas más"
-}
-```
-
-### Servicios del Módulo 09C
-
-#### `ExtensionService`
-- `calcular(Reserva $reserva): array` → devuelve el cálculo completo con historial + pendiente + opciones.
-
-#### `ReservaService::agregarExtension(...)`
-- Crea `extensiones_reserva`
-- Suma `monto_horas_extra` a la reserva
-- Actualiza `horas_extra` y `horas_totales`
-- Extiende `fecha_salida_prevista`
-- Si `cargar_a_cuenta = false` → registra `pago_reserva` + `movimiento_caja` (si aplica R39)
-- Recalcula `total` y `saldo`
-
-#### `ReservaService::listarExtensiones(int $idReserva)`
-- Devuelve historial completo de extensiones de una reserva.
-
----
-
-## 🧹 Módulo 14 — LIMPIEZA (backend listo, frontend pendiente)
-
-### Tablas
-
-#### `limpieza`
-Cola de tareas de limpieza por habitación.
-
-| Campo | Tipo | Restricciones |
-|-------|------|---------------|
-| id_limpieza | BIGINT UNSIGNED PK | AUTO_INCREMENT |
-| id_habitacion | BIGINT FK | → habitaciones, onDelete cascade |
-| id_reserva | BIGINT FK NULL | → reservas, onDelete set null |
-| id_usuario_asignado | BIGINT FK NULL | → usuarios, onDelete set null |
-| estado | ENUM('PENDIENTE','EN_PROCESO','COMPLETADA') | default PENDIENTE |
-| tipo | ENUM('NORMAL','PROFUNDA') | default NORMAL |
-| fecha_solicitud | DATETIME | cuándo se pidió |
-| fecha_inicio | DATETIME NULL | cuándo empezó |
-| fecha_fin | DATETIME NULL | cuándo terminó |
-| observaciones | TEXT | NULL |
-| created_at, updated_at | TIMESTAMP | NULL |
-
-**Índices:** `id_habitacion`, `estado`.
-
-### Cuándo se crea la limpieza (automático)
-
-1. **Al hacer check-out** → INSERT en `limpieza` (PENDIENTE)
-2. **Al cambiar de habitación** → INSERT en `limpieza` para la habitación VIEJA
-3. **Al finalizar mantenimiento** → INSERT en `limpieza` (futuro)
-
-### Estados y transiciones
-
-```
-PENDIENTE  →  EN_PROCESO  →  COMPLETADA
-```
-
-- **PENDIENTE:** recién creada, esperando que el personal la tome
-- **EN_PROCESO:** el personal está limpiando
-- **COMPLETADA:** terminó → habitación vuelve a **Disponible**
-
-### Endpoints Módulo 14 (backend listo)
-
-```
-GET    /api/limpieza                          → todas las limpiezas
-GET    /api/limpieza/pendientes               → solo PENDIENTE + EN_PROCESO
-PATCH  /api/limpieza/{id}/iniciar             → PENDIENTE → EN_PROCESO
-PATCH  /api/limpieza/{id}/finalizar           → EN_PROCESO → COMPLETADA
-```
-
-**Response de `GET /api/limpieza/pendientes`:**
-```json
-[
-    {
-        "id_limpieza": 1,
-        "id_habitacion": 3,
-        "estado": "PENDIENTE",
-        "tipo": "NORMAL",
-        "fecha_solicitud": "2026-10-04T07:30:00.000000Z",
-        "habitacion": {
-            "id_habitacion": 3,
-            "numero": "101",
-            "piso": { "nombre": "Piso 1" }
-        }
-    }
-]
-```
-
-### Integración con `EstadoHabitacionService`
-
-El `EstadoHabitacionService` **ya considera la limpieza** en su cálculo:
-- Si hay una limpieza PENDIENTE o EN_PROCESO → estado = **Limpieza** (celeste #06b6d4)
-- Al finalizar la limpieza → habitación vuelve a **Disponible**
-
-### Frontend pendiente (Módulo 14)
-
-**Vistas a crear:**
-- `/limpieza` → cola de tareas pendientes
-- Componentes: `LimpiezaPage.tsx`, `LimpiezaTabla.tsx`
-- Botones: Iniciar / Finalizar
-- Filtro por piso
-
-**Reglas UX:**
-- El personal de limpieza lo ve desde su celular
-- Ordenado por antigüedad (más antigua primero)
-- Al finalizar → toast + recarga automática
-
----
-
-## 🌱 Seeder de Prueba — ReservaTestSeeder
-
-### Descripción
-
-Crea **10 reservas de prueba** con diferentes estados de tiempo para testear el sistema completo.
-
-**IMPORTANTE:** 
-- **NO toca** las habitaciones ocupadas (103, 308)
-- **NO toca** las habitaciones en limpieza (101, 102)
-- **NO toca** la 208 (inactiva)
-- Solo usa habitaciones disponibles
-
-### Cómo funciona
-
-```php
-php artisan db:seed --class=ReservaTestSeeder
-```
-
-**Lógica:**
-1. Detecta habitaciones ocupadas (query `ocupacion_habitacion` estado ACTIVA)
-2. Detecta habitaciones en limpieza (query `limpieza` estado PENDIENTE/EN_PROCESO)
-3. Detecta habitaciones inactivas (`activo = false`)
-4. Calcula disponibles = activas - ocupadas - limpieza - inactivas
-5. Crea 10 reservas en las primeras 10 disponibles
-
-### Los 10 escenarios
-
-| # | Hab | Horas Base | Tiempo | Estado Visual |
-|---|-----|-----------|--------|---------------|
-| 1 | x | 4h | 30m | 🔴 Ocupada (apenas entró) |
-| 2 | x | 6h | 1h 30m | 🔴 Ocupada (normal temprano) |
-| 3 | x | 8h | 4h | 🔴 Ocupada (normal medio) |
-| 4 | x | 8h | 7h 30m | 🔴 Ocupada (normal avanzada) |
-| 5 | x | 8h | 7h 50m | 🟡 **Por vencer** (faltan 10m) |
-| 6 | x | 6h | 6h 5m | 🔴 Excedido 5m (dentro de tolerancia) |
-| 7 | x | 4h | 4h 30m | 🔴 Excedido 30m (en el límite) |
-| 8 | x | 8h | 10h 20m | 🔴 **Vencida** (excedido 2h 20m) |
-| 9 | x | 4h | 5h | 🔴 **Vencida** (excedido 1h) |
-| 10 | x | 6h | 9h | 🔴 **Vencida** (excedido 3h → turno adicional) |
-
-### Aviso importante
-
-**Este seeder es SOLO para desarrollo/test.** NO se debe correr en producción.
-
-**Para limpiar todo después:**
-```php
-DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-DB::table('pagos_reserva')->truncate();
-DB::table('registros_estadia')->truncate();
-DB::table('ocupacion_habitacion')->truncate();
-DB::table('extensiones_reserva')->truncate();
-DB::table('reserva_consumos')->truncate();
-DB::table('reserva_ajustes')->truncate();
-DB::table('limpieza')->truncate();
-DB::table('cliente_visitas')->truncate();
-DB::table('reservas')->truncate();
-DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-```
-
----
-
-## 🆕 REGLAS DE NEGOCIO AGREGADAS (R54+)
-
-### Extensiones de tiempo (RG-Extensión)
-
-- **R54** Tolerancia antes de cobrar hora extra: **configurable** (default 30 min)
-- **R55** Horas extra = `ceil((exceso - tolerancia) / 60)` redondeando arriba
-- **R56** El precio de hora extra viene de `tarifas.precio_hora_extra` (NO hardcodeado)
-- **R57** El máximo de horas extra viene de `tarifas.max_horas_extra` (default 3)
-- **R58** Si excede el máximo → ofrecer turno adicional completo
-- **R59** Cada extensión se registra en `extensiones_reserva` (auditoría)
-- **R60** Múltiples extensiones por reserva permitidas
-- **R61** El cálculo resta las extensiones ya aplicadas (evita doble cobro)
-- **R62** Formas de pago: cargar a cuenta (descuenta del vuelto) o pagar ahora (entra a caja)
-- **R63** Se puede "no cobrar" con observación obligatoria
-- **R64** Los precios y tolerancia son configurables y NO se hardcodean
-
-### Configuraciones del sistema
-
-- **R65** Los parámetros globales viven en tabla `configuraciones` (NO en código)
-- **R66** Cambiar una configuración aplica al instante (sin redeploy)
-- **R67** Los parámetros iniciales: tolerancia, buffer limpieza, tolerancia no-show, IGV, moneda
-
-### Limpieza
-
-- **R68** Al check-out se crea limpieza automática
-- **R69** Al cambiar habitación, la vieja va a limpieza
-- **R70** La habitación vuelve a Disponible solo cuando se completa la limpieza
-- **R71** El estado Limpieza tiene prioridad sobre Disponible en el cálculo
-
----
-
-## 📊 Tablas agregadas desde la última actualización
-
-| Tabla | Filas iniciales | Módulo |
-|-------|-----------------|--------|
-| `configuraciones` | 5 | 09C |
-| `extensiones_reserva` | 0 | 09C |
-| `limpieza` | 0 (se llena al usar) | 09A |
-
-**Total acumulado:** ~35 tablas creadas.
-
----
-
-## 🎯 Estado actualizado del roadmap
-
-| # | Módulo | Backend | Frontend | Estado |
-|---|--------|---------|----------|--------|
-| 01-08 | AUTH, CONFIG, TARIFAS, CLIENTES, PRODUCTOS, PROMOCIONES, DECORACIÓN, HABITACIONES | ✅ | ✅ | CERRADOS |
-| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
-| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Backend listo |
-| **09C** | **EXTENSIONES DE TIEMPO** | ✅ | ✅ | **CERRADO** |
-| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
-| 11 | CAJA | ⏳ | ⏳ | Pendiente |
-| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
-| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
-| **14** | **LIMPIEZA (pantalla)** | ✅ | ⏳ | **Backend listo** |
-| 15 | MANTENIMIENTO | ⏳ | ⏳ | Pendiente |
-| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
-| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
-| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
-| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
-| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
-| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
-
----
-
-## 🎯 Próximos módulos (detalle)
-
-### Módulo 09B — RESERVAS FUTURAS (frontend pendiente)
-
-**Backend:** listo (`POST /reservas`, `PATCH /reservas/{id}/check-in`).
-
-**Frontend pendiente:**
-- `/reservas` (listado con filtros)
-- `/reservas/nueva` (form con fecha futura)
-- `/reservas/:id` (detalle con opción check-in)
-
-**Reglas:**
-- Reserva pendiente/confirmada bloquea el rango en `ocupacion_habitacion`
-- Al llegar el cliente → check-in convierte a `estado = Activa`
-- Si no llega en 60 min → No-Show
-
-### Módulo 10 — DECORACIONES APLICADAS
-
-**Tabla `decoraciones`:**
-```
-id_decoracion, id_reserva (FK), id_cliente (FK), id_habitacion (FK),
-id_paquete (FK → paquetes_decoracion), id_proveedor (FK),
-fecha_inicio, fecha_fin, monto, ganancia_local, ganancia_proveedor,
-adelanto, saldo, frase, musica,
-estado ENUM('Programada','En proceso','Finalizada','Cancelada'),
-observaciones, created_at (sin updated_at)
-```
-
-**R11:** Al crear reserva con decoración → crear CuentaPagar al proveedor.
-
-### Módulo 11 — CAJA
-
-**Tablas:**
-- `cajas`, `movimientos_caja`, `arqueo_denominaciones`, `retiros_caja`, `devoluciones`
-
-**Reglas R17-R23, R39.**
-
-### Módulo 12 — INVENTARIO / KARDEX
-
-**Tablas:**
-- `kardex`, `inventario_fisico`, `inventario_detalle`
-
-### Módulo 13 — CUENTAS POR PAGAR
-
-**Tablas:**
-- `cuentas_por_pagar`, `pagos_proveedor`
-
-### Módulo 14 — LIMPIEZA (pantalla)
-
-**Backend listo.** Falta el frontend:
-- `/limpieza` (cola de tareas)
-- Botones: Iniciar / Finalizar
-- Filtro por piso
-
-### Módulo 15 — MANTENIMIENTO
-
-**Tabla `mantenimiento`.**
-
-### Módulo 16 — COMPROBANTES SUNAT
-
-**Tablas:** `tipos_comprobante`, `series_comprobante`, `facturas`, `facturas_detalle`, `notas_credito`
-
-### Módulo 17 — ALERTAS
-
-**Tablas:** `alertas`, `reglas_alerta`, `canales_alerta`
-
-### Módulo 18 — REPORTES
-
-Sin tablas nuevas. Consultas sobre tablas existentes.
-
-### Módulo 19 — AUDITORÍA
-
-**Tablas:** `auditoria`, `auditoria_cambios`
-
-### Módulo 20 — ASISTENCIA PERSONAL
-
-**Tablas:** `asistencia`, `horas_extra`
-
-### Módulo 21 — RENIEC
-
-Sin tablas. Solo `ReniecService::consultar($dni)` en producción.
-
----
-
-## 🎯 Casos de uso reales (Módulo 09C)
-
-### Caso 1 — Cliente se pasa 20 min
-
-```
-Base: 8h
-Lleva: 8h 20m
-Exceso: 20 min
-Tolerancia: 30 min
-→ DENTRO DE TOLERANCIA → no se cobra nada
-```
-
-### Caso 2 — Cliente se pasa 45 min
-
-```
-Base: 8h
-Lleva: 8h 45m
-Exceso: 45 min
-Tolerancia: 30 min
-minutos_a_cobrar = 45 - 30 = 15
-horas_extra = ceil(15/60) = 1 hora
-Monto = S/ 10
-```
-
-### Caso 3 — Cliente se pasa 2h 15m
-
-```
-Base: 8h
-Lleva: 10h 15m
-Exceso: 2h 15m = 135 min
-Tolerancia: 30 min
-minutos_a_cobrar = 135 - 30 = 105
-horas_extra = ceil(105/60) = 2 horas
-Monto = S/ 20
-```
-
-### Caso 4 — Cliente se pasa 2h 20m, ya tenía 2h aplicadas
-
-```
-Base: 8h
-Lleva: 10h 20m
-Exceso total: 2h 20m = 140 min
-Extensiones previas: 2h = 120 min
-Exceso pendiente: 140 - 120 = 20 min
-Tolerancia: 30 min
-→ DENTRO DE TOLERANCIA → no se cobra más
-```
-
-### Caso 5 — Cliente se pasa 4h 30m (excede máximo)
-
-```
-Base: 8h
-Lleva: 12h 30m
-Exceso: 4h 30m
-Tolerancia: 30 min
-minutos_a_cobrar = 4h 30m - 30 = 4h
-horas_extra = 4h → excede el máximo (3h)
-
-Opciones:
-○ 3 horas extra (máximo): S/ 30
-○ 4 horas extra (excede): S/ 40
-● Turno adicional completo: S/ 70 (recomendado)
-```
-
----
-
-## 🚨 Bugs resueltos (histórico actualizado)
-
-8. **Bug extensiones 500 "Class not found"** → faltaba `use App\Models\ExtensionReserva;` y `use App\Models\Configuracion;` en `ReservaService.php`.
-
-9. **Bug historial de extensiones** → el cálculo no restaba las extensiones ya aplicadas, causando doble cobro. Fix: `minutos_exceso_pendiente = minutos_exceso_total - minutos_ya_cubiertos`.
-
-10. **Bug wording "ya cobrado"** → era ambiguo. Ahora es "ya aplicado" (con desglose pagado/cargado a cuenta).
-
-11. **Bug cálculo de horas extra** → no respetaba la tolerancia. Fix: `ceil((exceso - tolerancia) / 60)`.
-
----
-
-**Última actualización:** 04/10/2026
-**Módulos completados:** 9 de 21 (09C agregado)
-```
-
----
-
-## 📸 Pegame
-
-1. **Screenshot del README.md** con la sección nueva
-2. **¿Guardaste?**
-3. **¿Seguimos con el módulo de observaciones del cliente o algún otro?**
-
-**Con eso cerramos la documentación del Módulo 09C + Limpieza.** 🚀
-
-**¿Dale?**
+**¿Dale?** 🚀

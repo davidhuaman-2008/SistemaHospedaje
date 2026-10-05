@@ -35,7 +35,7 @@ export function AnularReservaModal({ habitacion, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
         <div className="bg-red-900 p-4 rounded-t-lg flex items-center justify-between">
           <div className="flex items-center gap-2">

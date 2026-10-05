@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { clienteService } from '@/services/clienteService'
 import type { Cliente, ClienteVisita } from '@/types/cliente'
+import { ClienteObservaciones } from './ClienteObservaciones'
 
 interface Props {
   cliente: Cliente
@@ -17,9 +18,12 @@ function formatearFechaHora(valor: string | null): string {
   })
 }
 
+type Tab = 'visitas' | 'observaciones'
+
 export function ClienteHistorial({ cliente, onCerrar }: Props) {
   const [visitas, setVisitas] = useState<ClienteVisita[]>([])
   const [cargando, setCargando] = useState(true)
+  const [tab, setTab] = useState<Tab>('visitas')
 
   useEffect(() => {
     const cargar = async () => {
@@ -51,31 +55,61 @@ export function ClienteHistorial({ cliente, onCerrar }: Props) {
           <p><strong>Total gastado:</strong> S/ {Number(cliente.total_gastado).toFixed(2)}</p>
         </div>
 
-        {cargando ? (
-          <p className="text-slate-400">Cargando...</p>
-        ) : visitas.length === 0 ? (
-          <p className="text-slate-400">Sin visitas registradas todavía.</p>
-        ) : (
-          <table className="w-full bg-slate-800 rounded">
-            <thead className="bg-slate-700 text-slate-300">
-              <tr>
-                <th className="p-2 text-left">ID</th>
-                <th className="p-2 text-left">Entrada</th>
-                <th className="p-2 text-left">Salida</th>
-                <th className="p-2 text-left">Monto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visitas.map(v => (
-                <tr key={v.id_visita} className="border-t border-slate-700 text-slate-200">
-                  <td className="p-2">{v.id_visita}</td>
-                  <td className="p-2">{formatearFechaHora(v.fecha_entrada)}</td>
-                  <td className="p-2">{formatearFechaHora(v.fecha_salida)}</td>
-                  <td className="p-2">S/ {Number(v.monto_gastado).toFixed(2)}</td>
+        <div className="flex gap-2 mb-4 border-b border-slate-700">
+          <button
+            onClick={() => setTab('visitas')}
+            className={`px-4 py-2 text-sm font-medium transition ${
+              tab === 'visitas'
+                ? 'text-white border-b-2 border-cyan-500 -mb-px'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            📋 Visitas
+          </button>
+          <button
+            onClick={() => setTab('observaciones')}
+            className={`px-4 py-2 text-sm font-medium transition ${
+              tab === 'observaciones'
+                ? 'text-white border-b-2 border-red-500 -mb-px'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            ⚠️ Observaciones
+          </button>
+        </div>
+
+        {tab === 'visitas' ? (
+          cargando ? (
+            <p className="text-slate-400">Cargando...</p>
+          ) : visitas.length === 0 ? (
+            <p className="text-slate-400">Sin visitas registradas todavía.</p>
+          ) : (
+            <table className="w-full bg-slate-800 rounded">
+              <thead className="bg-slate-700 text-slate-300">
+                <tr>
+                  <th className="p-2 text-left">ID</th>
+                  <th className="p-2 text-left">Entrada</th>
+                  <th className="p-2 text-left">Salida</th>
+                  <th className="p-2 text-left">Monto</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visitas.map(v => (
+                  <tr key={v.id_visita} className="border-t border-slate-700 text-slate-200">
+                    <td className="p-2">{v.id_visita}</td>
+                    <td className="p-2">{formatearFechaHora(v.fecha_entrada)}</td>
+                    <td className="p-2">{formatearFechaHora(v.fecha_salida)}</td>
+                    <td className="p-2">S/ {Number(v.monto_gastado).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        ) : (
+          <ClienteObservaciones
+            idCliente={cliente.id_cliente}
+            nombreCliente={`${cliente.nombre} ${cliente.apellido ?? ''}`.trim()}
+          />
         )}
 
         <div className="mt-4 flex justify-end">

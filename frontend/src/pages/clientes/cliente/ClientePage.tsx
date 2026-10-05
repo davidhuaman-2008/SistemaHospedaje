@@ -8,6 +8,7 @@ import { ClienteForm } from "./ClienteForm"
 import { ClienteTabla } from "./ClienteTabla"
 import { ClienteHistorial } from "./ClienteHistorial"
 import { ClienteVisitaDialog } from "./ClienteVisitaDialog"
+import { AgregarObservacionModal } from "./AgregarObservacionModal"
 
 export function ClientePage() {
   const [items, setItems] = useState<Cliente[]>([])
@@ -17,6 +18,7 @@ export function ClientePage() {
   const [busqueda, setBusqueda] = useState("")
   const [historialCliente, setHistorialCliente] = useState<Cliente | null>(null)
   const [visitaCliente, setVisitaCliente] = useState<Cliente | null>(null)
+  const [observacionCliente, setObservacionCliente] = useState<Cliente | null>(null)
 
   useEffect(() => {
     let cancelado = false
@@ -129,6 +131,7 @@ export function ClientePage() {
           onEliminar={eliminar}
           onVerHistorial={setHistorialCliente}
           onRegistrarVisita={setVisitaCliente}
+          onAgregarObservacion={setObservacionCliente}
         />
       )}
 
@@ -141,6 +144,15 @@ export function ClientePage() {
           cliente={visitaCliente}
           onCerrar={() => setVisitaCliente(null)}
           onGuardado={() => { setVisitaCliente(null); recargar() }}
+        />
+      )}
+
+      {observacionCliente && (
+        <AgregarObservacionModal
+          idCliente={observacionCliente.id_cliente}
+          nombreCliente={`${observacionCliente.nombre} ${observacionCliente.apellido ?? ""}`.trim()}
+          onClose={() => setObservacionCliente(null)}
+          onSuccess={() => { setObservacionCliente(null); recargar() }}
         />
       )}
     </AppLayout>

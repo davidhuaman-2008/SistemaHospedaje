@@ -17,12 +17,19 @@ export const clienteService = {
    * El backend devuelve: { existe: boolean, cliente: Cliente | null }
    * Este método devuelve solo el cliente (o null).
    */
-  buscarPorDni: async (dni: string): Promise<Cliente | null> => {
+  /**
+   * Busca un cliente por DNI.
+   * Devuelve el cliente + reserva_activa (si tiene una).
+   */
+  buscarPorDni: async (dni: string): Promise<{ cliente: Cliente | null; reservaActiva: any }> => {
     const { data } = await api.get('/clientes/buscar', { params: { dni } })
     if (data && data.existe && data.cliente) {
-      return data.cliente
+      return {
+        cliente: data.cliente,
+        reservaActiva: data.reserva_activa || null,
+      }
     }
-    return null
+    return { cliente: null, reservaActiva: null }
   },
 
   obtener: async (id: number): Promise<Cliente> => {

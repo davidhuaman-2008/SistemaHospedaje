@@ -56,6 +56,8 @@ export interface Reserva {
   usuario_creacion?: { id: number; nombre: string }
   registro_estadia?: RegistroEstadia | null
   consumos?: ReservaConsumo[]
+  extensiones?: ExtensionReserva[]
+  pagos?: PagoReserva[]
   ajustes?: ReservaAjuste[]
 }
 
@@ -78,7 +80,13 @@ export interface ReservaConsumo {
     stock_actual: number
     unidad_medida: string | null
   }
-  metodo_pago?: MetodoPago
+  metodo_pago?: {
+    id_metodo: number
+    nombre: string
+    icono: string | null
+    color: string | null
+    es_de_caja: boolean
+  }
 }
 
 export interface ReservaAjuste {
@@ -107,6 +115,11 @@ export interface CambiarHabitacionRequest {
   id_metodo_pago?: number | null
 }
 
+export interface PagoMixto {
+  id_metodo_pago: number
+  monto: number
+}
+
 export interface WalkInRequest {
   id_cliente: number
   id_habitacion: number
@@ -115,6 +128,7 @@ export interface WalkInRequest {
   fecha_entrada?: string
   adelanto?: number
   id_metodo_pago?: number
+  pagos?: PagoMixto[]
   telefono?: string
   notas?: string
   observaciones?: string
@@ -128,6 +142,7 @@ export interface ReservaRequest {
   fecha_entrada: string
   adelanto?: number
   id_metodo_pago?: number
+  pagos?: PagoMixto[]
   telefono?: string
   notas?: string
   observaciones?: string
@@ -147,7 +162,8 @@ export interface RegistroEstadia {
 
 export interface HabitacionMapa {
   id_habitacion: number
-  numero: string  id_piso: number
+  numero: string
+  id_piso: number
   piso_nombre: string
   id_tipo: number
   tipo_nombre: string
@@ -162,6 +178,16 @@ export interface HabitacionMapa {
   minutos_restantes: number | null
   minutos_extra: number | null
   horas_base: number | null
+  pagado: number
+  total: number
+  id_mantenimiento: number | null
+  mantenimiento_tipo: string | null
+  mantenimiento_descripcion: string | null
+  mantenimiento_prioridad: string | null
+  mantenimiento_prioridad_color: string | null
+  mantenimiento_estado: string | null
+  mantenimiento_fecha_reporte: string | null
+  mantenimiento_asignado: string | null
 }
 
 export interface PagoReserva {
@@ -174,7 +200,14 @@ export interface PagoReserva {
   id_usuario: number
   observaciones: string | null
   anulado: boolean
-  metodo_pago?: MetodoPago
+  metodo_pago?: {
+    id_metodo: number
+    nombre: string
+    icono: string | null
+    color: string | null
+    es_de_caja: boolean
+  }
+  usuario?: { id: number; nombre: string }
 }
 
 // ============================================================================
@@ -191,37 +224,26 @@ export interface OpcionExtension {
 }
 
 export interface CalculoExtension {
-  // Tiempo base
   horas_base: number
   minutos_transcurridos: number
   minutos_base: number
-
-  // Exceso total
   minutos_exceso_total: number
   horas_exceso_total: number
-
-  // Extensiones ya aplicadas
   horas_extra_ya_aplicadas: number
   monto_ya_aplicado: number
   monto_ya_pagado: number
   monto_cargado_a_cuenta: number
   turnos_adicionales_aplicados: number
-
-  // Pendiente
   minutos_exceso_pendiente: number
   minutos_ya_cubiertos: number
   horas_extra_sugeridas_nuevas: number
   monto_sugerido_nuevo: number
-
-  // Config
   tolerancia_minutos: number
   dentro_tolerancia: boolean
   excede_maximo: boolean
   max_horas_extra: number
   precio_hora_extra: number
   precio_turno_adicional: number
-
-  // Opciones nuevas
   opciones: OpcionExtension[]
 }
 
@@ -248,7 +270,13 @@ export interface ExtensionReserva {
   id_usuario: number
   fecha_extension: string
   observaciones: string | null
-  metodo_pago?: MetodoPago
+  metodo_pago?: {
+    id_metodo: number
+    nombre: string
+    icono: string | null
+    color: string | null
+    es_de_caja: boolean
+  }
   usuario?: { id: number; nombre: string }
 }
 

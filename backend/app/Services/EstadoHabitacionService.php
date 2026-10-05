@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Habitacion;
 use App\Models\Limpieza;
+use App\Models\Mantenimiento;
 use App\Models\OcupacionHabitacion;
 use Carbon\Carbon;
 
@@ -16,7 +17,32 @@ class EstadoHabitacionService
             return $this->respuesta('Inactiva', '#475569');
         }
 
-        // 2. Limpieza pendiente
+        // 2. Mantenimiento activo (prioridad sobre Limpieza)
+        $mantenimiento = Mantenimiento::with(['tipo', 'prioridad', 'usuarioAsignado'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->first();
+
+        if ($mantenimiento) {
+            return $this->respuesta(
+                'Mantenimiento',
+                '#f97316',
+                null,
+                null,
+                [
+                    'id_mantenimiento' => $mantenimiento->id_mantenimiento,
+                    'mantenimiento_tipo' => $mantenimiento->tipo?->nombre,
+                    'mantenimiento_descripcion' => $mantenimiento->descripcion,
+                    'mantenimiento_prioridad' => $mantenimiento->prioridad?->nombre,
+                    'mantenimiento_prioridad_color' => $mantenimiento->prioridad?->color,
+                    'mantenimiento_estado' => $mantenimiento->estado,
+                    'mantenimiento_fecha_reporte' => $mantenimiento->fecha_reporte?->toIso8601String(),
+                    'mantenimiento_asignado' => $mantenimiento->usuarioAsignado?->nombre,
+                ]
+            );
+        }
+
+        // 3. Limpieza pendiente
         $limpieza = Limpieza::where('id_habitacion', $habitacion->id_habitacion)
             ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
             ->first();
@@ -121,6 +147,8 @@ class EstadoHabitacionService
                 'minutos_restantes' => max(0, $minutosRestantes),
                 'minutos_extra' => $minutosExtra,
                 'horas_base' => $reserva->horas_base,
+                'pagado' => (float) $reserva->pagado,
+                'total' => (float) $reserva->total,
             ]
         );
     }
@@ -144,6 +172,16 @@ class EstadoHabitacionService
             'minutos_restantes' => null,
             'minutos_extra' => null,
             'horas_base' => null,
+            'pagado' => 0,
+            'total' => 0,
+            'id_mantenimiento' => null,
+            'mantenimiento_tipo' => null,
+            'mantenimiento_descripcion' => null,
+            'mantenimiento_prioridad' => null,
+            'mantenimiento_prioridad_color' => null,
+            'mantenimiento_estado' => null,
+            'mantenimiento_fecha_reporte' => null,
+            'mantenimiento_asignado' => null,
         ], $extra);
     }
 

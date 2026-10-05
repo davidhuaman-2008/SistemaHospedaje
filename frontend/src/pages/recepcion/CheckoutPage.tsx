@@ -8,6 +8,13 @@ import { mensajeDeError } from "@/lib/errores"
 import type { Reserva } from "@/types/reserva"
 import { AgregarConsumoModal } from "./AgregarConsumoModal"
 import { ModalExtensionTiempo } from "../recepcion/ModalExtensionTiempo"
+import { AgregarObservacionModal } from "../clientes/cliente/AgregarObservacionModal"
+import { AgregarPagoModal } from "./AgregarPagoModal"
+import { EntregarVueltoModal } from "./EntregarVueltoModal"
+import { ConfirmarVueltoModal } from "./ConfirmarVueltoModal"
+import { ConfirmarDeudaModal } from "./ConfirmarDeudaModal"
+import { IconoDinamico } from "@/components/IconoDinamico"
+import { AlertOctagon, CreditCard } from "lucide-react"
 
 export function CheckoutPage() {
   const { idReserva } = useParams<{ idReserva: string }>()
@@ -17,6 +24,11 @@ export function CheckoutPage() {
   const [montoFinal, setMontoFinal] = useState(0)
   const [mostrarAgregarConsumo, setMostrarAgregarConsumo] = useState(false)
   const [mostrarExtension, setMostrarExtension] = useState(false)
+  const [mostrarObservacion, setMostrarObservacion] = useState(false)
+  const [mostrarAgregarPago, setMostrarAgregarPago] = useState(false)
+  const [mostrarEntregarVuelto, setMostrarEntregarVuelto] = useState(false)
+  const [mostrarConfirmarVuelto, setMostrarConfirmarVuelto] = useState(false)
+  const [mostrarConfirmarDeuda, setMostrarConfirmarDeuda] = useState(false)
 
   const cargar = async () => {
     try {
@@ -36,12 +48,73 @@ export function CheckoutPage() {
   }, [idReserva])
 
   const finalizarCheckout = async () => {
+    // Si hay vuelto pendiente → abrir modal
+    if (vueltoFinal > 0.01) {
+      setMostrarConfirmarVuelto(true)
+      return
+    }
+    // Si hay deuda pendiente → abrir modal
+    if (vueltoFinal < -0.01) {
+      setMostrarConfirmarDeuda(true)
+      return
+    }
+    // Todo cuadra → finalizar directo
+    await ejecutarCheckoutSimple()
+  }
+
+  const ejecutarCheckoutSimple = async () => {
     try {
       await reservaService.checkOut(Number(idReserva), montoFinal)
       toast.success("Check-out realizado")
       navigate("/recepcion")
     } catch (e: unknown) {
       toast.error(mensajeDeError(e))
+    }
+  }
+
+  const ejecutarCheckoutConVuelto = async (datos: {
+    decision_tipo: "ENTREGADO" | "NO_RECLAMADO" | "OTRO"
+    id_metodo_pago?: number | null
+    observaciones?: string | null
+  }) => {
+    try {
+      await reservaService.checkOutConVuelto(Number(idReserva), {
+        monto_final: montoFinal,
+        decision_tipo: datos.decision_tipo,
+        id_metodo_pago: datos.id_metodo_pago,
+        observaciones: datos.observaciones,
+      })
+      toast.success("Check-out realizado correctamente")
+      setMostrarConfirmarVuelto(false)
+      navigate("/recepcion")
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+      throw e  // relanzar para que el modal no cierre
+    }
+  }
+
+  const ejecutarCheckoutConDeuda = async (datos: {
+    decision_tipo: "PAGO" | "NO_PAGO"
+    monto_pago?: number
+    id_metodo_pago?: number
+    id_gravedad?: number
+    motivo?: string
+  }) => {
+    try {
+      await reservaService.checkOutConDeuda(Number(idReserva), {
+        monto_final: montoFinal,
+        decision_tipo: datos.decision_tipo,
+        monto_pago: datos.monto_pago,
+        id_metodo_pago: datos.id_metodo_pago,
+        id_gravedad: datos.id_gravedad,
+        motivo: datos.motivo,
+      })
+      toast.success("Check-out realizado correctamente")
+      setMostrarConfirmarDeuda(false)
+      navigate("/recepcion")
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+      throw e  // relanzar para que el modal no cierre
     }
   }
 
@@ -88,7 +161,7 @@ export function CheckoutPage() {
   const descuento = Number(reserva.descuento)
   const total = Number(reserva.total)
   const pagado = Number(reserva.pagado)
-  const saldo = Number(reserva.saldo)
+  // const saldo = Number(reserva.saldo)  // no usado
 
   // Vuelto final = pagado - total
   const vueltoFinal = pagado - total
@@ -157,7 +230,80 @@ export function CheckoutPage() {
                   </button>
                 </div>
               )}
+
+              {/* Botón para agregar observación al cliente */}
+              <div className="bg-red-900/30 border border-red-700 p-3 rounded">
+                <button
+                  onClick={() => setMostrarObservacion(true)}
+                  className="w-full bg-red-700 hover:bg-red-800 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2"
+                >
+                  <AlertOctagon size={16} /> Agregar Observación al Cliente
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Pagos registrados */}
+          <div className="bg-slate-800 p-5 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <CreditCard size={18} /> Pagos registrados
+              </h2>
+              <button
+                onClick={() => setMostrarAgregarPago(true)}
+                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm"
+              >
+                <Plus size={14} /> Agregar pago
+              </button>
+            </div>
+
+            {!reserva.pagos || reserva.pagos.length === 0 ? (
+              <p className="text-slate-500 text-sm">Sin pagos registrados</p>
+            ) : (
+              <div className="space-y-2">
+                {reserva.pagos
+                  .filter(p => !p.anulado)
+                  .map(p => (
+                    <div key={p.id_pago} className="flex justify-between items-center bg-slate-900 p-2 rounded">
+                      <div className="flex-1">
+                        <p className="text-white text-sm flex items-center gap-2">
+                          {p.metodo_pago?.icono ? (
+                            <IconoDinamico
+                              nombre={p.metodo_pago.icono}
+                              size={16}
+                              style={{ color: p.metodo_pago.color || "#64748b" }}
+                            />
+                          ) : (
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ background: p.metodo_pago?.color || "#64748b" }}
+                            />
+                          )}
+                          {p.metodo_pago?.nombre || "Método desconocido"}
+                          {p.es_adelanto && (
+                            <span className="text-[10px] bg-blue-900 text-blue-200 px-1.5 py-0.5 rounded">
+                              ADELANTO
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-slate-500 text-xs">
+                          {new Date(p.fecha_pago).toLocaleString("es-PE")}
+                          {p.observaciones && ` · ${p.observaciones}`}
+                        </p>
+                      </div>
+                      <span className="text-cyan-400 font-semibold text-sm">
+                        S/ {Number(p.monto).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                <div className="flex justify-between border-t border-slate-700 pt-2 mt-2">
+                  <span className="text-slate-400 text-sm font-semibold">Total pagado</span>
+                  <span className="text-green-400 font-bold text-lg">
+                    S/ {Number(reserva.pagado).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Consumos */}
@@ -316,8 +462,90 @@ export function CheckoutPage() {
       {mostrarExtension && (
         <ModalExtensionTiempo
           idReserva={Number(idReserva)}
+          idCliente={reserva.cliente?.id_cliente}
+          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
           onClose={() => setMostrarExtension(false)}
           onSuccess={() => { setMostrarExtension(false); cargar() }}
+        />
+      )}
+
+      {mostrarObservacion && reserva.cliente && (
+        <AgregarObservacionModal
+          idCliente={reserva.cliente.id_cliente}
+          nombreCliente={`${reserva.cliente.nombre} ${reserva.cliente.apellido ?? ""}`.trim()}
+          onClose={() => setMostrarObservacion(false)}
+          onSuccess={() => { setMostrarObservacion(false); toast.success("Observación guardada") }}
+        />
+      )}
+
+      {mostrarAgregarPago && (
+        <AgregarPagoModal
+          idReserva={Number(idReserva)}
+          montoSugerido={vueltoFinal < 0 ? Math.abs(vueltoFinal) : undefined}
+          onClose={() => setMostrarAgregarPago(false)}
+          onSuccess={() => { setMostrarAgregarPago(false); cargar() }}
+        />
+      )}
+
+      {mostrarEntregarVuelto && vueltoFinal > 0 && (
+        <EntregarVueltoModal
+          idReserva={Number(idReserva)}
+          vueltoPendiente={vueltoFinal}
+          onClose={() => setMostrarEntregarVuelto(false)}
+          onSuccess={() => { setMostrarEntregarVuelto(false); cargar() }}
+        />
+      )}
+
+      {mostrarConfirmarVuelto && reserva && vueltoFinal > 0 && (
+        <ConfirmarVueltoModal
+          idReserva={Number(idReserva)}
+          vueltoPendiente={vueltoFinal}
+          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
+          habitacion={reserva.habitacion?.numero ?? ""}
+          onClose={() => setMostrarConfirmarVuelto(false)}
+          onConfirmar={ejecutarCheckoutConVuelto}
+        />
+      )}
+
+      {mostrarConfirmarDeuda && reserva && vueltoFinal < 0 && (
+        <ConfirmarDeudaModal
+          idReserva={Number(idReserva)}
+          deudaPendiente={Math.abs(vueltoFinal)}
+          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
+          habitacion={reserva.habitacion?.numero ?? ""}
+          onClose={() => setMostrarConfirmarDeuda(false)}
+          onConfirmar={ejecutarCheckoutConDeuda}
+        />
+      )}
+
+      {mostrarEntregarVuelto && vueltoFinal > 0 && (
+        <EntregarVueltoModal
+          idReserva={Number(idReserva)}
+          vueltoPendiente={vueltoFinal}
+          onClose={() => setMostrarEntregarVuelto(false)}
+          onSuccess={() => { setMostrarEntregarVuelto(false); cargar() }}
+        />
+      )}
+
+      {mostrarConfirmarVuelto && reserva && vueltoFinal > 0 && (
+        <ConfirmarVueltoModal
+          idReserva={Number(idReserva)}
+          vueltoPendiente={vueltoFinal}
+          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
+          habitacion={reserva.habitacion?.numero ?? ""}
+          onClose={() => setMostrarConfirmarVuelto(false)}
+          onConfirmar={ejecutarCheckoutConVuelto}
+        />
+      )}
+
+      {mostrarConfirmarDeuda && reserva && vueltoFinal < 0 && (
+        <ConfirmarDeudaModal
+          idReserva={Number(idReserva)}
+          deudaPendiente={Math.abs(vueltoFinal)}
+          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
+          habitacion={reserva.habitacion?.numero ?? ""}
+          onClose={() => setMostrarConfirmarDeuda(false)}
+          onConfirmar={ejecutarCheckoutConDeuda}
         />
       )}
     </AppLayout>

@@ -22,21 +22,20 @@ class ProductoService
             ->get();
     }
 
+    public function listarStockBajo(): Collection
+    {
+        return Producto::with(['categoria', 'proveedor'])
+            ->whereColumn('stock_actual', '<=', 'stock_minimo')
+            ->orderBy('stock_actual')
+            ->get();
+    }
+
     public function listarPorCategoria(int $idCategoria): Collection
     {
         return Producto::with(['categoria', 'proveedor'])
             ->where('id_categoria_producto', $idCategoria)
             ->where('activo', true)
             ->orderBy('nombre')
-            ->get();
-    }
-
-    public function listarStockBajo(): Collection
-    {
-        return Producto::with(['categoria', 'proveedor'])
-            ->where('activo', true)
-            ->whereColumn('stock_actual', '<=', 'stock_minimo')
-            ->orderBy('stock_actual')
             ->get();
     }
 
@@ -52,23 +51,23 @@ class ProductoService
 
     public function actualizar(int $id, array $datos): Producto
     {
-        $item = Producto::findOrFail($id);
-        $item->update($datos);
-        return $item->fresh()->load(['categoria', 'proveedor']);
+        $producto = Producto::findOrFail($id);
+        $producto->update($datos);
+        return $producto->fresh()->load(['categoria', 'proveedor']);
     }
 
     public function desactivar(int $id): Producto
     {
-        $item = Producto::findOrFail($id);
-        $item->update(['activo' => false]);
-        return $item;
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => false]);
+        return $producto;
     }
 
     public function reactivar(int $id): Producto
     {
-        $item = Producto::findOrFail($id);
-        $item->update(['activo' => true]);
-        return $item;
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => true]);
+        return $producto;
     }
 
     public function eliminar(int $id): void

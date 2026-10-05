@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { Toaster } from "sonner"
 
 import LoginPage from "@/pages/LoginPage"
@@ -21,6 +21,10 @@ import { ConfiguracionSistemaPage } from "@/pages/configuracion/ConfiguracionSis
 import { CheckoutPage } from "@/pages/recepcion/CheckoutPage"
 import { RegistrarIngresoPage } from "@/pages/recepcion/RegistrarIngresoPage"
 import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
+import { LimpiezaPage } from "@/pages/limpieza/LimpiezaPage"
+import { MantenimientoPage } from "@/pages/mantenimiento/MantenimientoPage"
+import { TipoMantenimientoPage } from "@/pages/configuracion/tipoMantenimiento/TipoMantenimientoPage"
+import { PrioridadMantenimientoPage } from "@/pages/configuracion/prioridadMantenimiento/PrioridadMantenimientoPage"
 
 import ProtectedRoute from "@/components/ProtectedRoute"
 
@@ -199,6 +203,10 @@ function App() {
         <Route path="/recepcion" element={<ProtectedRoute><RecepcionPage /></ProtectedRoute>} />
         <Route path="/recepcion/registrar/:idHabitacion" element={<ProtectedRoute><RegistrarIngresoPage /></ProtectedRoute>} />
         <Route path="/recepcion/checkout/:idReserva" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+        <Route path="/limpieza" element={<ProtectedRoute><LimpiezaPage /></ProtectedRoute>} />
+        <Route path="/mantenimiento" element={<ProtectedRoute><MantenimientoPage /></ProtectedRoute>} />
+        <Route path="/configuracion/tipos-mantenimiento" element={<ProtectedRoute><TipoMantenimientoPage /></ProtectedRoute>} />
+        <Route path="/configuracion/prioridades-mantenimiento" element={<ProtectedRoute><PrioridadMantenimientoPage /></ProtectedRoute>} />
         <Route
           path="/configuracion/sistema"
           element={

@@ -21,6 +21,7 @@ export interface Cliente {
   tipo_documento?: TipoDocumento
   nivel?: ClienteNivel
   observaciones_pendientes?: ClienteObservacion[]
+  observaciones_pendientes_count?: number
   created_at?: string
   updated_at?: string
 }
@@ -84,4 +85,32 @@ export interface ClienteObservacionRequest {
 export interface BuscarClienteResponse {
   existe: boolean
   cliente: Cliente | null
+  reserva_activa?: ReservaActiva | null
+}
+export interface ReservaActiva {
+  id_reserva: number
+  codigo_reserva: string
+  id_estado: number
+  id_cliente: number
+  id_habitacion: number
+  id_tarifa: number
+  fecha_entrada: string
+  fecha_salida_prevista: string
+  horas_base: number
+  total: number
+  pagado: number
+  saldo: number
+  habitacion?: {
+    id_habitacion: number
+    numero: string
+    id_piso: number
+    id_tipo: number
+    piso?: { nombre: string }
+    tipo?: { nombre: string }
+  }
+  tarifa?: {
+    id_tarifa: number
+    horas: number
+    monto: number
+  }
 }

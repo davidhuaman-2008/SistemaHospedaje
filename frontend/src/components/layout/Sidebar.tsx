@@ -1,4 +1,4 @@
-﻿import { useState } from "react"
+import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   ChevronDown,
@@ -16,6 +16,7 @@ import {
   DollarSign,
   UserPlus,
   AlertOctagon,
+  ListTodo,
   ShieldAlert,
   Package,
   Tag,
@@ -25,6 +26,9 @@ import {
   Truck,
   DoorOpen,
   Hotel,
+  Brush,
+  Wrench,
+  Hammer,
   Menu,
   X,
 } from "lucide-react"
@@ -65,6 +69,12 @@ export default function Sidebar() {
 
   const [decoracionesAbierto, setDecoracionesAbierto] = useState(
     location.pathname.startsWith("/decoraciones")
+  )
+
+  const [mantenimientoAbierto, setMantenimientoAbierto] = useState(
+    location.pathname.startsWith("/mantenimiento") ||
+      location.pathname.startsWith("/configuracion/tipos-mantenimiento") ||
+      location.pathname.startsWith("/configuracion/prioridades-mantenimiento")
   )
 
   const itemClass = (path: string) =>
@@ -140,6 +150,39 @@ export default function Sidebar() {
             <LayoutDashboard size={18} />
             Dashboard
           </Link>
+
+          <Link to="/limpieza" className={itemClass("/limpieza")} onClick={cerrarMobile}>
+            <Brush size={18} />
+            Limpieza
+          </Link>
+
+          {/* MANTENIMIENTO */}
+          <div>
+            <button onClick={() => setMantenimientoAbierto(!mantenimientoAbierto)} className={dropdownButtonClass(mantenimientoAbierto)}>
+              <span className="flex items-center gap-3">
+                <Wrench size={18} />
+                Mantenimiento
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${mantenimientoAbierto ? "rotate-180" : ""}`} />
+            </button>
+
+            {mantenimientoAbierto && (
+              <div className="mt-1 space-y-1">
+                <Link to="/mantenimiento" className={subItemClass("/mantenimiento")} onClick={cerrarMobile}>
+                  <ListTodo size={16} />
+                  Reportes
+                </Link>
+                <Link to="/configuracion/tipos-mantenimiento" className={subItemClass("/configuracion/tipos-mantenimiento")} onClick={cerrarMobile}>
+                  <Wrench size={16} />
+                  Tipos de Mantenimiento
+                </Link>
+                <Link to="/configuracion/prioridades-mantenimiento" className={subItemClass("/configuracion/prioridades-mantenimiento")} onClick={cerrarMobile}>
+                  <AlertOctagon size={16} />
+                  Prioridades
+                </Link>
+              </div>
+            )}
+          </div>
 
           {/* RECEPCIÓN */}
           <div>
@@ -236,6 +279,14 @@ export default function Sidebar() {
                 <Link to="/configuracion/sistema" className={subItemClass("/configuracion/sistema")} onClick={cerrarMobile}>
                   <Settings size={16} />
                   Config. Sistema
+                </Link>
+                <Link to="/configuracion/tipos-mantenimiento" className={subItemClass("/configuracion/tipos-mantenimiento")} onClick={cerrarMobile}>
+                  <Hammer size={16} />
+                  Tipos Mantenimiento
+                </Link>
+                <Link to="/configuracion/prioridades-mantenimiento" className={subItemClass("/configuracion/prioridades-mantenimiento")} onClick={cerrarMobile}>
+                  <AlertOctagon size={16} />
+                  Prioridades Mant.
                 </Link>
               </div>
             )}

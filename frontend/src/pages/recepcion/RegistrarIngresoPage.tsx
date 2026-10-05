@@ -1,18 +1,28 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useNavigate, useParams } from "react-router-dom"
-import { Search, ArrowLeft } from "lucide-react"
+import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban } from "lucide-react"
 import AppLayout from "@/components/layout/AppLayout"
 import { habitacionService } from "@/services/habitacionService"
 import { clienteService } from "@/services/clienteService"
+import { clienteObservacionService } from "@/services/clienteObservacionService"
 import { tarifaService } from "@/services/tarifaService"
 import { metodoPagoService } from "@/services/metodoPagoService"
 import { reservaService } from "@/services/reservaService"
 import { mensajeDeError } from "@/lib/errores"
 import type { Habitacion } from "@/types/habitacion"
-import type { Cliente } from "@/types/cliente"
+import type { Cliente, ClienteObservacion } from "@/types/cliente"
 import type { Tarifa } from "@/types/tarifa"
 import type { MetodoPago } from "@/types/configuracion"
+import { AlertaClienteObservaciones } from "@/pages/clientes/cliente/AlertaClienteObservaciones"
+
+interface PagoItem {
+  id: number
+  id_metodo_pago: number | null
+  monto: number
+}
+
+type ModoCobro = "unico" | "varios"
 
 export function RegistrarIngresoPage() {
   const { idHabitacion } = useParams<{ idHabitacion: string }>()
@@ -28,6 +38,9 @@ export function RegistrarIngresoPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [busquedaRealizada, setBusquedaRealizada] = useState(false)
   const [buscando, setBuscando] = useState(false)
+  const [observacionesPendientes, setObservacionesPendientes] = useState<ClienteObservacion[]>([])
+  const [alertaAceptada, setAlertaAceptada] = useState(false)
+  const [reservaActiva, setReservaActiva] = useState<any>(null)
 
   // Cliente nuevo
   const [clienteNuevo, setClienteNuevo] = useState({
@@ -41,10 +54,25 @@ export function RegistrarIngresoPage() {
   const [idTarifa, setIdTarifa] = useState<number | null>(null)
   const [cantidadPersonas, setCantidadPersonas] = useState(2)
   const [telefono, setTelefono] = useState("")
-  const [adelanto, setAdelanto] = useState(0)
-  const [idMetodoPago, setIdMetodoPago] = useState<number | null>(null)
   const [notas, setNotas] = useState("")
   const [enviando, setEnviando] = useState(false)
+
+  // COBRO — Nuevo concepto
+  const [modoCobro, setModoCobro] = useState<ModoCobro>("unico")
+
+  // Modo "un solo método"
+  const [montoUnico, setMontoUnico] = useState(0)
+  const [idMetodoPagoUnico, setIdMetodoPagoUnico] = useState<number | null>(null)
+
+  // Modo "varios métodos"
+  const [pagosMixtos, setPagosMixtos] = useState<PagoItem[]>([
+    { id: 1, id_metodo_pago: null, monto: 0 },
+  ])
+  const [contadorPago, setContadorPago] = useState(2)
+
+  // Vuelto
+  const [entregarVueltoAhora, setEntregarVueltoAhora] = useState(false)
+  const [metodoVuelto, setMetodoVuelto] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelado = false
@@ -59,6 +87,22 @@ export function RegistrarIngresoPage() {
         if (cancelado) return
         setHabitacion(hab)
         setMetodosPago(mps)
+
+        // Preseleccionar Efectivo
+        const efectivo = mps.find(m => m.nombre.toLowerCase().includes("efectivo"))
+        if (efectivo) {
+          setIdMetodoPagoUnico(efectivo.id_metodo)
+          setMetodoVuelto(efectivo.id_metodo)
+        } else if (mps.length > 0) {
+          setIdMetodoPagoUnico(mps[0].id_metodo)
+          setMetodoVuelto(mps[0].id_metodo)
+        }
+
+        // Preseleccionar primera fila de pagos mixtos con Efectivo
+        if (efectivo) {
+          setPagosMixtos([{ id: 1, id_metodo_pago: efectivo.id_metodo, monto: 0 }])
+        }
+
         if (hab.id_tipo) {
           const ts = await tarifaService.listarPorTipo(hab.id_tipo)
           if (!cancelado) setTarifas(ts.filter(t => t.activo))
@@ -81,13 +125,41 @@ export function RegistrarIngresoPage() {
     setBuscando(true)
     setBusquedaRealizada(true)
     try {
-      const encontrado = await clienteService.buscarPorDni(dni)
-      if (encontrado) {
+      const resultado = await clienteService.buscarPorDni(dni)
+
+      if (resultado.cliente) {
+        const encontrado = resultado.cliente
         setCliente(encontrado)
         setTelefono(encontrado.celular ?? "")
-        toast.success(`Cliente encontrado: ${encontrado.nombre}`)
+        setAlertaAceptada(false)
+
+        // Guardar reserva activa si existe
+        setReservaActiva(resultado.reservaActiva)
+
+        try {
+          const obs = await clienteObservacionService.porCliente(encontrado.id_cliente)
+          const pendientes = obs.filter(o => !o.resuelto)
+          setObservacionesPendientes(pendientes)
+          if (pendientes.length > 0) {
+            toast.warning(`${encontrado.nombre} tiene ${pendientes.length} observación(es) pendiente(s)`)
+          } else if (resultado.reservaActiva) {
+            toast.error(`${encontrado.nombre} ya tiene reserva activa`)
+          } else {
+            toast.success(`Cliente encontrado: ${encontrado.nombre}`)
+          }
+        } catch {
+          setObservacionesPendientes([])
+          if (resultado.reservaActiva) {
+            toast.error(`${encontrado.nombre} ya tiene reserva activa`)
+          } else {
+            toast.success(`Cliente encontrado: ${encontrado.nombre}`)
+          }
+        }
       } else {
         setCliente(null)
+        setObservacionesPendientes([])
+        setReservaActiva(null)
+        setAlertaAceptada(false)
         setClienteNuevo({ nombre: "", apellido: "", fecha_nacimiento: "", email: "" })
         toast.info("Cliente nuevo. Complete los datos.")
       }
@@ -101,9 +173,56 @@ export function RegistrarIngresoPage() {
   }
 
   const tarifaSeleccionada = tarifas.find(t => t.id_tarifa === idTarifa)
-  const total = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
-  const vuelto = adelanto > total ? adelanto - total : 0
-  const saldoPendiente = adelanto > total ? 0 : total - adelanto
+  const totalHabitacion = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
+
+  // Cliente paga = según modo
+  const clientePaga = modoCobro === "unico"
+    ? montoUnico
+    : pagosMixtos.reduce((acc, p) => acc + (p.monto || 0), 0)
+
+  // Vuelto o debe
+  const diferencia = clientePaga - totalHabitacion
+  const vuelto = diferencia > 0 ? diferencia : 0
+  const clienteDebe = diferencia < 0 ? Math.abs(diferencia) : 0
+
+  // Cambiar de modo preservando el monto
+  const cambiarModo = (nuevoModo: ModoCobro) => {
+    if (nuevoModo === modoCobro) return
+
+    if (nuevoModo === "varios" && modoCobro === "unico" && montoUnico > 0) {
+      // Migrar el monto único al primer pago mixto
+      setPagosMixtos([
+        { id: 1, id_metodo_pago: idMetodoPagoUnico, monto: montoUnico },
+        { id: 2, id_metodo_pago: null, monto: 0 },
+      ])
+      setContadorPago(3)
+    } else if (nuevoModo === "unico" && modoCobro === "varios") {
+      // Migrar la suma de pagos mixtos al monto único
+      const suma = pagosMixtos.reduce((acc, p) => acc + (p.monto || 0), 0)
+      setMontoUnico(suma)
+      const primerMetodo = pagosMixtos.find(p => p.id_metodo_pago)?.id_metodo_pago
+      if (primerMetodo) setIdMetodoPagoUnico(primerMetodo)
+    }
+
+    setModoCobro(nuevoModo)
+  }
+
+  const agregarPagoMixto = () => {
+    setPagosMixtos([...pagosMixtos, { id: contadorPago, id_metodo_pago: null, monto: 0 }])
+    setContadorPago(contadorPago + 1)
+  }
+
+  const eliminarPagoMixto = (id: number) => {
+    if (pagosMixtos.length <= 1) {
+      toast.error("Debe haber al menos un pago")
+      return
+    }
+    setPagosMixtos(pagosMixtos.filter(p => p.id !== id))
+  }
+
+  const actualizarPagoMixto = (id: number, campo: "id_metodo_pago" | "monto", valor: number | null) => {
+    setPagosMixtos(pagosMixtos.map(p => (p.id === id ? { ...p, [campo]: valor } : p)))
+  }
 
   const registrarIngreso = async () => {
     if (!habitacion) return
@@ -116,6 +235,29 @@ export function RegistrarIngresoPage() {
       return
     }
     if (enviando) return
+
+    // Validar cobro
+    if (modoCobro === "unico") {
+      if (montoUnico > 0 && !idMetodoPagoUnico) {
+        toast.error("Seleccione un método de pago")
+        return
+      }
+    } else {
+      const pagosValidos = pagosMixtos.filter(p => p.id_metodo_pago && p.monto > 0)
+      if (clientePaga > 0 && pagosValidos.length === 0) {
+        toast.error("Agregue al menos un pago válido")
+        return
+      }
+    }
+
+    // Validar vuelto si se entrega ahora
+    if (vuelto > 0 && entregarVueltoAhora && !metodoVuelto) {
+      toast.error("Seleccioná un método para entregar el vuelto")
+      return
+    }
+
+    // Si guarda como saldo a favor, no hace falta método de vuelto
+    // (el vuelto queda implícito en pagado - total)
 
     try {
       setEnviando(true)
@@ -134,18 +276,49 @@ export function RegistrarIngresoPage() {
         idCliente = nuevo.id_cliente
       }
 
-      await reservaService.crearWalkIn({
+      // Armar payload
+      const payload: any = {
         id_cliente: idCliente,
         id_habitacion: habitacion.id_habitacion,
         id_tarifa: idTarifa,
         cantidad_personas: cantidadPersonas,
-        adelanto: adelanto > 0 ? adelanto : undefined, 
-       id_metodo_pago: adelanto > 0 && idMetodoPago ? idMetodoPago : undefined,
         telefono: telefono || undefined,
         notas: notas || undefined,
-      })
+      }
 
-      toast.success("¡Ingreso registrado!")
+      // Cobro
+      if (modoCobro === "unico") {
+        if (montoUnico > 0) {
+          payload.adelanto = montoUnico
+          payload.id_metodo_pago = idMetodoPagoUnico
+        }
+      } else {
+        const pagosValidos = pagosMixtos.filter(p => p.id_metodo_pago && p.monto > 0)
+        if (pagosValidos.length > 0) {
+          payload.adelanto = pagosValidos.reduce((acc, p) => acc + p.monto, 0)
+          payload.pagos = pagosValidos.map(p => ({
+            id_metodo_pago: p.id_metodo_pago,
+            monto: p.monto,
+          }))
+        }
+      }
+
+      // Crear reserva
+      const reserva = await reservaService.crearWalkIn(payload)
+
+      // Si el cliente pidió el vuelto AHORA → entregarlo
+      if (vuelto > 0 && entregarVueltoAhora && metodoVuelto) {
+        await reservaService.entregarVuelto(reserva.id_reserva, {
+          monto: vuelto,
+          id_metodo_pago: metodoVuelto,
+        })
+        toast.success(`¡Ingreso registrado! Vuelto de S/ ${vuelto.toFixed(2)} entregado.`)
+      } else if (vuelto > 0) {
+        toast.success(`¡Ingreso registrado! Vuelto de S/ ${vuelto.toFixed(2)} guardado como saldo a favor.`)
+      } else {
+        toast.success("¡Ingreso registrado!")
+      }
+
       navigate("/recepcion")
     } catch (e: unknown) {
       toast.error(mensajeDeError(e))
@@ -181,7 +354,7 @@ export function RegistrarIngresoPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ============ DATOS DEL CLIENTE ============ */}
+        {/* DATOS DEL CLIENTE */}
         <div className="bg-slate-800 p-5 rounded-lg">
           <h2 className="text-lg font-semibold mb-4">Datos del Cliente</h2>
 
@@ -206,8 +379,7 @@ export function RegistrarIngresoPage() {
               </div>
             </div>
 
-            {/* Cliente encontrado */}
-            {cliente && (
+            {cliente && !reservaActiva && (
               <div className="bg-slate-900 p-3 rounded border border-green-700">
                 <p className="text-green-400 text-sm font-medium">
                   ✅ {cliente.nombre} {cliente.apellido}
@@ -223,7 +395,81 @@ export function RegistrarIngresoPage() {
               </div>
             )}
 
-            {/* Cliente nuevo */}
+            {/* BANNER: Cliente con reserva activa */}
+            {cliente && reservaActiva && (
+              <div className="bg-red-950 border-2 border-red-600 rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Ban size={28} className="text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-red-200 font-bold text-lg">
+                      🚫 CLIENTE CON RESERVA ACTIVA
+                    </h3>
+                    <p className="text-red-100 text-sm mt-1">
+                      <strong>{cliente.nombre} {cliente.apellido}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-red-900/50 p-3 rounded">
+                  <p className="text-red-100 text-sm mb-2">
+                    Ya está hospedado en:
+                  </p>
+                  <div className="flex items-center gap-2 text-white">
+                    <span className="text-2xl">🏨</span>
+                    <div>
+                      <p className="font-bold text-lg">
+                        Habitación {reservaActiva.habitacion?.numero || "—"}
+                      </p>
+                      <p className="text-red-200 text-xs">
+                        {reservaActiva.habitacion?.tipo?.nombre} · {reservaActiva.habitacion?.piso?.nombre}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-red-200 text-xs mt-2">
+                    Entrada: {new Date(reservaActiva.fecha_entrada).toLocaleString("es-PE")}
+                  </p>
+                  <p className="text-red-200 text-xs">
+                    Código: {reservaActiva.codigo_reserva}
+                  </p>
+                </div>
+
+                <div className="bg-red-900/40 p-3 rounded border border-red-700">
+                  <p className="text-red-100 text-sm">
+                    💡 <strong>Solución:</strong> Si necesitás otra habitación,
+                    registrala a nombre de <strong>otra persona</strong> (familiar).
+                  </p>
+                  <p className="text-red-200 text-xs mt-2">
+                    Si querés cambiar de habitación, andá al Checkout de la reserva actual.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCliente(null)
+                    setReservaActiva(null)
+                    setDni("")
+                  }}
+                  className="w-full bg-red-700 hover:bg-red-800 text-white py-2 rounded font-medium"
+                >
+                  Entendido — Limpiar y buscar otro DNI
+                </button>
+              </div>
+            )}
+
+            {cliente && observacionesPendientes.length > 0 && (
+              <AlertaClienteObservaciones
+                observaciones={observacionesPendientes}
+                mostrarBotones={!alertaAceptada}
+                onContinuar={() => setAlertaAceptada(true)}
+                onCancelar={() => {
+                  setCliente(null)
+                  setObservacionesPendientes([])
+                  setAlertaAceptada(false)
+                }}
+              />
+            )}
+
             {busquedaRealizada && !cliente && (
               <div className="space-y-3 border-l-2 border-cyan-500 pl-3 bg-slate-900/50 p-3 rounded">
                 <p className="text-cyan-400 text-sm font-medium">Cliente nuevo. Complete los datos:</p>
@@ -294,7 +540,7 @@ export function RegistrarIngresoPage() {
           </div>
         </div>
 
-        {/* ============ DATOS DEL ALQUILER ============ */}
+        {/* DATOS DEL ALQUILER */}
         <div className="bg-slate-800 p-5 rounded-lg">
           <h2 className="text-lg font-semibold mb-4">Datos del Alquiler</h2>
 
@@ -330,65 +576,208 @@ export function RegistrarIngresoPage() {
 
                 <div className="bg-slate-900 p-3 rounded">
                   <p className="text-lg text-white font-bold">
-                    Total: S/ {total.toFixed(2)}
+                    Total: S/ {totalHabitacion.toFixed(2)}
                   </p>
                 </div>
 
-                <div>
-                  <label className="text-slate-300 text-sm block mb-1">Adelanto (S/)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    value={adelanto}
-                    onChange={e => setAdelanto(Number(e.target.value))}
-                    className="w-full bg-slate-900 text-white p-2 rounded text-lg"
-                  />
-                </div>
+                {/* COBRO */}
+                <div className="bg-slate-900 p-4 rounded space-y-3">
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={16} className="text-green-400" />
+                    <p className="text-slate-200 font-semibold">Cobro</p>
+                  </div>
 
-                {adelanto > 0 && (
-                  <div>
-                    <label className="text-slate-300 text-sm block mb-1">Método de pago</label>
-                    <select
-                      value={idMetodoPago ?? ""}
-                      onChange={e => setIdMetodoPago(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full bg-slate-900 text-white p-2 rounded"
+                  {/* Toggle tipo de cobro */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => cambiarModo("unico")}
+                      className={`flex-1 p-2 rounded text-sm font-medium transition ${
+                        modoCobro === "unico"
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                      }`}
                     >
-                      <option value="">— Seleccionar —</option>
-                      {metodosPago.map(mp => (
-                        <option key={mp.id_metodo} value={mp.id_metodo}>
-                          {mp.nombre} {mp.es_de_caja ? "(Caja)" : "(Dueña)"}
-                        </option>
-                      ))}
-                    </select>
+                      💵 Un solo método
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cambiarModo("varios")}
+                      className={`flex-1 p-2 rounded text-sm font-medium transition ${
+                        modoCobro === "varios"
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                      }`}
+                    >
+                      <CreditCard size={14} className="inline mr-1" /> Varios métodos
+                    </button>
                   </div>
-                )}
 
-                {/* Resumen de pago */}
-                <div className="space-y-2 bg-slate-900 p-3 rounded">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Total:</span>
-                    <span className="text-white font-semibold">S/ {total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Adelanto:</span>
-                    <span className="text-blue-400">S/ {adelanto.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-slate-700 pt-2 flex justify-between">
-                    {vuelto > 0 ? (
-                      <>
-                        <span className="text-yellow-300 font-semibold">💵 Vuelto:</span>
-                        <span className="text-yellow-300 font-bold text-lg">S/ {vuelto.toFixed(2)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-slate-400 font-semibold">Saldo pendiente:</span>
-                        <span className={saldoPendiente > 0 ? "text-yellow-300 font-bold text-lg" : "text-green-400 font-bold text-lg"}>
-                          S/ {saldoPendiente.toFixed(2)}
-                        </span>
-                      </>
+                  {/* Modo único */}
+                  {modoCobro === "unico" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-slate-300 text-sm block mb-1">Monto</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={montoUnico || ""}
+                          onChange={e => setMontoUnico(Number(e.target.value))}
+                          placeholder="0.00"
+                          className="w-full bg-slate-800 text-white p-2 rounded text-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-300 text-sm block mb-1">Método de pago</label>
+                        <select
+                          value={idMetodoPagoUnico ?? ""}
+                          onChange={e => setIdMetodoPagoUnico(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full bg-slate-800 text-white p-2 rounded"
+                        >
+                          <option value="">— Seleccionar —</option>
+                          {metodosPago.map(mp => (
+                            <option key={mp.id_metodo} value={mp.id_metodo}>
+                              {mp.nombre} {mp.es_de_caja ? "(Caja)" : "(Dueña)"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Modo varios */}
+                  {modoCobro === "varios" && (
+                    <div className="space-y-2">
+                      {pagosMixtos.map((pago, idx) => (
+                        <div key={pago.id} className="flex gap-2 items-center">
+                          <span className="text-slate-500 text-xs w-8">#{idx + 1}</span>
+                          <select
+                            value={pago.id_metodo_pago ?? ""}
+                            onChange={e =>
+                              actualizarPagoMixto(pago.id, "id_metodo_pago", e.target.value ? Number(e.target.value) : null)
+                            }
+                            className="flex-1 bg-slate-800 text-white p-2 rounded text-sm"
+                          >
+                            <option value="">— Método —</option>
+                            {metodosPago.map(mp => (
+                              <option key={mp.id_metodo} value={mp.id_metodo}>
+                                {mp.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={pago.monto || ""}
+                            onChange={e => actualizarPagoMixto(pago.id, "monto", Number(e.target.value))}
+                            placeholder="0.00"
+                            className="w-24 bg-slate-800 text-white p-2 rounded text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => eliminarPagoMixto(pago.id)}
+                            className="text-red-400 hover:text-red-300 p-1"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={agregarPagoMixto}
+                        className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 text-sm"
+                      >
+                        <Plus size={14} /> Agregar otro método
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Resumen del cobro */}
+                  <div className="border-t border-slate-700 pt-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Total habitación:</span>
+                      <span className="text-white font-semibold">S/ {totalHabitacion.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Cliente paga:</span>
+                      <span className="text-blue-400 font-semibold">S/ {clientePaga.toFixed(2)}</span>
+                    </div>
+
+                    {vuelto > 0 && (
+                      <div className="bg-green-900/40 border border-green-700 p-2 rounded flex justify-between">
+                        <span className="text-green-300 font-semibold">💵 VUELTO:</span>
+                        <span className="text-green-300 font-bold text-lg">S/ {vuelto.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {clienteDebe > 0 && (
+                      <div className="bg-red-900/40 border border-red-700 p-2 rounded">
+                        <div className="flex justify-between">
+                          <span className="text-red-300 font-semibold">🔴 CLIENTE DEBE:</span>
+                          <span className="text-red-300 font-bold text-lg">S/ {clienteDebe.toFixed(2)}</span>
+                        </div>
+                        <p className="text-red-200 text-xs mt-1">
+                          El cliente entra debiendo. Deberá pagar al check-out.
+                        </p>
+                      </div>
+                    )}
+
+                    {diferencia === 0 && clientePaga > 0 && (
+                      <div className="bg-slate-800 p-2 rounded text-center text-slate-300 text-sm">
+                        ✅ Pago exacto
+                      </div>
                     )}
                   </div>
+
+                  {/* ¿Qué hacer con el vuelto? */}
+                  {vuelto > 0 && (
+                    <div className="bg-yellow-900/30 border border-yellow-700 p-3 rounded space-y-2">
+                      <p className="text-yellow-200 text-sm font-medium">¿Qué hacer con el vuelto?</p>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!entregarVueltoAhora}
+                          onChange={() => setEntregarVueltoAhora(false)}
+                        />
+                        <span className="text-slate-200 text-sm">
+                          Guardar como saldo a favor <span className="text-yellow-400">(recomendado)</span>
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={entregarVueltoAhora}
+                          onChange={() => setEntregarVueltoAhora(true)}
+                        />
+                        <span className="text-slate-200 text-sm">
+                          Entregar ahora al cliente
+                        </span>
+                      </label>
+
+                      {entregarVueltoAhora && (
+                        <div>
+                          <label className="text-slate-300 text-xs block mb-1">Método de devolución</label>
+                          <select
+                            value={metodoVuelto ?? ""}
+                            onChange={e => setMetodoVuelto(e.target.value ? Number(e.target.value) : null)}
+                            className="w-full bg-slate-900 text-white p-2 rounded text-sm"
+                          >
+                            <option value="">— Seleccionar —</option>
+                            {metodosPago.map(mp => (
+                              <option key={mp.id_metodo} value={mp.id_metodo}>
+                                {mp.nombre} {mp.es_de_caja ? "(Caja)" : "(Dueña)"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -407,7 +796,7 @@ export function RegistrarIngresoPage() {
           <div className="flex gap-2 mt-5">
             <button
               onClick={registrarIngreso}
-              disabled={!idTarifa || enviando}
+              disabled={!idTarifa || enviando || !!reservaActiva || (observacionesPendientes.length > 0 && !alertaAceptada)}
               className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white py-2 rounded font-medium"
             >
               {enviando ? "Registrando..." : "Registrar Ingreso"}

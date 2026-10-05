@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { X, AlertTriangle, Check, History } from "lucide-react"
+import { X, AlertTriangle, Check, History, AlertOctagon } from "lucide-react"
 import { reservaService } from "@/services/reservaService"
 import { metodoPagoService } from "@/services/metodoPagoService"
+import { clienteObservacionService } from "@/services/clienteObservacionService"
+import { tipoObservacionService } from "@/services/tipoObservacionService"
+import { gravedadObservacionService } from "@/services/gravedadObservacionService"
 import { mensajeDeError } from "@/lib/errores"
 import type { CalculoExtension, OpcionExtension } from "@/types/reserva"
 import type { MetodoPago } from "@/types/configuracion"
+import type { TipoObservacion } from "@/types/tipoObservacion"
+import type { GravedadObservacion } from "@/types/gravedadObservacion"
 
 interface Props {
   idReserva: number
+  idCliente?: number
+  nombreCliente?: string
   onClose: () => void
   onSuccess: () => void
 }
@@ -22,7 +29,13 @@ function formatearMinutos(minutos: number): string {
   return `${h}h ${m}m`
 }
 
-export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
+export function ModalExtensionTiempo({
+  idReserva,
+  idCliente,
+  nombreCliente,
+  onClose,
+  onSuccess,
+}: Props) {
   const [calculo, setCalculo] = useState<CalculoExtension | null>(null)
   const [opcionSeleccionada, setOpcionSeleccionada] = useState<OpcionExtension | null>(null)
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
@@ -32,6 +45,17 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
   const [enviando, setEnviando] = useState(false)
   const [cargando, setCargando] = useState(true)
 
+  // Observación al cliente (solo si "No cobrar")
+  const [tipos, setTipos] = useState<TipoObservacion[]>([])
+  const [gravedades, setGravedades] = useState<GravedadObservacion[]>([])
+  const [idTipoObs, setIdTipoObs] = useState<number | null>(null)
+  const [idGravedadObs, setIdGravedadObs] = useState<number | null>(null)
+  const [montoDeuda, setMontoDeuda] = useState<string>("")
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(false)
+
+  const esNoCobrar = opcionSeleccionada?.monto === 0
+
+  // Cargar cálculo + métodos de pago
   useEffect(() => {
     const cargar = async () => {
       try {
@@ -55,18 +79,61 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
     cargar()
   }, [idReserva])
 
+  // Cargar catálogos de observación cuando se elige "No cobrar"
+  useEffect(() => {
+    if (!esNoCobrar || tipos.length > 0) return
+    const cargar = async () => {
+      try {
+        setCargandoCatalogos(true)
+        const [ts, gs] = await Promise.all([
+          tipoObservacionService.listarActivos(),
+          gravedadObservacionService.listarActivos(),
+        ])
+        setTipos(ts)
+        setGravedades(gs)
+        if (ts.length > 0) setIdTipoObs(ts[0].id_tipo_observacion)
+        if (gs.length > 0) setIdGravedadObs(gs[0].id_gravedad)
+      } catch {
+        toast.error("Error al cargar catálogos de observación")
+      } finally {
+        setCargandoCatalogos(false)
+      }
+    }
+    cargar()
+  }, [esNoCobrar, tipos.length])
+
+  const tipoSeleccionado = tipos.find(t => t.id_tipo_observacion === idTipoObs)
+  const mostrarMontoDeuda =
+    tipoSeleccionado?.slug === "deuda" ||
+    tipoSeleccionado?.slug === "dano_habitacion"
+
   const aplicar = async () => {
     if (!opcionSeleccionada) return
-    if (opcionSeleccionada.monto === 0 && !observaciones.trim()) {
-      toast.error("Debe ingresar una observación para no cobrar")
-      return
+
+    // Validaciones
+    if (esNoCobrar) {
+      if (!observaciones.trim()) {
+        toast.error("Ingresá el motivo de la observación")
+        return
+      }
+      if (!idTipoObs || !idGravedadObs) {
+        toast.error("Seleccioná tipo y gravedad de la observación")
+        return
+      }
+      if (idCliente === undefined || idCliente === null) {
+        toast.error("No se pudo identificar al cliente")
+        return
+      }
     }
+
     if (!cargarACuenta && opcionSeleccionada.monto > 0 && !idMetodoPago) {
-      toast.error("Seleccione un método de pago")
+      toast.error("Seleccioná un método de pago")
       return
     }
+
     setEnviando(true)
     try {
+      // 1. Aplicar extensión (siempre, incluso si es 0)
       await reservaService.agregarExtension(idReserva, {
         horas_extra: opcionSeleccionada.horas,
         es_turno_adicional: opcionSeleccionada.es_turno_adicional,
@@ -74,7 +141,20 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
         id_metodo_pago: cargarACuenta ? null : idMetodoPago,
         observaciones: observaciones || null,
       })
-      toast.success("Extensión aplicada")
+
+      // 2. Si es "No cobrar" → registrar observación al cliente
+      if (esNoCobrar) {
+        await clienteObservacionService.crear(idCliente, {
+          id_tipo_observacion: idTipoObs!,
+          id_gravedad: idGravedadObs!,
+          motivo: observaciones.trim(),
+          monto_deuda: montoDeuda ? Number(montoDeuda) : null,
+        })
+        toast.success("Extensión aplicada y observación registrada")
+      } else {
+        toast.success("Extensión aplicada")
+      }
+
       onSuccess()
     } catch (e: unknown) {
       toast.error(mensajeDeError(e))
@@ -85,7 +165,7 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
 
   if (cargando) {
     return (
-      <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4">
         <div className="bg-slate-800 rounded-lg p-6">
           <p className="text-slate-300">Calculando...</p>
         </div>
@@ -95,10 +175,9 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
 
   if (!calculo) return null
 
-  // Caso: está dentro de tolerancia Y no hay nada pendiente
   if (calculo.dentro_tolerancia && calculo.minutos_exceso_pendiente === 0) {
     return (
-      <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
         <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
           <div className="bg-green-900 p-4 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -121,7 +200,7 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-yellow-900 p-4 rounded-t-lg flex items-center justify-between sticky top-0 z-10">
@@ -138,7 +217,6 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
         </div>
 
         <div className="p-4 space-y-4">
-
           {/* Info tiempo */}
           <div className="bg-slate-900 p-4 rounded grid grid-cols-3 gap-3 text-center">
             <div>
@@ -157,7 +235,7 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* Historial de extensiones ya aplicadas */}
+          {/* Historial */}
           {(calculo.horas_extra_ya_aplicadas > 0 || calculo.turnos_adicionales_aplicados > 0) && (
             <div className="bg-slate-900 p-4 rounded border-l-4 border-l-blue-500">
               <div className="flex items-center gap-2 mb-2">
@@ -186,32 +264,16 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
                 {calculo.monto_ya_pagado > 0 && (
                   <div className="flex justify-between pl-3">
                     <span className="text-green-400 text-xs">├─ Ya pagado:</span>
-                    <span className="text-green-400 text-xs">
-                      S/ {calculo.monto_ya_pagado.toFixed(2)}
-                    </span>
+                    <span className="text-green-400 text-xs">S/ {calculo.monto_ya_pagado.toFixed(2)}</span>
                   </div>
                 )}
                 {calculo.monto_cargado_a_cuenta > 0 && (
                   <div className="flex justify-between pl-3">
                     <span className="text-yellow-400 text-xs">└─ A cuenta:</span>
-                    <span className="text-yellow-400 text-xs">
-                      S/ {calculo.monto_cargado_a_cuenta.toFixed(2)}
-                    </span>
+                    <span className="text-yellow-400 text-xs">S/ {calculo.monto_cargado_a_cuenta.toFixed(2)}</span>
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Info pendiente */}
-          {calculo.minutos_exceso_pendiente > 0 && calculo.dentro_tolerancia && (
-            <div className="bg-green-900/40 border border-green-700 p-3 rounded">
-              <p className="text-green-300 text-sm font-semibold">
-                ✅ El exceso restante está dentro de la tolerancia
-              </p>
-              <p className="text-green-200 text-xs mt-1">
-                Exceso pendiente: {formatearMinutos(calculo.minutos_exceso_pendiente)} (tolera {calculo.tolerancia_minutos} min)
-              </p>
             </div>
           )}
 
@@ -314,20 +376,109 @@ export function ModalExtensionTiempo({ idReserva, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {/* Observaciones */}
-          <div>
-            <label className="text-slate-300 text-sm block mb-1">
-              Observaciones
-              {opcionSeleccionada?.monto === 0 && <span className="text-red-400 ml-2">(obligatorio si no cobra)</span>}
-            </label>
-            <textarea
-              value={observaciones}
-              onChange={e => setObservaciones(e.target.value)}
-              rows={2}
-              placeholder="Ej: Cliente frecuente, se le perdona la hora extra"
-              className="w-full bg-slate-900 text-white p-2 rounded"
-            />
-          </div>
+          {/* Observación al cliente — SOLO si "No cobrar" */}
+          {esNoCobrar && (
+            <div className="bg-red-900/30 border border-red-700 p-4 rounded space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertOctagon size={18} className="text-red-300" />
+                <p className="text-red-200 text-sm font-semibold">
+                  Observación al cliente (obligatoria al no cobrar)
+                </p>
+              </div>
+
+              {cargandoCatalogos ? (
+                <p className="text-slate-400 text-xs">Cargando catálogos...</p>
+              ) : (
+                <>
+                  {/* Tipo */}
+                  <div>
+                    <label className="text-slate-300 text-xs block mb-1">
+                      Tipo de observación *
+                    </label>
+                    <select
+                      value={idTipoObs ?? ""}
+                      onChange={e => setIdTipoObs(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                    >
+                      <option value="">— Seleccionar —</option>
+                      {tipos.map(t => (
+                        <option key={t.id_tipo_observacion} value={t.id_tipo_observacion}>
+                          {t.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Gravedad */}
+                  <div>
+                    <label className="text-slate-300 text-xs block mb-1">
+                      Gravedad *
+                    </label>
+                    <select
+                      value={idGravedadObs ?? ""}
+                      onChange={e => setIdGravedadObs(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                    >
+                      <option value="">— Seleccionar —</option>
+                      {gravedades.map(g => (
+                        <option key={g.id_gravedad} value={g.id_gravedad}>
+                          {g.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Monto deuda (condicional) */}
+                  {mostrarMontoDeuda && (
+                    <div>
+                      <label className="text-slate-300 text-xs block mb-1">
+                        Monto de deuda
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={montoDeuda}
+                        onChange={e => setMontoDeuda(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Motivo */}
+              <div>
+                <label className="text-slate-300 text-xs block mb-1">
+                  Motivo *
+                </label>
+                <textarea
+                  value={observaciones}
+                  onChange={e => setObservaciones(e.target.value)}
+                  rows={2}
+                  placeholder="Ej: Cliente frecuente, se le perdona la hora extra"
+                  className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Observaciones para "cobrar" (no "No cobrar") */}
+          {!esNoCobrar && (
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">
+                Observaciones (opcional)
+              </label>
+              <textarea
+                value={observaciones}
+                onChange={e => setObservaciones(e.target.value)}
+                rows={2}
+                placeholder="Ej: Cliente pidió 2 horas más"
+                className="w-full bg-slate-900 text-white p-2 rounded"
+              />
+            </div>
+          )}
 
           {/* Botones */}
           <div className="flex gap-2 pt-2">

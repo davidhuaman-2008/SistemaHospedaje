@@ -74,11 +74,36 @@ class ReservaService
             $total = $montoHabitacion - $descuentoMonto;
             $pagado = (float) ($datos['adelanto'] ?? 0);
 
-            // REGLA DE ORO: pagado >= total (para cubrir la habitación)
-            if ($pagado < $total) {
+            // Regla: si el pago parcial es menor al total, se permite pero queda registrado como deuda
+            // (el campo 'saldo' lo refleja automáticamente)
+
+            // REGLA: 1 cliente = 1 sola reserva activa
+            $reservaActiva = $this->clienteTieneReservaActiva($datos['id_cliente']);
+            if ($reservaActiva) {
+                $numeroHab = $reservaActiva->habitacion?->numero ?? 'desconocida';
                 throw new \InvalidArgumentException(
-                    "El cliente debe pagar el total de la habitación (S/ {$total}). Pagó S/ {$pagado}."
+                    "Este cliente ya tiene una reserva activa en la habitación {$numeroHab}. " .
+                    "Si necesita otra habitación, regístrela a nombre de otra persona (familiar)."
                 );
+            }
+
+            // REGLA: si hay pago, el método es obligatorio (o pagos[] mixtos)
+            $pagosMixtos = $datos['pagos'] ?? null;
+            $tienePagosMixtos = is_array($pagosMixtos) && count($pagosMixtos) > 0;
+
+            if ($pagado > 0 && empty($datos['id_metodo_pago']) && !$tienePagosMixtos) {
+                throw new \InvalidArgumentException(
+                    'Debe seleccionar un método de pago cuando registra un adelanto.'
+                );
+            }
+
+            if ($tienePagosMixtos) {
+                $sumaPagos = array_sum(array_column($pagosMixtos, 'monto'));
+                if (abs($sumaPagos - $pagado) > 0.01) {
+                    throw new \InvalidArgumentException(
+                        "La suma de los pagos (S/ {$sumaPagos}) no coincide con el adelanto (S/ {$pagado})."
+                    );
+                }
             }
 
             $vueltoEntregado = 0; // Por defecto se guarda como saldo a favor
@@ -129,8 +154,21 @@ class ReservaService
                 'id_usuario_checkin' => $idUsuario,
             ]);
 
-            // Registrar pago de la habitación
-            if ($pagado > 0 && isset($datos['id_metodo_pago'])) {
+            // Registrar pago(s) de la habitación
+            if ($tienePagosMixtos) {
+                // Pagos mixtos: uno por cada método
+                foreach ($pagosMixtos as $pago) {
+                    PagoReserva::create([
+                        'id_reserva' => $reserva->id_reserva,
+                        'id_metodo_pago' => $pago['id_metodo_pago'],
+                        'monto' => $pago['monto'],
+                        'es_adelanto' => true,
+                        'fecha_pago' => now(),
+                        'id_usuario' => $idUsuario,
+                    ]);
+                }
+            } elseif ($pagado > 0 && isset($datos['id_metodo_pago'])) {
+                // Pago único
                 PagoReserva::create([
                     'id_reserva' => $reserva->id_reserva,
                     'id_metodo_pago' => $datos['id_metodo_pago'],
@@ -140,6 +178,15 @@ class ReservaService
                     'id_usuario' => $idUsuario,
                 ]);
             }
+
+            // Recalcular pagado = SUM(pagos_reserva) — fuente de verdad
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $total - $totalPagadoReal);
+            $reserva->save();
 
             $this->clienteVisita->registrar(
                 $datos['id_cliente'],
@@ -155,6 +202,15 @@ class ReservaService
     public function crearReserva(array $datos, int $idUsuario): Reserva
     {
         return DB::transaction(function () use ($datos, $idUsuario) {
+            // REGLA: 1 cliente = 1 sola reserva activa
+            $reservaActiva = $this->clienteTieneReservaActiva($datos['id_cliente']);
+            if ($reservaActiva) {
+                $numeroHab = $reservaActiva->habitacion?->numero ?? 'desconocida';
+                throw new \InvalidArgumentException(
+                    "Este cliente ya tiene una reserva activa en la habitación {$numeroHab}. " .
+                    "Si necesita otra habitación, regístrela a nombre de otra persona (familiar)."
+                );
+            }
             $tarifa = Tarifa::findOrFail($datos['id_tarifa']);
             $entrada = Carbon::parse($datos['fecha_entrada']);
             $salida = $entrada->copy()->addHours($tarifa->horas);
@@ -704,4 +760,472 @@ class ReservaService
             ->where('id_reserva', $idReserva)
             ->orderByDesc('id_extension')
             ->get();
-    }}
+    }
+    /**
+     * Agrega un pago adicional a una reserva existente (pago parcial / mixto).
+     */
+    public function agregarPago(int $idReserva, array $datos, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $datos, $idUsuario) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se pueden agregar pagos a una reserva finalizada.');
+            }
+
+            $monto = (float) $datos['monto'];
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            PagoReserva::create([
+                'id_reserva' => $idReserva,
+                'id_metodo_pago' => $datos['id_metodo_pago'],
+                'monto' => $monto,
+                'es_adelanto' => false,
+                'fecha_pago' => now(),
+                'id_usuario' => $idUsuario,
+                'observaciones' => $datos['observaciones'] ?? 'Pago adicional',
+            ]);
+
+            // Recalcular pagado y saldo
+            $totalPagado = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagado);
+            $reserva->save();
+
+            // Recalcular pagado y saldo desde la tabla de pagos (fuente de verdad)
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Anula un pago especifico de una reserva.
+     */
+    public function anularPago(int $idPago, int $idUsuario, string $motivo): Reserva
+    {
+        return DB::transaction(function () use ($idPago, $idUsuario, $motivo) {
+            $pago = PagoReserva::findOrFail($idPago);
+            $pago->update([
+                'anulado' => true,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            $reserva = Reserva::findOrFail($pago->id_reserva);
+            $totalPagado = PagoReserva::where('id_reserva', $pago->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagado);
+            $reserva->save();
+
+            // Recalcular pagado y saldo desde la tabla de pagos (fuente de verdad)
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Entrega el vuelto al cliente.
+     * Se registra como un PAGO NEGATIVO en pagos_reserva.
+     * El campo 'pagado' se recalcula como SUM(pagos.monto WHERE anulado = false).
+     */
+    public function entregarVuelto(int $idReserva, float $monto, int $idMetodoPago, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $monto, $idMetodoPago, $idUsuario) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se puede entregar vuelto a una reserva finalizada.');
+            }
+
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            // Calcular vuelto pendiente desde reserva.pagado (fuente de verdad)
+            $vueltoPendiente = (float) $reserva->pagado - (float) $reserva->total;
+
+            if ($vueltoPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay vuelto pendiente para esta reserva. ' .
+                    "(Pagado: S/ {$reserva->pagado}, Total: S/ {$reserva->total})"
+                );
+            }
+
+            if ($monto > $vueltoPendiente + 0.01) {
+                throw new \InvalidArgumentException(
+                    "El monto (S/ {$monto}) excede el vuelto pendiente (S/ {$vueltoPendiente})."
+                );
+            }
+
+            // Registrar pago NEGATIVO
+            PagoReserva::create([
+                'id_reserva' => $idReserva,
+                'id_metodo_pago' => $idMetodoPago,
+                'monto' => -$monto,  // NEGATIVO
+                'es_adelanto' => false,
+                'fecha_pago' => now(),
+                'id_usuario' => $idUsuario,
+                'observaciones' => 'Vuelto entregado al cliente',
+            ]);
+
+            // Recalcular pagado y saldo
+            $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $nuevoPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'habitacion.piso',
+                'tarifa', 'estado', 'usuarioCreacion',
+                'ocupaciones', 'pagos.metodoPago', 'registroEstadia',
+                'consumos.producto', 'ajustes.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Verifica si un cliente ya tiene una reserva activa (estado 'Activa').
+     * Regla: 1 cliente = 1 sola reserva activa.
+     * Si quiere alquilar otra habitación, debe registrarse con otro nombre (familiar).
+     */
+    public function clienteTieneReservaActiva(int $idCliente): ?Reserva
+    {
+        return Reserva::with(['habitacion'])
+            ->where('id_cliente', $idCliente)
+            ->whereHas('estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->first();
+    }
+
+    /**
+     * Check-out con decisión sobre el vuelto pendiente.
+     * 
+     * Decisiones posibles:
+     * - ENTREGADO: se registra pago negativo (sale de caja)
+     * - NO_RECLAMADO: el vuelto queda como ingreso (no sale de caja)
+     * - OTRO: se registra observación libre
+     */
+    public function checkOutConVuelto(
+        int $idReserva,
+        int $idUsuario,
+        ?float $montoFinal,
+        string $decisionTipo,  // 'ENTREGADO' | 'NO_RECLAMADO' | 'OTRO'
+        ?int $idMetodoPago = null,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $montoFinal, $decisionTipo, $idMetodoPago, $observaciones) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            // Calcular vuelto pendiente desde reserva.pagado (fuente de verdad)
+            $vueltoPendiente = (float) $reserva->pagado - (float) $reserva->total;
+
+            if ($vueltoPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay vuelto pendiente para esta reserva. ' .
+                    "(Pagado: S/ {$reserva->pagado}, Total: S/ {$reserva->total})"
+                );
+            }
+
+            // Decidir qué hacer
+            if ($decisionTipo === 'ENTREGADO') {
+                if (!$idMetodoPago) {
+                    throw new \InvalidArgumentException('Seleccione un método para entregar el vuelto.');
+                }
+
+                // Registrar pago NEGATIVO (el vuelto sale de caja)
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => -$vueltoPendiente,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => $observaciones ?? 'Vuelto entregado al cliente',
+                ]);
+
+                // Recalcular pagado
+                $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                    ->where('anulado', false)
+                    ->sum('monto');
+
+                $reserva->pagado = $nuevoPagado;
+                $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'NO_RECLAMADO') {
+                // NO se registra pago negativo.
+                // El vuelto queda como "ingreso" del hospedaje.
+                // Se guarda observación en la reserva.
+                $reserva->observaciones = $observaciones ?? 'Cliente se retiró sin reclamar el vuelto de S/ ' . number_format($vueltoPendiente, 2);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'OTRO') {
+                if (!$observaciones) {
+                    throw new \InvalidArgumentException('Se requiere una observación para esta decisión.');
+                }
+                $reserva->observaciones = $observaciones;
+                $reserva->save();
+            } else {
+                throw new \InvalidArgumentException('Decisión inválida sobre el vuelto.');
+            }
+
+            // Ejecutar el check-out normal
+            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+        });
+    }
+
+    /**
+     * Check-out con decisión sobre deuda pendiente.
+     * 
+     * Decisiones posibles:
+     * - PAGO: el cliente pagó al salir → registra pago positivo
+     * - NO_PAGO: el cliente se fue debiendo → crea observación al cliente
+     */
+    public function checkOutConDeuda(
+        int $idReserva,
+        int $idUsuario,
+        ?float $montoFinal,
+        string $decisionTipo,  // 'PAGO' | 'NO_PAGO'
+        ?float $montoPago = null,
+        ?int $idMetodoPago = null,
+        ?int $idGravedad = null,
+        ?string $motivo = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $montoFinal, $decisionTipo, $montoPago, $idMetodoPago, $idGravedad, $motivo) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            // Calcular deuda pendiente desde reserva.pagado (fuente de verdad)
+            $deudaPendiente = (float) $reserva->total - (float) $reserva->pagado;
+
+            if ($deudaPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay deuda pendiente para esta reserva. ' .
+                    "(Total: S/ {$reserva->total}, Pagado: S/ {$reserva->pagado})"
+                );
+            }
+
+            if ($decisionTipo === 'PAGO') {
+                if (!$idMetodoPago) {
+                    throw new \InvalidArgumentException('Seleccione un método de pago.');
+                }
+                if (!$montoPago || $montoPago <= 0) {
+                    throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+                }
+
+                // Registrar pago positivo
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $montoPago,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'Pago al salir (cierre de deuda)',
+                ]);
+
+                // Recalcular pagado
+                $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                    ->where('anulado', false)
+                    ->sum('monto');
+
+                $reserva->pagado = $nuevoPagado;
+                $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'NO_PAGO') {
+                if (!$idGravedad || !$motivo) {
+                    throw new \InvalidArgumentException('Se requiere gravedad y motivo para registrar la deuda.');
+                }
+
+                // Crear observación al cliente
+                \App\Models\ClienteObservacion::create([
+                    'id_cliente' => $reserva->id_cliente,
+                    'id_tipo_observacion' => 1,  // 1 = Deuda (ID conocido del seeder)
+                    'id_gravedad' => $idGravedad,
+                    'motivo' => $motivo,
+                    'monto_deuda' => $deudaPendiente,
+                    'resuelto' => false,
+                    'id_usuario_creacion' => $idUsuario,
+                ]);
+
+                // Guardar referencia en la reserva
+                $reserva->observaciones = 'Cliente se retiró debiendo S/ ' . number_format($deudaPendiente, 2) . '. ' . $motivo;
+                $reserva->save();
+            } else {
+                throw new \InvalidArgumentException('Decisión inválida sobre la deuda.');
+            }
+
+            // Ejecutar el check-out normal
+            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+        });
+    }
+
+    /**
+     * Agrega MÚLTIPLES consumos a la reserva en una sola transacción.
+     * Soporta:
+     * - Pagar todo ahora (1 o varios pagos mixtos)
+     * - Pagar parcialmente (resto se carga a la cuenta)
+     * - No pagar nada (todo a la cuenta)
+     *
+     * @param array $consumos  [['id_producto' => X, 'cantidad' => Y], ...]
+     * @param array $pagos     [['id_metodo_pago' => X, 'monto' => Y], ...]
+     * @param bool  $cargarACuenta  Si true, el saldo no pagado va a la cuenta
+     */
+    public function agregarConsumosMultiple(
+        int $idReserva,
+        array $consumos,
+        array $pagos,
+        bool $cargarACuenta,
+        int $idUsuario,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $consumos, $pagos, $cargarACuenta, $idUsuario, $observaciones) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se pueden agregar consumos a una reserva finalizada.');
+            }
+
+            if (empty($consumos)) {
+                throw new \InvalidArgumentException('Debe agregar al menos un producto.');
+            }
+
+            // 1. VALIDAR STOCK DE TODOS LOS PRODUCTOS
+            $productosValidados = [];
+            foreach ($consumos as $item) {
+                $producto = Producto::findOrFail($item['id_producto']);
+                $cantidad = (int) $item['cantidad'];
+
+                if ($cantidad <= 0) {
+                    throw new \InvalidArgumentException(
+                        "La cantidad debe ser mayor a 0 para '{$producto->nombre}'."
+                    );
+                }
+
+                if ($producto->stock_actual < $cantidad) {
+                    throw new \InvalidArgumentException(
+                        "Stock insuficiente para '{$producto->nombre}'. Disponible: {$producto->stock_actual}."
+                    );
+                }
+
+                $productosValidados[] = [
+                    'producto' => $producto,
+                    'cantidad' => $cantidad,
+                    'subtotal' => round((float) $producto->precio_venta * $cantidad, 2),
+                ];
+            }
+
+            // 2. CALCULAR TOTAL DE CONSUMOS
+            $totalConsumos = array_sum(array_column($productosValidados, 'subtotal'));
+
+            // 3. CREAR CADA CONSUMO
+            $consumosCreados = [];
+            foreach ($productosValidados as $item) {
+                $consumo = ReservaConsumo::create([
+                    'id_reserva' => $idReserva,
+                    'id_producto' => $item['producto']->id_producto,
+                    'cantidad' => $item['cantidad'],
+                    'precio_unitario' => (float) $item['producto']->precio_venta,
+                    'subtotal' => $item['subtotal'],
+                    'pagado' => false,  // se maneja con pagos abajo
+                    'id_metodo_pago' => null,
+                    'id_usuario' => $idUsuario,
+                    'fecha_consumo' => now(),
+                    'observaciones' => $observaciones,
+                ]);
+
+                // Descontar stock
+                $item['producto']->decrement('stock_actual', $item['cantidad']);
+
+                $consumosCreados[] = $consumo;
+            }
+
+            // 4. REGISTRAR PAGOS (si hay)
+            $totalPagadoConsumos = 0;
+            if (!empty($pagos)) {
+                foreach ($pagos as $pago) {
+                    $monto = (float) $pago['monto'];
+                    if ($monto <= 0) {
+                        throw new \InvalidArgumentException('Cada pago debe ser mayor a 0.');
+                    }
+
+                    PagoReserva::create([
+                        'id_reserva' => $idReserva,
+                        'id_metodo_pago' => $pago['id_metodo_pago'],
+                        'monto' => $monto,
+                        'es_adelanto' => false,
+                        'fecha_pago' => now(),
+                        'id_usuario' => $idUsuario,
+                        'observaciones' => 'Consumo: ' . count($consumosCreados) . ' producto(s)',
+                    ]);
+
+                    $totalPagadoConsumos += $monto;
+                }
+            }
+
+            // 5. SI NO SE PAGÓ TODO Y SE CARGA A CUENTA → sumar a monto_consumos
+            $saldoConsumos = $totalConsumos - $totalPagadoConsumos;
+
+            if ($cargarACuenta && $saldoConsumos > 0.01) {
+                $reserva->monto_consumos = (float) $reserva->monto_consumos + $saldoConsumos;
+            } elseif (!$cargarACuenta && $saldoConsumos > 0.01) {
+                throw new \InvalidArgumentException(
+                    "El pago (S/ {$totalPagadoConsumos}) no cubre el total de consumos (S/ {$totalConsumos}). " .
+                    "Activá 'cargar a cuenta' o cobrá el resto."
+                );
+            }
+
+            // 6. RECALCULAR TOTAL Y PAGADO
+            $reserva->recalcularTotal();
+
+            $totalPagadoReal = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+}
