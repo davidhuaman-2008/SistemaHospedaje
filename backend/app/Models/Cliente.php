@@ -48,6 +48,11 @@ class Cliente extends Model
         return $this->hasMany(ClienteObservacion::class, 'id_cliente', 'id_cliente');
     }
 
+    public function reservas(): HasMany
+    {
+        return $this->hasMany(Reserva::class, 'id_cliente', 'id_cliente');
+    }
+
     public function observacionesPendientes(): HasMany
     {
         return $this->hasMany(ClienteObservacion::class, 'id_cliente', 'id_cliente')

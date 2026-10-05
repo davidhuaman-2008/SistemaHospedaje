@@ -415,3 +415,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('mantenimiento/{id}/cancelar', [\App\Http\Controllers\MantenimientoController::class, 'cancelar']);
     Route::delete('mantenimiento/{id}', [\App\Http\Controllers\MantenimientoController::class, 'destroy']);
 });
+// ============================================================================
+// CUENTAS POR PAGAR
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    // --- Estados de Cuenta ---
+    Route::get('estados-cuenta-pagar', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'index']);
+    Route::get('estados-cuenta-pagar/activos', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'activos']);
+    Route::get('estados-cuenta-pagar/{id}', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'show']);
+    Route::post('estados-cuenta-pagar', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'store']);
+    Route::put('estados-cuenta-pagar/{id}', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'update']);
+    Route::patch('estados-cuenta-pagar/{id}/desactivar', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'desactivar']);
+    Route::patch('estados-cuenta-pagar/{id}/reactivar', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'reactivar']);
+    Route::delete('estados-cuenta-pagar/{id}', [\App\Http\Controllers\EstadoCuentaPagarController::class, 'destroy']);
+
+    // --- Cuentas por Pagar ---
+    Route::get('cuentas-por-pagar', [\App\Http\Controllers\CuentaPagarController::class, 'index']);
+    Route::get('cuentas-por-pagar/pendientes', [\App\Http\Controllers\CuentaPagarController::class, 'pendientes']);
+    Route::get('cuentas-por-pagar/vencidas', [\App\Http\Controllers\CuentaPagarController::class, 'vencidas']);
+    Route::get('cuentas-por-pagar/por-proveedor/{idProveedor}', [\App\Http\Controllers\CuentaPagarController::class, 'porProveedor']);
+    Route::get('cuentas-por-pagar/{id}', [\App\Http\Controllers\CuentaPagarController::class, 'show']);
+    Route::post('cuentas-por-pagar', [\App\Http\Controllers\CuentaPagarController::class, 'store']);
+    Route::put('cuentas-por-pagar/{id}', [\App\Http\Controllers\CuentaPagarController::class, 'update']);
+    Route::patch('cuentas-por-pagar/{id}/anular', [\App\Http\Controllers\CuentaPagarController::class, 'anular']);
+
+    // --- Pagos a Proveedor ---
+    Route::post('cuentas-por-pagar/{id}/pagos', [\App\Http\Controllers\CuentaPagarController::class, 'registrarPago']);
+    Route::delete('cuentas-por-pagar/{id}/pagos/{idPago}', [\App\Http\Controllers\CuentaPagarController::class, 'anularPago']);
+});

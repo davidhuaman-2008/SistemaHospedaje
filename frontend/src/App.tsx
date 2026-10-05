@@ -23,6 +23,9 @@ import { RegistrarIngresoPage } from "@/pages/recepcion/RegistrarIngresoPage"
 import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
 import { LimpiezaPage } from "@/pages/limpieza/LimpiezaPage"
 import { MantenimientoPage } from "@/pages/mantenimiento/MantenimientoPage"
+import { CuentasPorPagarPage } from "@/pages/cuentasPagar/CuentasPorPagarPage"
+import { CuentaPagarDetallePage } from "@/pages/cuentasPagar/CuentaPagarDetallePage"
+import { EstadoCuentaPagarPage } from "@/pages/configuracion/estadoCuentaPagar/EstadoCuentaPagarPage"
 import { TipoMantenimientoPage } from "@/pages/configuracion/tipoMantenimiento/TipoMantenimientoPage"
 import { PrioridadMantenimientoPage } from "@/pages/configuracion/prioridadMantenimiento/PrioridadMantenimientoPage"
 
@@ -205,6 +208,9 @@ function App() {
         <Route path="/recepcion/checkout/:idReserva" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
         <Route path="/limpieza" element={<ProtectedRoute><LimpiezaPage /></ProtectedRoute>} />
         <Route path="/mantenimiento" element={<ProtectedRoute><MantenimientoPage /></ProtectedRoute>} />
+        <Route path="/cuentas-por-pagar" element={<ProtectedRoute><CuentasPorPagarPage /></ProtectedRoute>} />
+        <Route path="/cuentas-por-pagar/:idCuenta" element={<ProtectedRoute><CuentaPagarDetallePage /></ProtectedRoute>} />
+        <Route path="/configuracion/estados-cuenta-pagar" element={<ProtectedRoute><EstadoCuentaPagarPage /></ProtectedRoute>} />
         <Route path="/configuracion/tipos-mantenimiento" element={<ProtectedRoute><TipoMantenimientoPage /></ProtectedRoute>} />
         <Route path="/configuracion/prioridades-mantenimiento" element={<ProtectedRoute><PrioridadMantenimientoPage /></ProtectedRoute>} />
         <Route

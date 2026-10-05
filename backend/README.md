@@ -1569,3 +1569,496 @@ Proyecto privado — Sistema de Hospedaje.
 - 🅲 Otra cosa
 
 **¿Dale?** 🚀
+## 🔧 MÓDULO 15 — MANTENIMIENTO (✅ CERRADO)
+
+### Visión general
+
+Sistema para registrar y gestionar **reparaciones** de habitaciones (pintura, plomería, jacuzzi roto, etc.). La habitación queda **BLOQUEADA** hasta que se resuelva. Al resolver → se crea **LIMPIEZA automática**.
+
+**No confundir:**
+- **Inactiva** → permanentemente desactivada (ej: 208 = almacén)
+- **Mantenimiento** → temporalmente bloqueada por reparación
+
+### Tablas
+
+#### `tipos_mantenimiento` (CRUD, 8 filas)
+`id_tipo_mantenimiento`, `nombre` UNIQUE, `slug` UNIQUE, `descripcion`, `icono` (Lucide name), `color`, `orden`, `activo`.
+
+**Semilla:**
+| id | nombre | slug | icono | color |
+|----|--------|------|-------|-------|
+| 1 | Eléctrico | electrico | zap | #f59e0b |
+| 2 | Plomería | plomeria | droplets | #06b6d4 |
+| 3 | Jacuzzi | jacuzzi | bath | #7c3aed |
+| 4 | Muebles | muebles | sofa | #a855f7 |
+| 5 | Pintura | pintura | paintbrush | #ec4899 |
+| 6 | Aire Acondicionado | aire-acondicionado | wind | #0ea5e9 |
+| 7 | Cerraduras | cerraduras | key | #64748b |
+| 8 | Otro | otro | wrench | #6b7280 |
+
+#### `prioridades_mantenimiento` (CRUD, 4 filas)
+`id_prioridad`, `nombre` UNIQUE, `slug` UNIQUE, `color`, `orden`, `activo`.
+
+**Semilla:**
+| id | nombre | slug | color | orden |
+|----|--------|------|-------|-------|
+| 1 | Baja | baja | #10b981 | 1 |
+| 2 | Media | media | #f59e0b | 2 |
+| 3 | Alta | alta | #ef4444 | 3 |
+| 4 | Urgente | urgente | #dc2626 | 4 |
+
+#### `mantenimiento` (registros)
+`id_mantenimiento`, `id_habitacion` FK, `id_tipo_mantenimiento` FK, `id_prioridad` FK, `id_usuario_reporta` FK, `id_usuario_asignado` FK NULL, `descripcion` TEXT, `estado` ENUM('REPORTADO','EN_PROCESO','RESUELTO','CANCELADO'), `fecha_reporte` DATETIME, `fecha_inicio` NULL, `fecha_resolucion` NULL, `observaciones` TEXT, `motivo_cancelacion` TEXT.
+
+**Índices:** `id_habitacion`, `estado`, `(id_habitacion, estado)`.
+
+### Flujo de estados
+
+```
+REPORTADO  →  EN_PROCESO  →  RESUELTO
+   ↓             ↓             ↓
+Recién         Alguien       Al resolver
+creado         lo tomó       → Crea LIMPIEZA automática
+
+        ↘  CANCELADO (no era necesario)
+```
+
+### Comportamiento clave
+
+- **Al CREAR un reporte:** la habitación queda bloqueada → `EstadoHabitacionService` devuelve `Mantenimiento` (#f97316 naranja). Tiene **prioridad sobre Limpieza** en el cálculo.
+- **Al RESOLVER:** se crea una fila automática en `limpieza` (porque después de reparar hay que limpiar).
+- **NO se puede crear 2 reportes activos** en la misma habitación.
+- **Solo se pueden reportar** habitaciones en estado `Disponible` (no ocupadas, no limpieza, no mantenimiento).
+- **Roles permitidos:** admin, encargado, recepcionista.
+- **Roles solo-lectura:** limpieza, cajero.
+
+### Endpoints Módulo 15
+
+**Tipos (8 endpoints):**
+```
+GET    /api/tipos-mantenimiento
+GET    /api/tipos-mantenimiento/activos
+GET    /api/tipos-mantenimiento/{id}
+POST   /api/tipos-mantenimiento
+PUT    /api/tipos-mantenimiento/{id}
+PATCH  /api/tipos-mantenimiento/{id}/desactivar
+PATCH  /api/tipos-mantenimiento/{id}/reactivar
+DELETE /api/tipos-mantenimiento/{id}
+```
+
+**Prioridades (8 endpoints):**
+```
+GET    /api/prioridades-mantenimiento
+GET    /api/prioridades-mantenimiento/activos
+GET    /api/prioridades-mantenimiento/{id}
+POST   /api/prioridades-mantenimiento
+PUT    /api/prioridades-mantenimiento/{id}
+PATCH  /api/prioridades-mantenimiento/{id}/desactivar
+PATCH  /api/prioridades-mantenimiento/{id}/reactivar
+DELETE /api/prioridades-mantenimiento/{id}
+```
+
+**Mantenimiento (registros):**
+```
+GET    /api/mantenimiento
+GET    /api/mantenimiento/pendientes        → { pendientes: [...], total_pendientes: N }
+GET    /api/mantenimiento/habitacion/{id}
+GET    /api/mantenimiento/{id}
+POST   /api/mantenimiento
+PATCH  /api/mantenimiento/{id}/iniciar
+PATCH  /api/mantenimiento/{id}/resolver
+PATCH  /api/mantenimiento/{id}/cancelar
+DELETE /api/mantenimiento/{id}
+```
+
+### Integración con `EstadoHabitacionService`
+
+**Orden de prioridad del cálculo de estado:**
+
+1. Si `habitacion.activo = false` → **Inactiva** (#475569)
+2. Si hay mantenimiento REPORTADO/EN_PROCESO → **Mantenimiento** (#f97316) ⬅️ **NUEVO**
+3. Si hay limpieza PENDIENTE/EN_PROCESO → **Limpieza** (#06b6d4)
+4. Si hay ocupación activa ahora → **Ocupada** / **Por vencer** / **Vencida**
+5. Si hay ocupación futura → **Reservada** (#7c3aed)
+6. Si no → **Disponible** (#10b981)
+
+**El `habitaciones-mapa` devuelve campos extra cuando está en mantenimiento:**
+```json
+{
+  "estado": "Mantenimiento",
+  "color": "#f97316",
+  "id_mantenimiento": 5,
+  "mantenimiento_tipo": "Jacuzzi",
+  "mantenimiento_descripcion": "No calienta el agua",
+  "mantenimiento_prioridad": "Alta",
+  "mantenimiento_prioridad_color": "#ef4444",
+  "mantenimiento_estado": "EN_PROCESO",
+  "mantenimiento_fecha_reporte": "2026-10-04T...",
+  "mantenimiento_asignado": "Juan Pérez"
+}
+```
+
+### Servicios clave
+
+- `TipoMantenimientoService` — CRUD estándar
+- `PrioridadMantenimientoService` — CRUD estándar
+- `MantenimientoService` — lógica completa:
+  - `listar()`, `listarPendientes()`, `listarPorHabitacion()`
+  - `crear($datos, $idUsuario)` → valida que no haya otro activo
+  - `iniciar($id, $idUsuario)` → auto-asigna al usuario que inicia
+  - `resolver($id, $idUsuario, $obs)` → **crea limpieza automática**
+  - `cancelar($id, $idUsuario, $motivo)`
+  - `tieneMantenimientoActivo($idHabitacion)` → usado por `EstadoHabitacionService`
+  - Validación de roles: `['admin', 'encargado', 'recepcionista']`
+
+---
+
+## 🛒 MÓDULO CONSUMOS MÚLTIPLES (✅ CERRADO)
+
+### Visión general
+
+Permite agregar **N productos en una sola operación** con soporte para:
+- Todo a cuenta (paga al retirarse)
+- Pago único (1 método)
+- Pago parcial / mixto (varios métodos o pago incompleto)
+
+Reemplaza al modal simple anterior (`AgregarConsumoModal`).
+
+### Nuevo endpoint
+
+```
+POST /api/reservas/{id}/consumos-multiple
+```
+
+**Body:**
+```json
+{
+  "consumos": [
+    { "id_producto": 11, "cantidad": 1 },
+    { "id_producto": 13, "cantidad": 2 }
+  ],
+  "pagos": [
+    { "id_metodo_pago": 1, "monto": 20 },
+    { "id_metodo_pago": 3, "monto": 30 }
+  ],
+  "cargar_a_cuenta": true,
+  "observaciones": "Cliente pidió pago mixto"
+}
+```
+
+**Response:**
+```json
+{
+  "mensaje": "Consumos agregados correctamente",
+  "data": { /* Reserva completa con consumos y pagos */ }
+}
+```
+
+### Lógica del Service
+
+```php
+public function agregarConsumosMultiple(
+    int $idReserva,
+    array $consumos,      // [['id_producto' => X, 'cantidad' => Y], ...]
+    array $pagos,         // [['id_metodo_pago' => X, 'monto' => Y], ...]
+    bool $cargarACuenta,  // true → el saldo no pagado va a monto_consumos
+    int $idUsuario,
+    ?string $observaciones
+): Reserva
+```
+
+**Pasos:**
+1. **Validar stock de TODOS los productos** antes de crear nada (transacción atómica)
+2. Crear N `ReservaConsumo` con `pagado = false`
+3. Descontar stock de cada uno
+4. Crear N `PagoReserva` (si hay pagos)
+5. **`cargar_a_cuenta = true`:** el saldo (`total - pagado`) se suma a `monto_consumos`
+6. **`cargar_a_cuenta = false`:** si el pago no cubre el total → error 422
+7. Recalcular `total`, `pagado`, `saldo` de la reserva
+
+### Reglas de negocio
+
+- **R-CONS-1:** Transacción atómica — si falla un producto, no se crea NINGUNO
+- **R-CONS-2:** Validar stock de TODOS antes de crear (no parcialmente)
+- **R-CONS-3:** Si `cargar_a_cuenta = true`, el saldo pendiente se suma a `monto_consumos`
+- **R-CONS-4:** Si `cargar_a_cuenta = false` y hay saldo → error 422
+- **R-CONS-5:** Cada pago se registra individualmente en `pagos_reserva`
+- **R-CONS-6:** Reutiliza la lógica de pagos mixtos del walk-in
+
+### Ejemplo real
+
+**Cliente pide:**
+- 1 Chilcano (S/ 45)
+- 2 Galletas (S/ 5 total)
+- Total: S/ 50
+
+**Caso 1 — Todo a cuenta:**
+```json
+{
+  "consumos": [
+    { "id_producto": 11, "cantidad": 1 },
+    { "id_producto": 13, "cantidad": 2 }
+  ],
+  "cargar_a_cuenta": true
+}
+```
+→ `reserva_consumos`: 2 filas con `pagado = false`
+→ `reserva.monto_consumos += 50`
+→ `reserva.total += 50`
+
+**Caso 2 — Pago único (S/ 30 efectivo):**
+```json
+{
+  "consumos": [...],
+  "pagos": [{ "id_metodo_pago": 1, "monto": 30 }],
+  "cargar_a_cuenta": true
+}
+```
+→ `reserva_consumos`: 2 filas
+→ `pagos_reserva`: 1 fila (S/ 30 Efectivo)
+→ `reserva.monto_consumos += 20` (saldo no cubierto)
+→ `reserva.pagado += 30`
+
+**Caso 3 — Pago mixto (S/ 20 Yape + S/ 30 Efectivo = S/ 50):**
+```json
+{
+  "consumos": [...],
+  "pagos": [
+    { "id_metodo_pago": 3, "monto": 20 },
+    { "id_metodo_pago": 1, "monto": 30 }
+  ],
+  "cargar_a_cuenta": true
+}
+```
+→ `reserva_consumos`: 2 filas
+→ `pagos_reserva`: 2 filas
+→ `reserva.monto_consumos += 0` (todo cubierto)
+→ `reserva.pagado += 50`
+
+---
+
+## 🎯 Reglas de negocio globales (R1-R71 + RG-* + R-DINERO-* + R-PAGO-* + OBS-* + R-CONS-*)
+
+### Reservas (Módulo 09)
+- **R1** Habitación alquilada no se re-alquila hasta liberación
+- **R2** Reserva Pendiente/Confirmada bloquea en su rango
+- **R3** Sistema rechaza reservas que se crucen
+- **R4** Buffer de limpieza configurable (30 min default)
+- **R5** Salida anticipada no devuelve dinero pero libera antes
+- **R6** No-Show libera bloqueo y retiene adelanto
+- **R7** DNI genera Boleta, RUC genera Factura
+
+### Habitaciones
+- **R8** Estado se calcula en vivo (NO se guarda)
+- **R9** Al check-out pasa a Limpieza automáticamente
+- **R10** Se libera cuando limpieza termina
+- **R11** En Limpieza no se puede alquilar
+- **R12** En Mantenimiento no se puede alquilar
+
+### Extensiones
+- **R13** Máximo de horas extra según tipo (3 por defecto)
+- **R14** Al exceder máximo → turno adicional
+- **R15** Turno adicional cuesta el bloque completo
+- **R16** Cada extensión se registra en `extensiones_reserva`
+- **R54** Tolerancia configurable (default 30 min)
+- **R55** Horas extra = `ceil((exceso - tolerancia) / 60)`
+- **R56** Precio hora extra viene de `tarifas`
+- **R57** Máximo horas extra viene de `tarifas`
+- **R58** Excede máximo → ofrecer turno adicional
+- **R59** Cada extensión se registra (auditoría)
+- **R60** Múltiples extensiones permitidas
+- **R61** Cálculo resta extensiones ya aplicadas
+- **R62** Formas de pago: cargar a cuenta o pagar ahora
+- **R63** Se puede "no cobrar" con observación
+- **R64** Precios y tolerancia NO se hardcodean
+
+### Caja (Módulo 11)
+- **R17** Solo 1 caja abierta a la vez
+- **R18** Todo movimiento pertenece a caja abierta
+- **R19** Vuelto NO es egreso
+- **R20** Movimientos no se borran, se anulan
+- **R21** Si hay diferencia → observación obligatoria
+- **R22** Arqueo por método de pago
+- **R23** Egresos requieren responsable
+
+### IGV y Comprobantes (Módulo 16)
+- **R24** Precios incluyen IGV
+- **R25** IGV = 18% (configurable)
+- **R26** Base = Total / 1.18
+- **R27** Redondeo al final
+- **R28** Boleta puede mostrar solo total
+- **R29** Factura discrimina Base + IGV
+- **R30** Cada comprobante consume correlativo
+- **R31** Series B001, F001, NC01, ND01
+
+### Clientes
+- **R32** Al reservar: DNI + nombre + celular
+- **R33** Los demás datos se enriquecen después
+- **R34** Nivel según visitas
+- **R35** Descuento por nivel se aplica automáticamente
+- **R-CLI-7:** 1 cliente = 1 reserva activa
+
+### Promociones
+- **R36** Por defecto se aplica la mejor promo
+- **R37** Solo acumulables se suman
+- **R38** Uso se registra en `promociones_cliente`
+
+### ⚡ R39 — Métodos "de dueña" NO entran a caja
+Los métodos con `es_de_caja = false` NO se registran en `movimientos_caja`.
+
+### Inventario
+- **R40** Cada movimiento → kardex
+- **R41** Consumo descuenta stock ✅
+- **R42** Stock bajo → alerta
+- **R43** Inventario físico → ajustes
+
+### Alertas
+- **R44-R47** Cronjob + WebSocket + anti-duplicados
+
+### Auditoría
+- **R48-R50** Todo cambio sensible se audita con IP + user-agent
+
+### Productos
+- **R51-R53** Stock bajo, no eliminar productos/proveedores con dependencias
+
+### ⚡ R-DINERO-1 a R-DINERO-5 — Vuelto
+- **R-DINERO-1:** Vuelto = pago negativo en `pagos_reserva`
+- **R-DINERO-2:** `pagado = SUM(pagos.monto WHERE anulado = false)`
+- **R-DINERO-3:** Se puede entregar parcial
+- **R-DINERO-4:** Se pide método de devolución
+- **R-DINERO-5:** `vuelto_entregado` deprecado
+
+### ⚡ R-PAGO-1 a R-PAGO-4 — Pagos mixtos
+- **R-PAGO-1:** N pagos con distintos métodos para misma reserva
+- **R-PAGO-2:** Frontend envía array `pagos[]`
+- **R-PAGO-3:** Controller valida `pagos.*.id_metodo_pago` y `pagos.*.monto`
+- **R-PAGO-4:** Service itera + recalcula `pagado`
+
+### ⚡ OBS-1 a OBS-5 — Observaciones cliente
+- **OBS-1:** 1+ obs → banner rojo
+- **OBS-2:** 2+ obs → "CLIENTE NO GRATO"
+- **OBS-3:** Tipo bloqueo/crítica → "CLIENTE VETADO"
+- **OBS-4:** PATCH `/resolver`
+- **OBS-5:** Backend expone `observaciones_pendientes`
+
+### Configuraciones (R65-R67)
+- **R65:** Parámetros globales viven en tabla `configuraciones`
+- **R66:** Cambiar una config aplica al instante
+- **R67:** Parámetros iniciales: tolerancia, buffer, no-show, IGV, moneda
+
+### Limpieza (R68-R71)
+- **R68:** Al check-out → INSERT en `limpieza`
+- **R69:** Al cambiar habitación → limpieza para la vieja
+- **R70:** Vuelve a Disponible solo cuando se completa
+- **R71:** Limpieza tiene prioridad sobre Disponible
+
+### ⚡ MANT-1 a MANT-8 — Mantenimiento
+- **MANT-1:** Solo se reporta en habitaciones `Disponible`
+- **MANT-2:** No se puede crear 2 reportes activos en la misma habitación
+- **MANT-3:** Al crear → habitación queda bloqueada (estado `Mantenimiento`)
+- **MANT-4:** Al iniciar → auto-asigna al usuario que inicia
+- **MANT-5:** Al resolver → crea `limpieza` automáticamente
+- **MANT-6:** Al cancelar → se registra el motivo
+- **MANT-7:** Tipos y prioridades son CRUD (NO hardcodeados)
+- **MANT-8:** Roles permitidos: admin, encargado, recepcionista
+
+### ⚡ R-CONS-1 a R-CONS-6 — Consumos múltiples
+- **R-CONS-1:** Transacción atómica (todo o nada)
+- **R-CONS-2:** Validar stock de TODOS antes de crear
+- **R-CONS-3:** `cargar_a_cuenta = true` → saldo se suma a `monto_consumos`
+- **R-CONS-4:** `cargar_a_cuenta = false` + saldo → error 422
+- **R-CONS-5:** Cada pago se registra en `pagos_reserva`
+- **R-CONS-6:** Reutiliza lógica de pagos mixtos
+
+### Reglas propias del Hospedaje (RG-*)
+- **RG1** Al alquilar, SIEMPRE debe pagar la habitación completa
+- **RG2** El vuelto puede quedar como saldo a favor
+- **RG3** El vuelto se descuenta automáticamente con consumos/horas extra
+- **RG4** Al cambiar hab, la vieja va a LIMPIEZA
+- **RG5** Al cambiar hab, el tiempo NO se resetea
+- **RG6** Si no hay tarifa exacta, se ajusta a la más chica
+
+---
+
+## 🆕 REGLAS AGREGADAS EN MÓDULOS 14 Y 15
+
+### Limpieza Rápida (masiva)
+- **R72:** El recepcionista puede finalizar TODAS las limpiezas pendientes de una vez
+- **R73:** Se registra el usuario que hizo la limpieza rápida
+- **R74:** Solo para roles admin, encargado, limpieza
+- **R75:** Las habitaciones pasan a `Disponible` inmediatamente
+
+### Filtros de habitaciones en el mapa
+- **R76:** Los filtros son en vivo (no se guardan en BD)
+- **R77:** Filtros disponibles: Todos, Disponibles, Ocupadas, Por Vencer, Vencidas, Limpieza, Mantenimiento, Reservadas, Inactivas
+- **R78:** "Ocupadas" agrupa Ocupada + Por Vencer + Vencida
+- **R79:** "Vencidas" muestra solo las que excedieron el tiempo
+- **R80:** Cada filtro muestra el contador en el chip
+
+---
+
+## 📝 Estructura de tablas (estado actual)
+
+**Total acumulado:** ~38 tablas.
+
+**Nuevas desde la última actualización:**
+- `tipos_mantenimiento` (8 filas)
+- `prioridades_mantenimiento` (4 filas)
+- `mantenimiento` (0 filas iniciales)
+
+**Sin migraciones adicionales para Consumos Múltiples** — se reutilizan `reserva_consumos` y `pagos_reserva`.
+
+---
+
+## 🎯 Estado actualizado del roadmap
+
+| # | Módulo | Backend | Frontend | Estado |
+|---|--------|---------|----------|--------|
+| 01-08 | AUTH, CONFIG, TARIFAS, CLIENTES, PRODUCTOS, PROMOCIONES, DECORACIÓN, HABITACIONES | ✅ | ✅ | CERRADOS |
+| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
+| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Backend listo |
+| 09C | EXTENSIONES DE TIEMPO | ✅ | ✅ | CERRADO |
+| **OBS** | **OBSERVACIONES CLIENTE** | ✅ | ✅ | **CERRADO** |
+| **PAGOS** | **PAGOS MIXTOS + VUELTO** | ✅ | ✅ | **CERRADO** |
+| **CONS** | **CONSUMOS MÚLTIPLES** | ✅ | ✅ | **CERRADO** |
+| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
+| 11 | CAJA | ⏳ | ⏳ | Pendiente |
+| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
+| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
+| 14 | LIMPIEZA | ✅ | ✅ | CERRADO |
+| **15** | **MANTENIMIENTO** | ✅ | ✅ | **CERRADO** |
+| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
+| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
+| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
+| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
+| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
+| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
+
+**Módulos completados:** ~16 de 21
+
+---
+
+## 🚨 Bugs resueltos (histórico actualizado)
+
+18. **Bug doble backslash en `EstadoHabitacionService.php`** → `use App\\Models\\Mantenimiento` (con `\\`). Fix: reemplazo masivo de `\\+` por `\`.
+
+19. **Bug import `categoriaProductoService`** → estaba en `productoService.ts` pero el archivo existe separado. Fix: import desde `@/services/categoriaProductoService`.
+
+20. **Bug `$appends = ['reserva_activa']`** → Laravel buscaba `getReservaActivaAttribute()` inexistente. Fix: remover `$appends`, usar `setAttribute()` + `getAttribute()` en Controller.
+
+21. **Bug pagos mixtos no se guardaban** → `crearWalkIn()` solo creaba pago si `isset($datos['id_metodo_pago'])`. Fix: agregar validación de `$tienePagosMixtos` + `foreach`.
+
+22. **Bug "No hay vuelto pendiente"** → `SUM(pagos) = 0` porque los pagos mixtos no se guardaron. Fix: usar `$reserva->pagado` en vez de `SUM(pagos)` para calcular vuelto.
+
+23. **Bug `$total` indefinido en `agregarPago`/`anularPago`** → bloque duplicado usaba `$total`. Fix: usar `$reserva->total`.
+
+24. **Bug 1 cliente en 2 habitaciones** → No había validación. Fix: `clienteTieneReservaActiva()` + validación en `crearWalkIn`/`crearReserva`.
+
+25. **Bug PowerShell regex no matchea** → encoding UTF-8 vs BOM. Fix: usar `Get-Content | Where-Object { $_ -notmatch 'patrón' }`.
+
+26. **Bug Vite parse error JSX** → `<span>` que abría y cerraba con `</span>` en vez de `</p>`. Fix: revisar cada apertura/cierre.
+
+---
+
+**Última actualización:** 05/10/2026
+**Módulos completados:** ~16 de 21 (09A, 09B back, 09C, OBS, PAGOS, CONS, 14, 15)

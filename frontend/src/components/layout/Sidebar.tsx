@@ -28,6 +28,7 @@ import {
   Hotel,
   Brush,
   Wrench,
+  Receipt,
   Hammer,
   Menu,
   X,
@@ -75,6 +76,11 @@ export default function Sidebar() {
     location.pathname.startsWith("/mantenimiento") ||
       location.pathname.startsWith("/configuracion/tipos-mantenimiento") ||
       location.pathname.startsWith("/configuracion/prioridades-mantenimiento")
+  )
+
+  const [cuentasPagarAbierto, setCuentasPagarAbierto] = useState(
+    location.pathname.startsWith("/cuentas-por-pagar") ||
+      location.pathname.startsWith("/configuracion/estados-cuenta-pagar")
   )
 
   const itemClass = (path: string) =>
@@ -179,6 +185,30 @@ export default function Sidebar() {
                 <Link to="/configuracion/prioridades-mantenimiento" className={subItemClass("/configuracion/prioridades-mantenimiento")} onClick={cerrarMobile}>
                   <AlertOctagon size={16} />
                   Prioridades
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* CUENTAS POR PAGAR */}
+          <div>
+            <button onClick={() => setCuentasPagarAbierto(!cuentasPagarAbierto)} className={dropdownButtonClass(cuentasPagarAbierto)}>
+              <span className="flex items-center gap-3">
+                <Receipt size={18} />
+                Cuentas por Pagar
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${cuentasPagarAbierto ? "rotate-180" : ""}`} />
+            </button>
+
+            {cuentasPagarAbierto && (
+              <div className="mt-1 space-y-1">
+                <Link to="/cuentas-por-pagar" className={subItemClass("/cuentas-por-pagar")} onClick={cerrarMobile}>
+                  <Receipt size={16} />
+                  Cuentas
+                </Link>
+                <Link to="/configuracion/estados-cuenta-pagar" className={subItemClass("/configuracion/estados-cuenta-pagar")} onClick={cerrarMobile}>
+                  <Settings size={16} />
+                  Estados
                 </Link>
               </div>
             )}

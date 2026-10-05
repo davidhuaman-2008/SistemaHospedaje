@@ -2082,3 +2082,946 @@ Proyecto privado — Sistema de Hospedaje.
 - 🅲 Otra cosa
 
 **¿Dale?** 🚀
+
+# Frontend — Sistema de Hospedaje
+
+**Framework:** React 19 + TypeScript 6
+**Build:** Vite 8
+**Estilos:** Tailwind CSS v4
+**UI Components:** shadcn/ui (Base UI + preset Nova)
+**Router:** React Router v7
+**Estado global:** Zustand 5 (con persist)
+**HTTP:** Axios 1.20
+**Notificaciones:** Sonner 2
+**Iconos:** Lucide React 1.49
+**Estado global:** Módulos 01-09C + OBS + PAGOS + CONS + 14 + 15 completados
+
+---
+
+## 📌 Descripción
+
+SPA (Single Page Application) para gestión completa de un hospedaje de rotación rápida. Consume la API REST del backend Laravel (Sanctum Bearer tokens). Interfaz completa en modo oscuro.
+
+**Arquitectura:**
+- Componentes por página (Page/Form/Tabla/Modal)
+- Cada `Page.tsx` incluye `<AppLayout>` (que contiene `<Sidebar />`)
+- Servicios para llamadas API (axios)
+- Zustand para estado de autenticación
+- Sidebar con dropdowns por módulo
+- Rutas protegidas con guard
+- **Sistema en tiempo real:** auto-refresh cada 15-20s en mapa y limpieza
+
+---
+
+## 🔴 REGLAS DEL PROYECTO (NO NEGOCIABLES)
+
+### R1 — Nada hardcodeado
+Todo sale de la BD. Si puede cambiar sin tocar código → va a BD.
+
+**Ejemplo:** Los tipos de mantenimiento vienen de `tipoMantenimientoService.listarActivos()`. NO hay tipos hardcodeados.
+
+### R2 — Poco código por archivo
+100 archivos de 30 líneas > 10 archivos de 300 líneas.
+1 archivo = 1 responsabilidad.
+
+### R3 — Funcional > Elegante
+Si algo es "elegante pero confuso" → simplificar.
+
+### R4 — Componentes reutilizables
+- `<IconPicker />` → selector visual de íconos Lucide con buscador
+- `<IconoDinamico />` → renderiza un ícono Lucide por nombre
+- `<ConfirmDialog />` → modal de confirmación
+- `<ProtectedRoute />` → guard de rutas autenticadas
+- `<AlertaClienteObservaciones />` → banner rojo de alertas
+
+### R5 — Servicios: GET vs POST/PUT
+- **GET** → devuelve `data` directo
+- **POST/PUT/PATCH** → devuelve `data.data` (porque el backend anida `{ mensaje, data }`)
+- **DELETE** → solo el mensaje
+
+### R6 — Estado de formularios
+Cuando un formulario se abre para EDITAR, debe cargar los datos del item:
+- **useState** inicializado con `inicial?.campo`
+- Si necesita sincronizar al cambiar props → **useEffect**
+- **NUNCA hardcodear valores** en el estado inicial (excepto placeholders)
+
+### R7 — Fechas ISO
+El backend devuelve fechas como `2026-10-03T05:00:00.000000Z`. Siempre normalizar:
+```ts
+function normalizarFecha(valor: string | null): string {
+  if (!valor) return ""
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor
+  return valor.substring(0, 10)
+}
+```
+
+### R8 — Z-index para modales anidados
+- Modal principal: `z-50`
+- Submodales (anidados): `z-60`
+- **NUNCA** renderizar submodal dentro del modal principal. Usar `if (mostrarSubmodal) return <Submodal />` ANTES del return principal.
+
+### R9 — El backend es la fuente de verdad
+- Validaciones en backend (frontend es solo UX)
+- Cálculos de dinero (totales, saldos) vienen del backend
+- El frontend solo muestra y captura
+
+### R10 — Paleta de colores de estados
+| Estado | Color | Hex |
+|--------|-------|-----|
+| Disponible | 🟢 Verde | `#10b981` |
+| Ocupada | 🔴 Rojo | `#ef4444` |
+| Por vencer | 🟡 Amarillo | `#f59e0b` |
+| Vencida | 🔴 Rojo oscuro | `#dc2626` |
+| Limpieza | 🔵 Celeste | `#06b6d4` |
+| Mantenimiento | 🟠 Naranja | `#f97316` |
+| Reservada | 🟣 Morado | `#7c3aed` |
+| Inactiva | ⚫ Gris | `#475569` |
+
+**Los colores vienen del BACKEND** (`EstadoHabitacionService`), el frontend solo los aplica con `style={{ background: color }}`.
+
+### R11 — Manejo de errores
+- **Nunca** `any` en catch → usar `catch (e: unknown)`
+- **Nunca** `alert()` → usar `toast.error()`
+- **Nunca** `window.confirm()` → usar `<ConfirmDialog />`
+- Usar `mensajeDeError(e)` para extraer el mensaje del backend
+
+### R12 — Iconos dinámicos
+- Todos los CRUDs con campo `icono` DEBEN usar `<IconPicker />` para editar
+- Todas las tablas con columna `icono` DEBEN usar `<IconoDinamico />` para mostrar
+- Los `icono` son strings Lucide (`banknote`, `credit-card`, `smartphone`, etc.)
+
+### R13 — Filtros en vivo
+Los filtros de habitaciones, categorías, etc. son **en vivo** (no se guardan en BD). Cuando cambiás de ruta, se resetean al default.
+
+---
+
+## 📂 Estructura de carpetas
+
+```
+frontend/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Sidebar.tsx               (menú lateral con dropdowns)
+│   │   │   └── AppLayout.tsx             (Sidebar + main content)
+│   │   ├── ui/                            (componentes shadcn)
+│   │   ├── ConfirmDialog.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   ├── IconPicker.tsx
+│   │   └── IconoDinamico.tsx
+│   │
+│   ├── hooks/
+│   │   └── useAuth.ts                     (Zustand + persist)
+│   │
+│   ├── lib/
+│   │   ├── utils.ts
+│   │   └── errores.ts
+│   │
+│   ├── pages/
+│   │   ├── LoginPage.tsx
+│   │   ├── DashboardPage.tsx
+│   │   │
+│   │   ├── usuarios/                      (Módulo 01)
+│   │   ├── configuracion/                 (Módulos 02, 03, 08, 09C, 15)
+│   │   │   ├── piso/
+│   │   │   ├── tipoHabitacion/
+│   │   │   ├── tipoDocumento/
+│   │   │   ├── metodoPago/
+│   │   │   ├── categoriaMovimiento/
+│   │   │   ├── clienteNivel/
+│   │   │   ├── tarifa/
+│   │   │   ├── habitacion/
+│   │   │   ├── ConfiguracionSistemaPage.tsx
+│   │   │   ├── tipoMantenimiento/         (Módulo 15)
+│   │   │   └── prioridadMantenimiento/    (Módulo 15)
+│   │   │
+│   │   ├── clientes/                      (Módulo 04 + Observaciones)
+│   │   │   ├── tipoObservacion/
+│   │   │   ├── gravedadObservacion/
+│   │   │   └── cliente/
+│   │   │       ├── ClientePage.tsx
+│   │   │       ├── ClienteForm.tsx
+│   │   │       ├── ClienteTabla.tsx
+│   │   │       ├── ClienteHistorial.tsx
+│   │   │       ├── ClienteVisitaDialog.tsx
+│   │   │       ├── AgregarObservacionModal.tsx
+│   │   │       ├── AlertaClienteObservaciones.tsx
+│   │   │       └── ClienteObservaciones.tsx
+│   │   │
+│   │   ├── productos/                     (Módulo 05)
+│   │   ├── promociones/                   (Módulo 06)
+│   │   ├── decoraciones/                  (Módulo 07)
+│   │   │
+│   │   ├── limpieza/                      (Módulo 14)
+│   │   │   ├── LimpiezaPage.tsx
+│   │   │   ├── TarjetaLimpieza.tsx
+│   │   │   └── NuevaLimpiezaModal.tsx
+│   │   │
+│   │   ├── mantenimiento/                 (Módulo 15)
+│   │   │   └── MantenimientoPage.tsx
+│   │   │
+│   │   └── recepcion/                     (Módulos 09A + 09C + Pagos + Consumos + Mantenimiento)
+│   │       ├── RecepcionPage.tsx
+│   │       ├── TarjetaHabitacion.tsx
+│   │       ├── ModalHabitacionOcupada.tsx
+│   │       ├── RegistrarIngresoPage.tsx
+│   │       ├── CheckoutPage.tsx
+│   │       ├── CambiarHabitacionModal.tsx
+│   │       ├── AnularReservaModal.tsx
+│   │       ├── AgregarConsumoModal.tsx    (carrito múltiple + pagos)
+│   │       ├── ModalExtensionTiempo.tsx
+│   │       ├── AgregarPagoModal.tsx
+│   │       ├── EntregarVueltoModal.tsx
+│   │       ├── ConfirmarVueltoModal.tsx
+│   │       ├── ConfirmarDeudaModal.tsx
+│   │       ├── ModalLimpiezaHabitacion.tsx
+│   │       ├── ReportarMantenimientoModal.tsx
+│   │       └── ModalMantenimientoHabitacion.tsx
+│   │
+│   ├── services/
+│   │   ├── api.ts
+│   │   ├── authService.ts
+│   │   ├── usuarioService.ts
+│   │   ├── rolService.ts
+│   │   ├── turnoService.ts
+│   │   ├── pisoService.ts
+│   │   ├── tipoHabitacionService.ts
+│   │   ├── tipoDocumentoService.ts
+│   │   ├── metodoPagoService.ts
+│   │   ├── categoriaMovimientoService.ts
+│   │   ├── clienteNivelService.ts
+│   │   ├── tarifaService.ts
+│   │   ├── tipoObservacionService.ts
+│   │   ├── gravedadObservacionService.ts
+│   │   ├── clienteService.ts
+│   │   ├── clienteObservacionService.ts
+│   │   ├── categoriaProductoService.ts
+│   │   ├── proveedorService.ts
+│   │   ├── productoService.ts
+│   │   ├── categoriaPromocionService.ts
+│   │   ├── promocionService.ts
+│   │   ├── promocionClienteService.ts
+│   │   ├── categoriaPaqueteService.ts
+│   │   ├── paqueteDecoracionService.ts
+│   │   ├── habitacionService.ts
+│   │   ├── configuracionSistemaService.ts
+│   │   ├── limpiezaService.ts
+│   │   ├── tipoMantenimientoService.ts
+│   │   ├── prioridadMantenimientoService.ts
+│   │   ├── mantenimientoService.ts
+│   │   └── reservaService.ts
+│   │
+│   ├── types/
+│   │   ├── index.ts
+│   │   ├── configuracion.ts
+│   │   ├── tarifa.ts
+│   │   ├── tipoObservacion.ts
+│   │   ├── gravedadObservacion.ts
+│   │   ├── cliente.ts
+│   │   ├── producto.ts
+│   │   ├── promocion.ts
+│   │   ├── categoriaPaquete.ts
+│   │   ├── paqueteDecoracion.ts
+│   │   ├── habitacion.ts
+│   │   ├── limpieza.ts
+│   │   ├── mantenimiento.ts
+│   │   └── reserva.ts
+│   │
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
+│
+├── .gitignore
+├── components.json
+├── eslint.config.js
+├── index.html
+├── package.json
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── README.md
+```
+
+---
+
+## 🛠️ Stack técnico completo
+
+### Dependencies (producción)
+
+| Paquete | Versión | Uso |
+|---------|---------|-----|
+| react | ^19.2.8 | UI |
+| react-dom | ^19.2.8 | Render |
+| react-router-dom | ^7.18.4 | Router |
+| axios | ^1.20.0 | HTTP client |
+| zustand | ^5.0.15 | Estado global |
+| sonner | ^2.0.8 | Toasts |
+| lucide-react | ^1.49.0 | Iconos |
+| @base-ui/react | ^1.8.0 | Base de componentes shadcn |
+| shadcn | ^4.21.1 | CLI de componentes |
+| class-variance-authority | ^0.7.1 | Variantes de clases |
+| cn | ^0.4.0 | Helper de clases |
+| tailwindcss | ^4.3.3 | Estilos |
+| @tailwindcss/vite | ^4.3.3 | Plugin Tailwind para Vite |
+| tw-animate-css | ^1.4.0 | Animaciones Tailwind |
+| @fontsource-variable/geist | ^5.3.0 | Fuente Geist |
+
+### DevDependencies
+
+| Paquete | Versión |
+|---------|---------|
+| vite | ^8.3.0 |
+| @vitejs/plugin-react | ^6.1.1 |
+| typescript | ~6.0.2 |
+| @types/node | ^24.19.0 |
+| @types/react | ^19.2.18 |
+| @types/react-dom | ^19.2.7 |
+| eslint | ^10.10.0 |
+| @eslint/js | ^10.0.1 |
+| eslint-plugin-react-hooks | ^7.1.1 |
+| eslint-plugin-react-refresh | ^0.5.6 |
+| globals | ^17.12.0 |
+| typescript-eslint | ^8.69.0 |
+
+---
+
+## ⚙️ Configuración clave
+
+### `vite.config.ts`
+
+```ts
+import path from "path"
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
+  },
+})
+```
+
+**Importante:** El proxy `/api` redirige al backend Laravel.
+
+### `tsconfig.json` y `tsconfig.app.json`
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+---
+
+## 🧭 Rutas completas
+
+### `src/App.tsx`
+
+| Ruta | Componente | Protegida |
+|------|-----------|-----------|
+| `/login` | LoginPage | No |
+| `/dashboard` | DashboardPage | Sí |
+| `/usuarios` | UsuarioPage | Sí |
+| `/roles` | RolPage | Sí |
+| `/turnos` | TurnoPage | Sí |
+| `/configuracion/pisos` | PisoPage | Sí |
+| `/configuracion/tipos-habitacion` | TipoHabitacionPage | Sí |
+| `/configuracion/tipos-documento` | TipoDocumentoPage | Sí |
+| `/configuracion/metodos-pago` | MetodoPagoPage | Sí |
+| `/configuracion/categorias-movimiento` | CategoriaMovimientoPage | Sí |
+| `/configuracion/clientes-niveles` | ClienteNivelPage | Sí |
+| `/configuracion/tarifas` | TarifaPage | Sí |
+| `/configuracion/habitaciones` | HabitacionPage | Sí |
+| `/configuracion/sistema` | ConfiguracionSistemaPage | Sí |
+| `/configuracion/tipos-mantenimiento` | TipoMantenimientoPage | Sí |
+| `/configuracion/prioridades-mantenimiento` | PrioridadMantenimientoPage | Sí |
+| `/clientes` | ClientePage | Sí |
+| `/clientes/tipos-observacion` | TipoObservacionPage | Sí |
+| `/clientes/gravedades-observacion` | GravedadObservacionPage | Sí |
+| `/productos` | ProductoPage | Sí |
+| `/productos/categorias` | CategoriaProductoPage | Sí |
+| `/productos/proveedores` | ProveedorPage | Sí |
+| `/promociones` | PromocionPage | Sí |
+| `/promociones/categorias` | CategoriaPromocionPage | Sí |
+| `/promociones/asignadas` | PromocionClientePage | Sí |
+| `/decoraciones/paquetes` | PaqueteDecoracionPage | Sí |
+| `/recepcion` | RecepcionPage | Sí |
+| `/recepcion/registrar/:idHabitacion` | RegistrarIngresoPage | Sí |
+| `/recepcion/checkout/:idReserva` | CheckoutPage | Sí |
+| `/limpieza` | LimpiezaPage | Sí |
+| `/mantenimiento` | MantenimientoPage | Sí |
+| `/` | Redirect → `/dashboard` | — |
+| `*` | Redirect → `/dashboard` | — |
+
+**Toaster global:** Sonner con `theme="dark"`, `position="top-right"`, `richColors`, `closeButton`.
+
+**Auto-refresh:** Mapa (15s), Limpieza (20s), Mantenimiento (20s).
+
+---
+
+## 🎨 Sidebar — Estructura de menú
+
+```
+🏨 Hospedaje
+├── Dashboard (link directo)
+├── Limpieza (link directo, contador)
+├── Mantenimiento (dropdown)
+│   ├── Reportes             → /mantenimiento
+│   ├── Tipos                → /configuracion/tipos-mantenimiento
+│   └── Prioridades          → /configuracion/prioridades-mantenimiento
+├── Recepción (dropdown)
+│   └── Mapa                 → /recepcion
+├── Usuarios (dropdown)
+│   ├── Usuarios             → /usuarios
+│   ├── Roles                → /roles
+│   └── Turnos               → /turnos
+├── Configuración (dropdown)
+│   ├── Pisos
+│   ├── Tipos de Habitación
+│   ├── Tipos de Documento
+│   ├── Métodos de Pago
+│   ├── Categorías Movimiento
+│   ├── Niveles de Cliente
+│   ├── Tarifas
+│   ├── Habitaciones
+│   └── Config. Sistema
+├── Clientes (dropdown)
+│   ├── Clientes
+│   ├── Tipos Observación
+│   └── Gravedades
+├── Productos (dropdown)
+│   ├── Productos
+│   ├── Categorías
+│   └── Proveedores
+├── Promociones (dropdown)
+│   ├── Promociones
+│   ├── Categorías
+│   └── Asignadas
+└── Decoraciones (dropdown)
+    └── Paquetes
+```
+
+**Comportamiento de dropdowns:**
+- Cada dropdown tiene su `useState` inicializado según la ruta actual
+- Se abre automáticamente si estás en una ruta de ese grupo
+- Se cierra/abre con click
+- Al clickear un item, se cierra el menú mobile
+
+---
+
+## 🎨 Componentes reutilizables
+
+### `<IconPicker />`
+
+Selector visual de íconos Lucide con buscador.
+
+**Uso:**
+```tsx
+<IconPicker valor={icono} onChange={setIcono} />
+```
+
+**⚠️ REGLA:** Todos los CRUDs que tengan campo `icono` **DEBEN usar `<IconPicker />`**.
+
+### `<IconoDinamico />`
+
+Renderiza un ícono Lucide por su nombre (string).
+
+**Uso:**
+```tsx
+<IconoDinamico nombre={item.icono} size={20} style={{ color: item.color }} />
+```
+
+**⚠️ REGLA:** Todas las tablas que tengan columna `icono` **DEBEN usar `<IconoDinamico />`**.
+
+### `<ConfirmDialog />`
+
+Modal de confirmación.
+
+**⚠️ REGLA:** Nunca usar `window.confirm()`. Siempre `<ConfirmDialog />`.
+
+### `<AlertaClienteObservaciones />`
+
+Banner de alertas del cliente. Se usa en `RegistrarIngresoPage` y `ClienteForm`.
+
+**Props:**
+```tsx
+interface Props {
+  observaciones: ClienteObservacion[]
+  onContinuar?: () => void
+  onCancelar?: () => void
+  mostrarBotones?: boolean
+}
+```
+
+**Variantes visuales:**
+- 🟡 1 obs Baja/Media → banner amarillo
+- 🟠 1 obs Alta → banner naranja
+- 🔴 2+ obs → "CLIENTE NO GRATO"
+- ⛔ Bloqueo permanente/Crítica → "CLIENTE VETADO"
+
+---
+
+## 📄 MÓDULOS CERRADOS
+
+### Módulo 01 — AUTH ✅
+- Login, roles, turnos, usuarios.
+
+### Módulo 02 — CONFIG-BASE ✅
+- 6 CRUDs: pisos, tipos de habitación, tipos de documento, métodos de pago, categorías de movimiento, niveles de cliente.
+
+### Módulo 03 — TARIFAS ✅
+- CRUD con tipos de habitación.
+
+### Módulo 04 — CLIENTES ✅
+- CRUD con búsqueda por DNI.
+- Banner de observaciones pendientes.
+- Banner de reserva activa.
+- Historial con pestañas (visitas / observaciones).
+- Botón "+ Visita".
+
+### Módulo 05 — PRODUCTOS Fase 1 ✅
+- 3 CRUDs: productos, categorías, proveedores.
+
+### Módulo 06 — PROMOCIONES ✅
+- 3 CRUDs: promociones, categorías, asignadas.
+
+### Módulo 07 — PAQUETES DE DECORACIÓN ✅
+- Catálogo con validación de fórmula.
+
+### Módulo 08 — HABITACIONES ✅
+- CRUD con filtro por piso.
+
+### Módulo 09A — RECEPCIÓN / WALK-IN ✅
+
+#### Componentes:
+| Componente | Ruta | Función |
+|------------|------|---------|
+| `RecepcionPage.tsx` | `/recepcion` | Mapa visual + filtros + botones |
+| `TarjetaHabitacion.tsx` | — | Tarjeta con tiempo transcurrido |
+| `ModalHabitacionOcupada.tsx` | — | Modal con 3 acciones |
+| `RegistrarIngresoPage.tsx` | `/recepcion/registrar/:id` | Walk-in + cobro |
+| `CheckoutPage.tsx` | `/recepcion/checkout/:id` | Check-out completo |
+| `CambiarHabitacionModal.tsx` | — | Cambio con lógica de dinero |
+| `AnularReservaModal.tsx` | — | Anular |
+| `AgregarConsumoModal.tsx` | — | Carrito múltiple + pagos |
+| `ModalExtensionTiempo.tsx` | — | Extensión de horas |
+| `AgregarPagoModal.tsx` | — | Pago adicional |
+| `EntregarVueltoModal.tsx` | — | Vuelto simple |
+| `ConfirmarVueltoModal.tsx` | — | Decisión al check-out (ENTREGADO/NO_RECLAMADO/OTRO) |
+| `ConfirmarDeudaModal.tsx` | — | Decisión al check-out (PAGO/NO_PAGO) |
+| `ModalLimpiezaHabitacion.tsx` | — | Operar limpieza desde el mapa |
+| `ReportarMantenimientoModal.tsx` | — | Reportar problema |
+| `ModalMantenimientoHabitacion.tsx` | — | Operar mantenimiento desde el mapa |
+
+#### Filtros en `RecepcionPage`:
+```
+📋 Todos | 🟢 Disponibles | 🔴 Ocupadas | 🟡 Por Vencer | ⏰ Vencidas | 
+🔵 Limpieza | 🔧 Mantenimiento | 🟣 Reservadas | ⚫ Inactivas
+```
+
+Cada chip tiene **contador** y aplica filtro **en vivo**.
+
+#### Botones en el header del mapa:
+- **⚡ Limpieza Rápida (N)** → si hay limpiezas pendientes (admin/encargado/limpieza)
+- **🔧 Reportar** → nuevo reporte de mantenimiento (admin/encargado/recepcionista)
+- **🔄 Actualizar** → recarga manual
+
+### Módulo 09B — RESERVAS FUTURAS ⏳ (backend listo)
+
+**Backend listo:**
+- `POST /reservas` (crear reserva futura)
+- `PATCH /reservas/{id}/check-in` (activar)
+- `PATCH /reservas/{id}/cancelar`
+- `PATCH /reservas/{id}/anular`
+
+**Frontend pendiente:**
+- `/reservas` (listado con filtros)
+- `/reservas/nueva` (form con fecha futura)
+- `/reservas/:id` (detalle con opción check-in)
+
+### Módulo 09C — EXTENSIONES DE TIEMPO ✅
+
+**Componentes:**
+- `ModalExtensionTiempo.tsx` → aplicar extensión con historial
+- `ConfiguracionSistemaPage.tsx` → editar parámetros globales
+
+**Características:**
+- Detecta exceso automáticamente
+- Muestra historial de extensiones previas
+- Opciones según cálculo (1h, 2h, 3h, turno adicional)
+- Tolerancia configurable (30 min por defecto)
+
+### MÓDULO OBSERVACIONES ✅
+
+**Componentes:**
+- `AgregarObservacionModal.tsx` → modal reutilizable
+- `AlertaClienteObservaciones.tsx` → banner de alertas
+- `ClienteObservaciones.tsx` → lista en el historial
+
+**Integración:**
+- Al buscar DNI en recepción → banner automático si tiene obs
+- En `ClienteForm` → banner al buscar
+- En `ClienteTabla` → badge + fondo rojo + botón "⚠️ Obs"
+
+### MÓDULO PAGOS MIXTOS + VUELTO ✅
+
+**Características:**
+- En `RegistrarIngresoPage`: toggle **"Un solo método" / "Varios métodos"**
+- Los pagos se registran en `pagos_reserva`
+- El **vuelto** se maneja:
+  - Se puede entregar al inicio
+  - Se puede guardar como saldo a favor
+  - Al entregar → se registra como **pago NEGATIVO**
+- Al hacer check-out → modales de decisión:
+  - **ConfirmarVueltoModal** (si hay vuelto pendiente)
+  - **ConfirmarDeudaModal** (si cliente debe)
+
+**Íconos dinámicos** en "Pagos registrados" (vienen de `metodo_pago.icono`).
+
+### MÓDULO CONSUMOS MÚLTIPLES ✅
+
+**`AgregarConsumoModal.tsx` rediseñado:**
+- **Carrito múltiple** (agregar varios productos)
+- **3 modos de cobro:**
+  - 🅰️ Todo a la cuenta (paga al retirarse)
+  - 🅱️ Pago único (1 solo método)
+  - 🅲 Pago parcial / mixto (varios métodos o pago incompleto)
+- **Filtro por categoría** (chips con contador)
+- **Búsqueda** por nombre o código de barras
+- **Resumen visual:** subtotal, pagos, saldo pendiente
+
+**Endpoint:** `POST /reservas/{id}/consumos-multiple`
+
+### MÓDULO 14 — LIMPIEZA ✅
+
+**Componentes:**
+- `LimpiezaPage.tsx` → cola con 3 secciones (pendientes / en proceso / completadas hoy)
+- `TarjetaLimpieza.tsx` → card con tiempo relativo + alertas rojas si >30 min
+- `NuevaLimpiezaModal.tsx` → crear limpieza manual (solo habitaciones `Disponible`)
+- `ModalLimpiezaHabitacion.tsx` → operar desde el mapa
+
+**Características:**
+- Auto-refresh cada 20s
+- Filtros por piso y tipo
+- Botón **"Limpieza Rápida"** en el mapa → finaliza TODAS las pendientes
+- Solo roles admin/encargado/limpieza pueden operar
+
+### MÓDULO 15 — MANTENIMIENTO ✅
+
+**Componentes:**
+- `MantenimientoPage.tsx` → lista con filtros por estado
+- `ReportarMantenimientoModal.tsx` → reportar desde el mapa
+- `ModalMantenimientoHabitacion.tsx` → operar desde el mapa
+- `TipoMantenimientoPage.tsx` → CRUD tipos
+- `PrioridadMantenimientoPage.tsx` → CRUD prioridades
+
+**Características:**
+- Chip **"🔧 Mantenimiento"** en el filtro del mapa
+- Botón **"🔧 Reportar"** en el header
+- Al reportar → habitación queda bloqueada (naranja)
+- Al resolver → crea **limpieza automática**
+- Tipos y prioridades son CRUD (nada hardcodeado)
+- Solo roles admin/encargado/recepcionista pueden reportar
+
+---
+
+## 🎨 Tema visual
+
+**Modo:** Oscuro por defecto (`bg-slate-950` fondo, `bg-slate-900` cards, `bg-slate-800` forms/tablas).
+
+**Colores semánticos de botones:**
+- Verde (`bg-green-600`) → éxito, crear
+- Azul (`bg-blue-600`) → acción neutral
+- Amarillo (`bg-yellow-600`) → editar, extender tiempo
+- Rojo (`bg-red-600`) → eliminar, desactivar, observaciones
+- Cyan (`bg-cyan-600`) → buscar por DNI, limpieza
+- Naranja (`bg-orange-600`) → mantenimiento
+- Purple (`bg-purple-600`) → historial, nueva limpieza manual
+
+**Toasts (Sonner):**
+- Verde → éxito
+- Rojo → error
+- Cyan → info
+
+---
+
+## 🚀 Instalación y ejecución
+
+### Requisitos
+- Node.js 20+
+- npm
+
+### Pasos
+
+```powershell
+# 1. Instalar dependencias
+npm install
+
+# 2. Levantar servidor de desarrollo
+npm run dev
+```
+
+**Acceder:** `http://localhost:5173`
+
+**⚠️ El backend Laravel debe estar corriendo en `http://127.0.0.1:8000`.**
+
+---
+
+## 🐛 Errores comunes y cómo evitarlos
+
+### Error 1 — Encodings raros (`Ã³`, `Ã¡`)
+**Causa:** Archivos guardados con BOM UTF-8.
+**Solución:** Usar `Write-Utf8NoBom` (función PowerShell del script).
+
+### Error 2 — Página no aparece dentro del Dashboard
+**Causa:** El `Page.tsx` no incluye `<AppLayout>`.
+**Solución:** Cada `Page.tsx` debe retornar `<AppLayout>...</AppLayout>`.
+
+### Error 3 — Servicios devuelven `undefined` en `.data.data`
+**Causa:** El backend devuelve `{ mensaje, data }` en POST/PUT, pero `{ ... }` directo en GET.
+**Solución:**
+- GET: `return data`
+- POST/PUT/PATCH: `return data.data`
+
+### Error 4 — Token no se envía
+**Causa:** El interceptor lee `localStorage.token` pero Zustand lo guarda en `auth-storage`.
+**Solución:** Guardar el token TAMBIÉN en `localStorage.token`.
+
+### Error 5 — 404 de endpoints muestra toast rojo
+**Causa:** El interceptor muestra toast para CUALQUIER error.
+**Solución:** NO mostrar toast para 404.
+
+### Error 6 — `Cannot access 'X' before initialization`
+**Causa:** Uso de variable antes de declararla.
+**Solución:** En React, el orden de hooks importa.
+
+### Error 7 — Fecha ISO con `T` no se muestra en `<input type="date">`
+**Solución:** `valor.substring(0, 10)` → `YYYY-MM-DD`.
+
+### Error 8 — `validation.unique` al crear cliente con DNI existente
+**Solución:** Al buscar por DNI, si existe → cambiar a modo Editar.
+
+### Error 9 — Modal que no se cierra / submodal que no abre
+**Solución:** Usar **early return** en modales anidados.
+
+### Error 10 — Números decimales gigantes
+**Solución:** `formatearTiempo()` con `Math.floor()`.
+
+### Error 11 — Error 500 en `/clientes` por `$appends`
+**Causa:** El modelo `Cliente` tenía `protected $appends = ['reserva_activa']` sin accessor.
+**Solución:** Remover `$appends`, usar `setAttribute` + `getAttribute`.
+
+### Error 12 — Error JSX con `<span>` que cierra con `</span>` en vez de `</p>`
+**Causa:** Reemplazo mal hecho.
+**Solución:** Revisar apertura/cierre de cada etiqueta.
+
+### Error 13 — Error 500 por doble backslash en imports
+**Causa:** `use App\\Models\\X` (con `\\`).
+**Solución:** Reemplazo masivo con `$contenido -replace '\\\\+', '\'`.
+
+### Error 14 — Import `categoriaProductoService` desde `productoService`
+**Causa:** El archivo está separado.
+**Solución:** Importar desde `@/services/categoriaProductoService`.
+
+---
+
+## 📝 Decisiones técnicas tomadas
+
+| # | Decisión | Razón |
+|---|----------|-------|
+| D1 | Cada `Page.tsx` incluye `<AppLayout>` | Página autocontenida |
+| D2 | Services devuelven `data.data` en POST/PUT | Backend anida respuesta |
+| D3 | Token en `localStorage.token` | Interceptor axios lo lee |
+| D4 | Interceptor NO muestra toast para 404 | El consumidor maneja 404 |
+| D5 | Dropdowns del Sidebar con `useState` por ruta | UX consistente |
+| D6 | Badges con `bg-X-900 text-X-300` | Legibles en modo oscuro |
+| D7 | Page/Form/Tabla por cada CRUD | Cada archivo <100 líneas |
+| D8 | ConfirmDialog en vez de `window.confirm()` | UX consistente |
+| D9 | Normalizar fechas ISO a YYYY-MM-DD en forms | Compatibilidad `<input type="date">` |
+| D10 | Modo Editar automático si DNI existe | Evita `validation.unique` |
+| D11 | ProductoPage carga SOLO productos al inicio | Optimización |
+| D12 | Stock coloreado dinámicamente | Verde normal, rojo si ≤ stock_minimo |
+| D13 | `IconPicker` para campos de ícono | UX visual |
+| D14 | `IconoDinamico` para mostrar íconos | Cualquier ícono Lucide por nombre |
+| D15 | Modales anidados con early return | Evita conflictos |
+| D16 | Mapa auto-refresh cada 15s | Sistema en tiempo real |
+| D17 | Colores de estado vienen del backend | R1: nada hardcodeado |
+| D18 | El vuelto final se muestra en CheckoutPage | `pagado - total` |
+| D19 | Formatear tiempo con `formatearTiempo()` | Evita decimales gigantes |
+| D20 | Cálculo de diferencia en cambio habitación en frontend + confirmación en backend | UX ágil + seguridad |
+| **D21** | **Filtros en vivo (no guardados)** | UX rápida |
+| **D22** | **Chips con contadores** | Visibilidad inmediata |
+| **D23** | **Carrito múltiple en consumos** | Realidad del negocio |
+| **D24** | **3 modos de cobro** (a cuenta / único / parcial-mixto) | Cubre todos los casos |
+| **D25** | **Íconos dinámicos en pagos** | Identificación visual |
+| **D26** | **Botón "Limpieza Rápida" masivo** | Eficiencia del personal |
+| **D27** | **Botón "Reportar" mantenimiento en el mapa** | Reporte rápido |
+| **D28** | **Modal al click en habitación Limpieza/Mantenimiento** | Operar desde el mapa |
+| **D29** | **ConfirmarVueltoModal + ConfirmarDeudaModal al hacer check-out** | Evita olvidos |
+
+---
+
+## 📝 Notas de diseño
+
+- **Todo en español:** nombres de variables, funciones, archivos, comentarios
+- **Sin `alert()`:** toasts de sonner
+- **Sin `window.confirm()`:** `ConfirmDialog`
+- **Sin `any`:** TypeScript estricto
+- **Sin archivos >150 líneas:** si pasa, dividir
+- **Componentes "tontos":** Form y Tabla reciben props
+- **Páginas "inteligentes":** Page tiene el estado
+- **Nada hardcodeado:** todos los catálogos vienen de la BD
+- **Sistema en tiempo real:** auto-refresh donde aplica
+- **Errores claros:** `mensajeDeError(e)` captura todos los formatos
+
+---
+
+## 🔮 Roadmap de módulos (frontend)
+
+| # | Módulo | Backend | Frontend | Estado |
+|---|--------|---------|----------|--------|
+| 01-08 | AUTH, CONFIG, TARIFAS, CLIENTES, PRODUCTOS, PROMOS, DECORA, HABITACIONES | ✅ | ✅ | CERRADOS |
+| 09A | RECEPCIÓN / WALK-IN | ✅ | ✅ | CERRADO |
+| 09B | RESERVAS FUTURAS | ✅ | ⏳ | Backend listo |
+| 09C | EXTENSIONES DE TIEMPO | ✅ | ✅ | CERRADO |
+| OBS | OBSERVACIONES CLIENTE | ✅ | ✅ | CERRADO |
+| PAGOS | PAGOS MIXTOS + VUELTO | ✅ | ✅ | CERRADO |
+| CONS | CONSUMOS MÚLTIPLES | ✅ | ✅ | CERRADO |
+| 10 | DECORACIONES APLICADAS | ⏳ | ⏳ | Pendiente |
+| 11 | CAJA | ⏳ | ⏳ | Pendiente |
+| 12 | INVENTARIO / KARDEX | ⏳ | ⏳ | Pendiente |
+| 13 | CUENTAS POR PAGAR | ⏳ | ⏳ | Pendiente |
+| 14 | LIMPIEZA | ✅ | ✅ | CERRADO |
+| 15 | MANTENIMIENTO | ✅ | ✅ | CERRADO |
+| 16 | COMPROBANTES SUNAT | ⏳ | ⏳ | Pendiente |
+| 17 | ALERTAS | ⏳ | ⏳ | Pendiente |
+| 18 | REPORTES | ⏳ | ⏳ | Pendiente |
+| 19 | AUDITORÍA | ⏳ | ⏳ | Pendiente |
+| 20 | ASISTENCIA PERSONAL | ⏳ | ⏳ | Pendiente |
+| 21 | INTEGRACIÓN RENIEC | ⏳ | ⏳ | Pendiente |
+
+**Módulos completados:** ~16 de 21
+
+---
+
+## 🎯 Módulos pendientes — detalle frontend
+
+### Módulo 09B — RESERVAS FUTURAS
+
+**Vistas a crear:**
+- `/reservas` (listado con filtros)
+- `/reservas/nueva` (form con fecha futura)
+- `/reservas/:id` (detalle con opción check-in)
+
+### Módulo 10 — DECORACIONES APLICADAS
+
+**Vistas a crear:**
+- `/decoraciones/aplicadas` (lista)
+- Modal para aplicar decoración a una reserva
+
+### Módulo 11 — CAJA
+
+**Vistas a crear:**
+- `/caja` (caja actual abierta)
+- `/caja/historial` (cajas cerradas)
+- `/caja/arqueo` (arqueo de cierre)
+
+### Módulo 12 — INVENTARIO / KARDEX
+
+**Vistas a crear:**
+- `/inventario/kardex` (movimientos)
+- `/inventario/fisico` (conteos)
+
+### Módulo 13 — CUENTAS POR PAGAR
+
+**Vistas a crear:**
+- `/cuentas-por-pagar`
+- `/cuentas-por-pagar/:id`
+
+### Módulo 16 — COMPROBANTES SUNAT
+
+**Vistas a crear:**
+- `/comprobantes`
+- `/comprobantes/:id`
+
+### Módulo 17 — ALERTAS
+
+**Vistas a crear:**
+- `/alertas` (panel en vivo)
+
+### Módulo 18 — REPORTES
+
+**Vistas a crear:**
+- `/reportes` (dashboard)
+- `/reportes/ocupacion`
+- `/reportes/ingresos`
+- `/reportes/clientes-frecuentes`
+
+### Módulo 19 — AUDITORÍA
+
+**Vistas a crear:**
+- `/auditoria`
+
+### Módulo 20 — ASISTENCIA
+
+**Vistas a crear:**
+- `/asistencia`
+- `/asistencia/horas-extra`
+
+### Módulo 21 — RENIEC
+
+**Sin vistas nuevas.** Se integra en `RegistrarIngresoPage` y `ClienteForm` cuando el backend lo active (solo producción).
+
+---
+
+## 👥 Credenciales de prueba
+
+| Usuario | Password | Rol | Turno |
+|---------|----------|-----|-------|
+| nancy | admin123 | admin | Libre |
+| leydi | leydi123 | encargado | Mañana |
+| perez | perez123 | recepcionista | Noche |
+| miguel | miguel123 | recepcionista | Noche |
+| david | david123 | recepcionista | Noche |
+| limpieza | limpieza123 | limpieza | Mañana |
+| cajero | cajero123 | cajero | Mañana |
+
+**Roles y permisos (según módulo):**
+
+| Módulo | Admin | Encargado | Recepcionista | Limpieza | Cajero |
+|--------|-------|-----------|---------------|----------|--------|
+| CRUDs | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Recepción / Walk-in | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Operar Limpieza | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Reportar Mantenimiento | ✅ | ✅ | ✅ | ❌ | ❌ |
+| CRUD Mantenimiento | ✅ | ✅ | ✅ | ❌ | ❌ |
+
+---
+
+## 📄 Licencia
+
+Proyecto privado — Sistema de Hospedaje.
+
+---
+
+**Última actualización:** 05/10/2026
+**Módulos completados:** ~16 de 21 (09A, 09C, OBS, PAGOS, CONS, 14, 15 + 01-08)
