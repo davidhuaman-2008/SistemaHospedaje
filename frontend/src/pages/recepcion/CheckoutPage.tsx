@@ -166,6 +166,17 @@ export function CheckoutPage() {
   // Vuelto final = pagado - total
   const vueltoFinal = pagado - total
 
+  // Detectar si la reserva ya esta cerrada
+  const estadoSlug = reserva.estado?.slug
+  const esCerrada = ["finalizada", "cancelada", "anulada"].includes(estadoSlug ?? "")
+  const esFinalizada = estadoSlug === "finalizada"
+  const esCancelada = estadoSlug === "cancelada"
+  const esAnulada = estadoSlug === "anulada"
+
+  // ⚠️ NUEVO: verificar si tiene check-in activo
+  const tieneCheckIn = reserva.registro_estadia !== null && reserva.registro_estadia !== undefined
+  const sinCheckIn = !tieneCheckIn && !esCerrada
+
   return (
     <AppLayout>
       <button
@@ -434,20 +445,66 @@ export function CheckoutPage() {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-5">
-            <button
-              onClick={finalizarCheckout}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium"
-            >
-              Finalizar Check-out
-            </button>
-            <button
-              onClick={() => navigate("/recepcion")}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-            >
-              Cancelar
-            </button>
-          </div>
+          {sinCheckIn ? (
+            <div className="mt-5 p-4 rounded border-2 bg-yellow-950/40 border-yellow-700">
+              <p className="font-bold text-lg mb-2 text-yellow-300">
+                ⚠️ Esta reserva NO tiene check-in hecho
+              </p>
+              <p className="text-yellow-100 text-sm">
+                El cliente aún no ha llegado o no se ha registrado su ingreso.
+                <br />
+                Debes hacer el <strong>Check-In</strong> primero, o <strong>Anular</strong> la reserva si el cliente no llegó.
+              </p>
+              <button
+                onClick={() => navigate("/recepcion")}
+                className="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-medium"
+              >
+                Volver al mapa
+              </button>
+            </div>
+          ) : esCerrada ? (
+            <div className={`mt-5 p-4 rounded border-2 ${
+              esFinalizada ? "bg-green-950/40 border-green-700" :
+              esCancelada ? "bg-slate-900 border-slate-700" :
+              "bg-red-950/40 border-red-700"
+            }`}>
+              <p className={`font-bold text-lg mb-2 ${
+                esFinalizada ? "text-green-300" :
+                esCancelada ? "text-slate-300" :
+                "text-red-300"
+              }`}>
+                {esFinalizada && "✅ Esta reserva YA FUE FINALIZADA"}
+                {esCancelada && "❌ Esta reserva fue CANCELADA"}
+                {esAnulada && "⚠️ Esta reserva fue ANULADA"}
+              </p>
+              <p className="text-slate-400 text-sm">
+                {esFinalizada && `Check-out realizado: ${reserva.fecha_salida_real ? new Date(reserva.fecha_salida_real).toLocaleString("es-PE") : "—"}`}
+                {esCancelada && "El cliente canceló la reserva. No se puede hacer check-out."}
+                {esAnulada && `Motivo: ${reserva.motivo_anulacion ?? "Sin motivo registrado"}`}
+              </p>
+              <button
+                onClick={() => navigate("/recepcion")}
+                className="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-medium"
+              >
+                Volver al mapa
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={finalizarCheckout}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium"
+              >
+                Finalizar Check-out
+              </button>
+              <button
+                onClick={() => navigate("/recepcion")}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -294,3 +294,110 @@ export interface Configuracion {
   created_at?: string
   updated_at?: string
 }
+// ============================================================================
+// MODULO 09B — RESERVAS FUTURAS
+// ============================================================================
+
+export interface HabitacionLibre {
+  id_habitacion: number
+  numero: string
+  id_piso: number
+  id_tipo: number
+  orden: number
+  activo: boolean
+  piso?: { id_piso: number; nombre: string }
+  tipo?: { id_tipo: number; nombre: string; capacidad: number }
+}
+
+export interface HabitacionConConflicto {
+  id_habitacion: number
+  numero: string
+  piso_nombre: string | null
+  tipo_nombre: string | null
+  motivo: string
+  ocupacion: {
+    id_ocupacion: number
+    fecha_inicio: string
+    fecha_fin: string
+    estado: string
+    cliente: string | null
+    estado_reserva: string | null
+  }
+}
+
+export interface ReservaDisponiblesResponse {
+  fecha_inicio: string
+  fecha_fin: string
+  horas: number
+  total_libres: number
+  total_conflicto: number
+  libres: HabitacionLibre[]
+  con_conflicto: HabitacionConConflicto[]
+}
+
+export interface ReservaProxima {
+  id_reserva: number
+  codigo_reserva: string
+  cliente: string
+  telefono: string | null
+  habitacion: {
+    id_habitacion: number | null
+    numero: string | null
+    piso: string | null
+    tipo: string | null
+  }
+  fecha_entrada: string
+  minutos_para_entrada: number
+  estado_reserva: string | null
+  alerta_reserva_ocupada: boolean
+  cliente_actual: string | null
+  id_reserva_actual: number | null
+  fecha_fin_ocupacion_actual: string | null
+}
+
+export interface ReservaProximasResponse {
+  total: number
+  reservas: ReservaProxima[]
+}
+
+export interface ReservaHoyResponse {
+  total: number
+  reservas: Reserva[]
+}
+
+export interface ReservaFuturaEnMapa {
+  id_reserva: number
+  codigo: string
+  cliente: string | null
+  fecha_entrada: string
+  minutos_para_entrada: number
+  horas_antes_bloqueo: number
+}
+// ============================================================================
+// CHECK-IN DE RESERVA FUTURA
+// ============================================================================
+
+export interface InfoCheckIn {
+  reserva: Reserva
+  observaciones_pendientes: Array<{
+    id_observacion: number
+    motivo: string
+    monto_deuda: number | null
+    tipo?: { id_tipo_observacion: number; nombre: string; icono: string | null; color: string | null }
+    gravedad?: { id_gravedad: number; nombre: string; color: string | null; prioridad: number }
+  }>
+  puede_check_in: boolean
+  motivo_bloqueo: string | null
+  ya_tiene_check_in: boolean
+  es_confirmada: boolean
+  es_activa: boolean
+  es_cerrada: boolean
+  habitacion_disponible: boolean
+  ocupacion_actual: {
+    id_reserva: number | null
+    codigo_reserva: string | null
+    cliente: string | null
+    fecha_fin: string | null
+  } | null
+  saldo_pendiente: number
+}

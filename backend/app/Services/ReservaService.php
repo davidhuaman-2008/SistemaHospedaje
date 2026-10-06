@@ -1228,4 +1228,358 @@ class ReservaService
             ]);
         });
     }
-}
+
+    // ========================================================================
+    // MODULO 09B — RESERVAS FUTURAS
+    // ========================================================================
+
+    public function listarProximasConAlerta(): \Illuminate\Support\Collection
+    {
+        $ahora = Carbon::now();
+        $horasAntes = Configuracion::obtener('horas_antes_bloqueo_reserva', 4);
+        $limite = $ahora->copy()->addHours($horasAntes);
+
+        $reservas = Reserva::with(['cliente', 'habitacion.piso', 'habitacion.tipo', 'estado', 'ocupaciones'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->where('fecha_entrada', '>=', $ahora)
+            ->where('fecha_entrada', '<=', $limite)
+            ->orderBy('fecha_entrada')
+            ->get();
+
+        return $reservas->map(function ($r) use ($ahora) {
+            $minutosParaEntrada = (int) round($ahora->diffInMinutes($r->fecha_entrada, false));
+
+            $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente'])
+                ->where('id_habitacion', $r->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('fecha_inicio', '<=', $ahora)
+                ->where('fecha_fin', '>=', $ahora)
+                ->where('id_reserva', '!=', $r->id_reserva)
+                ->first();
+
+            return [
+                'id_reserva' => $r->id_reserva,
+                'codigo_reserva' => $r->codigo_reserva,
+                'cliente' => $r->cliente?->nombre . ' ' . $r->cliente?->apellido,
+                'telefono' => $r->telefono ?? $r->cliente?->celular,
+                'habitacion' => [
+                    'id_habitacion' => $r->habitacion?->id_habitacion,
+                    'numero' => $r->habitacion?->numero,
+                    'piso' => $r->habitacion?->piso?->nombre,
+                    'tipo' => $r->habitacion?->tipo?->nombre,
+                ],
+                'fecha_entrada' => $r->fecha_entrada->toIso8601String(),
+                'minutos_para_entrada' => $minutosParaEntrada,
+                'estado_reserva' => $r->estado?->slug,
+                'alerta_reserva_ocupada' => $ocupacionActual !== null,
+                'cliente_actual' => $ocupacionActual?->reserva?->cliente?->nombre,
+                'id_reserva_actual' => $ocupacionActual?->reserva?->id_reserva,
+                'fecha_fin_ocupacion_actual' => $ocupacionActual?->fecha_fin?->toIso8601String(),
+            ];
+        });
+    }
+
+    public function listarHoy(): \Illuminate\Support\Collection
+    {
+        return Reserva::with(['cliente', 'habitacion.piso', 'estado'])
+            ->whereDate('fecha_entrada', Carbon::today())
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->orderBy('fecha_entrada')
+            ->get();
+    }
+
+    public function listarProximasCheckIn(): \Illuminate\Support\Collection
+    {
+        $ahora = Carbon::now();
+        $tolerancia = Configuracion::obtener('tolerancia_no_show_minutos', 60);
+
+        return Reserva::with(['cliente', 'habitacion.piso', 'estado'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->where('fecha_entrada', '<=', $ahora->copy()->addMinutes($tolerancia))
+            ->where('fecha_entrada', '>=', $ahora->copy()->subMinutes($tolerancia))
+            ->orderBy('fecha_entrada')
+            ->get();
+    }
+
+    public function procesarNoShow(): int
+    {
+        return DB::transaction(function () {
+            $ahora = Carbon::now();
+            $tolerancia = Configuracion::obtener('tolerancia_no_show_minutos', 60);
+            $limite = $ahora->copy()->subMinutes($tolerancia);
+
+            $reservas = Reserva::with('estado')
+                ->whereHas('estado', function ($q) {
+                    $q->whereIn('slug', ['confirmada', 'pendiente']);
+                })
+                ->where('fecha_entrada', '<', $limite)
+                ->get();
+
+            $contador = 0;
+            $estadoNoShow = EstadoReserva::where('slug', 'no-show')->first();
+
+            if (!$estadoNoShow) {
+                throw new \RuntimeException('No existe el estado No-Show.');
+            }
+
+            foreach ($reservas as $reserva) {
+                $reserva->update([
+                    'id_estado' => $estadoNoShow->id_estado,
+                    'observaciones' => ($reserva->observaciones ?? '') . ' [No-Show automatico]',
+                ]);
+
+                OcupacionHabitacion::where('id_reserva', $reserva->id_reserva)
+                    ->update(['estado' => 'LIBERADA']);
+
+                $contador++;
+            }
+
+            return $contador;
+        });
+    }
+
+    /**
+     * Lista habitaciones libres en el rango SOLO si su tipo tiene tarifa de $horas.
+     */
+    public function listarDisponiblesEnRango(Carbon $inicio, Carbon $fin, int $horas): \Illuminate\Support\Collection
+    {
+        $libres = $this->disponibilidad->habitacionesLibresConInfo($inicio, $fin);
+
+        // Filtrar: solo habitaciones cuyo tipo tenga tarifa activa con esas horas exactas
+        return $libres->filter(function ($h) use ($horas) {
+            return Tarifa::where('id_tipo', $h->id_tipo)
+                ->where('horas', $horas)
+                ->where('activo', true)
+                ->exists();
+        })->values();
+    }
+
+    public function listarConConflictoEnRango(Carbon $inicio, Carbon $fin): \Illuminate\Support\Collection
+    {
+        return $this->disponibilidad->habitacionesConConflicto($inicio, $fin);
+    }
+    // ========================================================================
+    // FILTRADO — Reservas (RES-) vs Estadias (WK-)
+    // ========================================================================
+
+    /**
+     * Lista SOLO reservas futuras (codigo RES-).
+     * Incluye pendientes y confirmadas, ordenadas por fecha de entrada.
+     */
+    public function listarSoloReservas(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'RES-%')
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+
+    /**
+     * Lista SOLO estadias walk-in (codigo WK-).
+     * Ordenadas por fecha de entrada descendente.
+     */
+    public function listarSoloWalkIns(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion',
+            'registroEstadia'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'WK-%')
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+
+    /**
+     * Lista el historial COMPLETO (todas las reservas + walk-ins).
+     */
+    public function listarHistorialCompleto(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+    // ========================================================================
+    // CHECK-IN DE RESERVA FUTURA
+    // ========================================================================
+
+    /**
+     * Devuelve toda la info necesaria para la pantalla de Check-In:
+     * - Reserva con cliente, habitacion, tarifa, pagos
+     * - Observaciones pendientes del cliente
+     * - Si la habitacion esta disponible AHORA
+     * - Si ya tiene check-in hecho
+     */
+    public function obtenerInfoCheckIn(int $idReserva): array
+    {
+        $reserva = Reserva::with([
+            'cliente.nivel',
+            'habitacion.piso',
+            'habitacion.tipo',
+            'tarifa',
+            'estado',
+            'pagos.metodoPago',
+            'usuarioCreacion',
+        ])->findOrFail($idReserva);
+
+        // Observaciones pendientes del cliente
+        $observaciones = \App\Models\ClienteObservacion::with(['tipo', 'gravedad'])
+            ->where('id_cliente', $reserva->id_cliente)
+            ->where('resuelto', false)
+            ->get();
+
+        // ¿Ya tiene check-in?
+        $yaTieneCheckIn = $reserva->registroEstadia !== null;
+
+        // ¿La habitacion esta disponible AHORA?
+        $ahora = Carbon::now();
+        $habitacionDisponible = $this->disponibilidad->estaDisponible(
+            $reserva->id_habitacion,
+            $ahora,
+            $ahora->copy()->addHours((int) $reserva->horas_base),
+            $reserva->id_reserva // excluir esta reserva
+        );
+
+        // ¿Que la esta ocupando? (si no esta disponible)
+        $ocupacionActual = null;
+        if (!$habitacionDisponible) {
+            $ocupacion = OcupacionHabitacion::with(['reserva.cliente'])
+                ->where('id_habitacion', $reserva->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('id_reserva', '!=', $reserva->id_reserva)
+                ->where('fecha_inicio', '<=', $ahora)
+                ->where('fecha_fin', '>=', $ahora)
+                ->first();
+
+            if ($ocupacion) {
+                $ocupacionActual = [
+                    'id_reserva' => $ocupacion->reserva?->id_reserva,
+                    'codigo_reserva' => $ocupacion->reserva?->codigo_reserva,
+                    'cliente' => $ocupacion->reserva?->cliente?->nombre . ' ' . $ocupacion->reserva?->cliente?->apellido,
+                    'fecha_fin' => $ocupacion->fecha_fin?->toIso8601String(),
+                ];
+            }
+        }
+
+        // Estado de la reserva
+        $estadoSlug = $reserva->estado?->slug;
+        $esConfirmada = in_array($estadoSlug, ['confirmada', 'pendiente']);
+        $esActiva = $estadoSlug === 'activa';
+        $esCerrada = in_array($estadoSlug, ['finalizada', 'cancelada', 'anulada', 'no-show']);
+
+        // ¿Puede hacer check-in?
+        $puedeCheckIn = $esConfirmada && !$yaTieneCheckIn && $habitacionDisponible;
+
+        // Motivo por el que NO puede
+        $motivoBloqueo = null;
+        if (!$esConfirmada) {
+            $motivoBloqueo = $esActiva
+                ? 'Esta reserva ya tiene check-in activo.'
+                : 'Esta reserva no esta en estado confirmada.';
+        } elseif ($yaTieneCheckIn) {
+            $motivoBloqueo = 'Esta reserva ya tiene check-in hecho.';
+        } elseif (!$habitacionDisponible) {
+            $motivoBloqueo = 'La habitacion esta ocupada por otro cliente. Resolver el conflicto primero.';
+        }
+
+        return [
+            'reserva' => $reserva,
+            'observaciones_pendientes' => $observaciones,
+            'puede_check_in' => $puedeCheckIn,
+            'motivo_bloqueo' => $motivoBloqueo,
+            'ya_tiene_check_in' => $yaTieneCheckIn,
+            'es_confirmada' => $esConfirmada,
+            'es_activa' => $esActiva,
+            'es_cerrada' => $esCerrada,
+            'habitacion_disponible' => $habitacionDisponible,
+            'ocupacion_actual' => $ocupacionActual,
+            'saldo_pendiente' => max(0, (float) $reserva->total - (float) $reserva->pagado),
+        ];
+    }
+
+    /**
+     * Hace el check-in de una reserva futura CON validaciones.
+     * - Valida que este confirmada/pendiente
+     * - Valida que la habitacion este disponible AHORA
+     * - Valida que no tenga ya check-in
+     * - Registra la visita del cliente
+     * - Crea el registro_estadia
+     */
+    public function checkInValidado(int $idReserva, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario) {
+            $reserva = Reserva::with(['habitacion'])->findOrFail($idReserva);
+
+            // Validar estado
+            $estadoSlug = $reserva->estado?->slug;
+            if (!in_array($estadoSlug, ['confirmada', 'pendiente'])) {
+                throw new \InvalidArgumentException(
+                    'Esta reserva no esta en estado confirmada (actual: ' . ($estadoSlug ?? 'desconocido') . ').'
+                );
+            }
+
+            // Validar que no tenga check-in
+            if ($reserva->registroEstadia) {
+                throw new \InvalidArgumentException('Esta reserva ya tiene check-in hecho.');
+            }
+
+            // FECHA ORIGINAL de la reserva (se mantiene aunque llegue tarde)
+            $fechaEntradaOriginal = Carbon::parse($reserva->fecha_entrada);
+            $fechaSalidaOriginal = Carbon::parse($reserva->fecha_salida_prevista);
+
+            // Validar que la habitacion NO este ocupada por OTRA reserva
+            $otraOcupacion = OcupacionHabitacion::where('id_habitacion', $reserva->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('id_reserva', '!=', $reserva->id_reserva)
+                ->where('fecha_inicio', '<=', Carbon::now())
+                ->where('fecha_fin', '>=', Carbon::now())
+                ->first();
+
+            if ($otraOcupacion) {
+                throw new \InvalidArgumentException(
+                    'La habitacion esta ocupada por otro cliente. Resolver el conflicto antes de hacer check-in.'
+                );
+            }
+
+            // Cambiar estado a activa
+            $estadoActiva = EstadoReserva::where('slug', 'activa')->firstOrFail();
+
+            // IMPORTANTE: NO cambiamos fecha_entrada ni fecha_salida_prevista
+            // Se mantiene la fecha original de la reserva (el cliente pierde el tiempo que llego tarde)
+            $reserva->update([
+                'id_estado' => $estadoActiva->id_estado,
+                // NO tocamos fecha_entrada, mantiene la original
+                // NO tocamos fecha_salida_prevista, mantiene la original
+            ]);
+
+            // Crear registro de estadia CON la fecha original (no la de llegada)
+            RegistroEstadia::create([
+                'id_reserva' => $idReserva,
+                'fecha_entrada' => $fechaEntradaOriginal,
+                'id_usuario_checkin' => $idUsuario,
+            ]);
+
+            // La ocupacion mantiene sus fechas originales (ya estaba asi)
+
+            // Registrar la visita del cliente (1 visita mas)
+            $this->clienteVisita->registrar(
+                $reserva->id_cliente,
+                $idReserva,
+                $reserva->id_habitacion,
+                (float) $reserva->monto_habitacion
+            );
+
+            return $reserva->fresh([
+                'cliente', 'habitacion.tipo', 'habitacion.piso', 'tarifa', 'estado'
+            ]);
+        });
+    }}

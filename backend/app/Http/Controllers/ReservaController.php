@@ -417,4 +417,121 @@ class ReservaController extends Controller
             return response()->json(['mensaje' => $e->getMessage()], 422);
         }
     }
-}
+
+    // ========================================================================
+    // MODULO 09B — RESERVAS FUTURAS
+    // ========================================================================
+
+    public function reservasDisponibles(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'fecha' => 'required|date',
+            'horas' => 'required|integer|min:1|max:24',
+        ]);
+
+        $inicio = \Carbon\Carbon::parse($datos['fecha']);
+        $fin = $inicio->copy()->addHours((int) $datos['horas']);
+
+        $libres = $this->service->listarDisponiblesEnRango($inicio, $fin, (int) $datos['horas']);
+        $conflicto = $this->service->listarConConflictoEnRango($inicio, $fin);
+
+        return response()->json([
+            'fecha_inicio' => $inicio->toIso8601String(),
+            'fecha_fin' => $fin->toIso8601String(),
+            'horas' => (int) $datos['horas'],
+            'total_libres' => $libres->count(),
+            'total_conflicto' => $conflicto->count(),
+            'libres' => $libres,
+            'con_conflicto' => $conflicto,
+        ]);
+    }
+
+    public function proximas(): JsonResponse
+    {
+        $reservas = $this->service->listarProximasConAlerta();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+
+    public function hoy(): JsonResponse
+    {
+        $reservas = $this->service->listarHoy();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+
+    public function proximasCheckIn(): JsonResponse
+    {
+        $reservas = $this->service->listarProximasCheckIn();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+    // ========================================================================
+    // FILTRADO — Reservas (RES-) vs Estadias (WK-)
+    // ========================================================================
+
+    /**
+     * GET /api/reservas/solo-reservas
+     * Devuelve SOLO reservas futuras (codigo RES-).
+     */
+    public function soloReservas(): JsonResponse
+    {
+        return response()->json($this->service->listarSoloReservas());
+    }
+
+    /**
+     * GET /api/reservas/solo-walk-ins
+     * Devuelve SOLO estadias walk-in (codigo WK-).
+     */
+    public function soloWalkIns(): JsonResponse
+    {
+        return response()->json($this->service->listarSoloWalkIns());
+    }
+
+    /**
+     * GET /api/reservas/historial
+     * Devuelve el historial completo (todas las reservas + walk-ins).
+     */
+    public function historial(): JsonResponse
+    {
+        return response()->json($this->service->listarHistorialCompleto());
+    }
+    // ========================================================================
+    // CHECK-IN DE RESERVA FUTURA
+    // ========================================================================
+
+    /**
+     * GET /api/reservas/{id}/info-check-in
+     * Devuelve toda la info necesaria para la pantalla de check-in.
+     */
+    public function infoCheckIn(int $id): JsonResponse
+    {
+        try {
+            return response()->json($this->service->obtenerInfoCheckIn($id));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['mensaje' => 'Reserva no encontrada'], 404);
+        }
+    }
+
+    /**
+     * POST /api/reservas/{id}/check-in-validado
+     * Hace el check-in con validaciones (disponibilidad, estado, etc).
+     */
+    public function checkInValidado(int $id): JsonResponse
+    {
+        try {
+            $reserva = $this->service->checkInValidado($id, Auth::id());
+            return response()->json([
+                'mensaje' => 'Check-in realizado correctamente',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }}

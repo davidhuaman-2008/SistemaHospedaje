@@ -20,7 +20,12 @@ import { HabitacionPage } from "@/pages/configuracion/habitacion/HabitacionPage"
 import { ConfiguracionSistemaPage } from "@/pages/configuracion/ConfiguracionSistemaPage"
 import { CheckoutPage } from "@/pages/recepcion/CheckoutPage"
 import { RegistrarIngresoPage } from "@/pages/recepcion/RegistrarIngresoPage"
+import { CheckInReservaPage } from "@/pages/recepcion/CheckInReservaPage"
 import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
+import { ReservasPage } from "@/pages/reservas/ReservasPage"
+import { NuevaReservaPage } from "@/pages/reservas/NuevaReservaPage"
+import { DetalleReservaPage } from "@/pages/reservas/DetalleReservaPage"
+import { EstadiasPage } from "@/pages/estadias/EstadiasPage"
 import { LimpiezaPage } from "@/pages/limpieza/LimpiezaPage"
 import { MantenimientoPage } from "@/pages/mantenimiento/MantenimientoPage"
 import { CuentasPorPagarPage } from "@/pages/cuentasPagar/CuentasPorPagarPage"
@@ -205,7 +210,12 @@ function App() {
 
         <Route path="/recepcion" element={<ProtectedRoute><RecepcionPage /></ProtectedRoute>} />
         <Route path="/recepcion/registrar/:idHabitacion" element={<ProtectedRoute><RegistrarIngresoPage /></ProtectedRoute>} />
+        <Route path="/recepcion/checkin/:idReserva" element={<ProtectedRoute><CheckInReservaPage /></ProtectedRoute>} />
         <Route path="/recepcion/checkout/:idReserva" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+        <Route path="/reservas" element={<ProtectedRoute><ReservasPage /></ProtectedRoute>} />
+        <Route path="/reservas/nueva" element={<ProtectedRoute><NuevaReservaPage /></ProtectedRoute>} />
+        <Route path="/reservas/:id" element={<ProtectedRoute><DetalleReservaPage /></ProtectedRoute>} />
+        <Route path="/estadias" element={<ProtectedRoute><EstadiasPage /></ProtectedRoute>} />
         <Route path="/limpieza" element={<ProtectedRoute><LimpiezaPage /></ProtectedRoute>} />
         <Route path="/mantenimiento" element={<ProtectedRoute><MantenimientoPage /></ProtectedRoute>} />
         <Route path="/cuentas-por-pagar" element={<ProtectedRoute><CuentasPorPagarPage /></ProtectedRoute>} />

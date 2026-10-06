@@ -15,8 +15,9 @@ class ConfiguracionSistemaSeeder extends Seeder
             ['clave' => 'tolerancia_extension_minutos', 'valor' => '30', 'tipo' => 'INT', 'descripcion' => 'Minutos de tolerancia antes de cobrar hora extra', 'grupo' => 'reservas'],
             ['clave' => 'buffer_limpieza_minutos', 'valor' => '30', 'tipo' => 'INT', 'descripcion' => 'Buffer entre reservas (limpieza)', 'grupo' => 'reservas'],
             ['clave' => 'tolerancia_no_show_minutos', 'valor' => '60', 'tipo' => 'INT', 'descripcion' => 'Tiempo para marcar No-Show', 'grupo' => 'reservas'],
+            ['clave' => 'horas_antes_bloqueo_reserva', 'valor' => '4', 'tipo' => 'INT', 'descripcion' => 'Horas antes del check-in para bloquear visualmente la habitacion', 'grupo' => 'reservas'],
             ['clave' => 'igv_porcentaje', 'valor' => '18', 'tipo' => 'DECIMAL', 'descripcion' => 'IGV aplicado a comprobantes', 'grupo' => 'comprobantes'],
-            ['clave' => 'moneda_simbolo', 'valor' => 'S/', 'tipo' => 'STRING', 'descripcion' => 'Símbolo de moneda', 'grupo' => 'general'],
+            ['clave' => 'moneda_simbolo', 'valor' => 'S/', 'tipo' => 'STRING', 'descripcion' => 'Simbolo de moneda', 'grupo' => 'general'],
         ];
 
         foreach ($configs as $c) {
@@ -26,6 +27,6 @@ class ConfiguracionSistemaSeeder extends Seeder
             );
         }
 
-        $this->command->info('✓ Configuraciones insertadas: ' . count($configs));
+        $this->command->info('OK Configuraciones insertadas: ' . count($configs));
     }
 }

@@ -26,6 +26,7 @@ import {
   Truck,
   DoorOpen,
   Hotel,
+  CalendarDays,
   Brush,
   Wrench,
   Receipt,
@@ -229,6 +230,14 @@ export default function Sidebar() {
                 <Link to="/recepcion" className={subItemClass("/recepcion")} onClick={cerrarMobile}>
                   <Hotel size={16} />
                   Mapa
+                </Link>
+                <Link to="/reservas" className={subItemClass("/reservas")} onClick={cerrarMobile}>
+                  <CalendarDays size={16} />
+                  Reservas
+                </Link>
+                <Link to="/estadias" className={subItemClass("/estadias")} onClick={cerrarMobile}>
+                  <BedDouble size={16} />
+                  Estadías
                 </Link>
               </div>
             )}

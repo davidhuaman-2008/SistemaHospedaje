@@ -1,5 +1,6 @@
 import api from './api'
 import type {
+  ReservaDisponiblesResponse, ReservaProximasResponse, ReservaHoyResponse, InfoCheckIn,
   Reserva, ReservaRequest, WalkInRequest,
   EstadoReserva, HabitacionMapa,
   AgregarConsumoRequest, CambiarHabitacionRequest,
@@ -136,6 +137,65 @@ export const reservaService = {
     }
   ): Promise<Reserva> => {
     const { data } = await api.patch(`/reservas/${id}/check-out-con-deuda`, datos)
+    return data.data
+  },
+
+  // ========================================================================
+  // MODULO 09B — RESERVAS FUTURAS
+  // ========================================================================
+
+  listarDisponiblesEnRango: async (fecha: string, horas: number): Promise<ReservaDisponiblesResponse> => {
+    const { data } = await api.get('/reservas/disponibles', {
+      params: { fecha, horas },
+    })
+    return data
+  },
+
+  listarProximas: async (): Promise<ReservaProximasResponse> => {
+    const { data } = await api.get('/reservas/proximas')
+    return data
+  },
+
+  listarHoy: async (): Promise<ReservaHoyResponse> => {
+    const { data } = await api.get('/reservas/hoy')
+    return data
+  },
+
+  listarProximasCheckIn: async (): Promise<ReservaHoyResponse> => {
+    const { data } = await api.get('/reservas/proximas-check-in')
+    return data
+  },
+
+  // ========================================================================
+  // FILTRADO — Reservas (RES-) vs Estadias (WK-)
+  // ========================================================================
+
+  listarSoloReservas: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-reservas')
+    return data
+  },
+
+  listarSoloWalkIns: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-walk-ins')
+    return data
+  },
+
+  listarHistorial: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/historial')
+    return data
+  },
+
+  // ========================================================================
+  // CHECK-IN DE RESERVA FUTURA
+  // ========================================================================
+
+  infoCheckIn: async (id: number): Promise<InfoCheckIn> => {
+    const { data } = await api.get(`/reservas/${id}/info-check-in`)
+    return data
+  },
+
+  checkInValidado: async (id: number): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/check-in-validado`)
     return data.data
   },
 }

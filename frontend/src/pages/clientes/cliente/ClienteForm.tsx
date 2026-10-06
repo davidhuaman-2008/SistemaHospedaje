@@ -34,35 +34,33 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
     if (!numeroDocumento) return
     setBuscando(true)
     try {
-      const resp = await clienteService.buscarPorDni(numeroDocumento)
+      const { cliente: encontrado } = await clienteService.buscarPorDni(numeroDocumento)
 
-      if (resp) {
-        // Cliente encontrado
-        setNombre(resp.nombre)
-        setApellido(resp.apellido || '')
-        setCelular(resp.celular || '')
-        setEmail(resp.email || '')
-        setFechaNacimiento(normalizarFecha(resp.fecha_nacimiento))
-        setDireccion(resp.direccion || '')
-        setIdExistente(resp.id_cliente)
-        setVisitasExistentes(resp.visitas)
+      if (encontrado) {
+        setNombre(encontrado.nombre)
+        setApellido(encontrado.apellido || '')
+        setCelular(encontrado.celular || '')
+        setEmail(encontrado.email || '')
+        setFechaNacimiento(normalizarFecha(encontrado.fecha_nacimiento))
+        setDireccion(encontrado.direccion || '')
+        setIdExistente(encontrado.id_cliente)
+        setVisitasExistentes(encontrado.visitas)
 
         try {
-          const obs = await clienteObservacionService.porCliente(resp.id_cliente)
+          const obs = await clienteObservacionService.porCliente(encontrado.id_cliente)
           const pendientes = obs.filter(o => !o.resuelto)
           setObservacionesPendientes(pendientes)
 
           if (pendientes.length > 0) {
-            toast.warning(`${resp.nombre} tiene ${pendientes.length} observación(es) pendiente(s)`)
+            toast.warning(`${encontrado.nombre} tiene ${pendientes.length} observación(es) pendiente(s)`)
           } else {
-            toast.info(`${resp.nombre} ya existe con ${resp.visitas} visitas.`)
+            toast.info(`${encontrado.nombre} ya existe con ${encontrado.visitas} visitas.`)
           }
         } catch {
           setObservacionesPendientes([])
-          toast.info(`${resp.nombre} ya existe con ${resp.visitas} visitas.`)
+          toast.info(`${encontrado.nombre} ya existe con ${encontrado.visitas} visitas.`)
         }
       } else {
-        // Cliente nuevo
         setIdExistente(null)
         setVisitasExistentes(null)
         setObservacionesPendientes([])

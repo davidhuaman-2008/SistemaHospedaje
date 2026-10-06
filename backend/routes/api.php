@@ -327,6 +327,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('habitaciones-mapa', [EstadoHabitacionController::class, 'mapa']);
     Route::get('habitaciones-mapa/{id}', [EstadoHabitacionController::class, 'show']);
 
+    // --- Reservas Futuras (Modulo 09B) ---
+    Route::get('reservas/disponibles', [ReservaController::class, 'reservasDisponibles']);
+    Route::get('reservas/proximas', [ReservaController::class, 'proximas']);
+    Route::get('reservas/hoy', [ReservaController::class, 'hoy']);
+    Route::get('reservas/proximas-check-in', [ReservaController::class, 'proximasCheckIn']);
+
+    // --- Filtrado (RES- vs WK-) ---
+    Route::get('reservas/solo-reservas', [ReservaController::class, 'soloReservas']);
+    Route::get('reservas/solo-walk-ins', [ReservaController::class, 'soloWalkIns']);
+    Route::get('reservas/historial', [ReservaController::class, 'historial']);
+
+    // --- Check-In de Reserva Futura ---
+    Route::get('reservas/{id}/info-check-in', [ReservaController::class, 'infoCheckIn']);
+    Route::post('reservas/{id}/check-in-validado', [ReservaController::class, 'checkInValidado']);
+
     // --- Reservas ---
     Route::get('reservas', [ReservaController::class, 'index']);
     Route::get('reservas/{id}', [ReservaController::class, 'show']);

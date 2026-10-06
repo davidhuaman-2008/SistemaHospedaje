@@ -58,4 +58,88 @@ class ClienteVisitaService
             $cliente->save();
         }
     }
-}
+
+    /**
+     * Lista todas las visitas de un cliente.
+     */
+    public function listarPorCliente(int $idCliente): \Illuminate\Support\Collection
+    {
+        return ClienteVisita::where('id_cliente', $idCliente)
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+
+    /**
+     * Obtiene una visita por ID.
+     */
+    public function obtener(int $id): ClienteVisita
+    {
+        return ClienteVisita::findOrFail($id);
+    }
+
+    /**
+     * Crea una visita MANUAL (boton "+ Visita" en el CRUD).
+     * - Crea la fila en cliente_visitas
+     * - Incrementa visitas, actualiza ultima_visita, suma total_gastado
+     * - Recalcula nivel
+     */
+    public function crear(array $datos): ClienteVisita
+    {
+        return \DB::transaction(function () use ($datos) {
+            $idCliente = $datos['id_cliente'];
+            $monto = (float) ($datos['monto_gastado'] ?? 0);
+
+            $visita = ClienteVisita::create([
+                'id_cliente' => $idCliente,
+                'id_reserva' => $datos['id_reserva'] ?? null,
+                'id_habitacion' => $datos['id_habitacion'] ?? null,
+                'fecha_entrada' => $datos['fecha_entrada'] ?? Carbon::now(),
+                'fecha_salida' => $datos['fecha_salida'] ?? null,
+                'monto_gastado' => $monto,
+            ]);
+
+            // Actualizar contadores del cliente
+            $cliente = Cliente::findOrFail($idCliente);
+            $cliente->visitas = $cliente->visitas + 1;
+            $cliente->ultima_visita = Carbon::now()->toDateString();
+            $cliente->total_gastado = (float) $cliente->total_gastado + $monto;
+            $cliente->save();
+
+            $this->recalcularNivel($cliente);
+
+            return $visita->fresh();
+        });
+    }
+
+    /**
+     * Actualiza una visita existente.
+     * NO recalcula contadores (es solo edicion de metadata).
+     */
+    public function actualizar(int $id, array $datos): ClienteVisita
+    {
+        $visita = ClienteVisita::findOrFail($id);
+        $visita->update($datos);
+        return $visita->fresh();
+    }
+
+    /**
+     * Elimina una visita y revierte los contadores del cliente.
+     */
+    public function eliminar(int $id): void
+    {
+        \DB::transaction(function () use ($id) {
+            $visita = ClienteVisita::findOrFail($id);
+            $idCliente = $visita->id_cliente;
+            $monto = (float) $visita->monto_gastado;
+
+            // Revertir contadores
+            $cliente = Cliente::findOrFail($idCliente);
+            $cliente->visitas = max(0, $cliente->visitas - 1);
+            $cliente->total_gastado = max(0, (float) $cliente->total_gastado - $monto);
+            $cliente->save();
+
+            $this->recalcularNivel($cliente);
+
+            $visita->delete();
+        });
+    }}
