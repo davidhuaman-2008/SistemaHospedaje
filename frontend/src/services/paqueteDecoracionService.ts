@@ -12,8 +12,8 @@ export const paqueteDecoracionService = {
     return data
   },
 
-  listarPorCategoria: async (categoria: string): Promise<PaqueteDecoracion[]> => {
-    const { data } = await api.get(`/paquetes-decoracion/por-categoria/${categoria}`)
+    listarPorTipoHabitacion: async (idTipo: number): Promise<PaqueteDecoracion[]> => {
+    const { data } = await api.get(`/paquetes-decoracion/por-tipo-habitacion/${idTipo}`)
     return data
   },
 

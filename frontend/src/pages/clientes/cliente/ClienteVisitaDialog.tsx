@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { clienteService } from '@/services/clienteService'
 import type { Cliente } from '@/types/cliente'
-
+import { mensajeDeError } from '@/lib/errores'
 interface Props {
   cliente: Cliente
   onCerrar: () => void
@@ -14,7 +14,7 @@ export function ClienteVisitaDialog({ cliente, onCerrar, onGuardado }: Props) {
   const [observacion, setObservacion] = useState('')
   const [guardando, setGuardando] = useState(false)
 
-  const guardar = async () => {
+   const guardar = async () => {
     setGuardando(true)
     try {
       await clienteService.crearVisita(cliente.id_cliente, {
@@ -23,8 +23,8 @@ export function ClienteVisitaDialog({ cliente, onCerrar, onGuardado }: Props) {
       })
       toast.success(`Visita registrada. Cliente ahora tiene ${cliente.visitas + 1} visitas.`)
       onGuardado()
-    } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al registrar visita')
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
     } finally {
       setGuardando(false)
     }

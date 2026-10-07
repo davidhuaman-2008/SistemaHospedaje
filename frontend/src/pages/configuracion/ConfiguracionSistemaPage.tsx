@@ -76,12 +76,25 @@ export function ConfiguracionSistemaPage() {
                         <p className="text-slate-500 text-xs mt-0.5">{c.descripcion}</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        value={editando[c.clave] ?? ""}
-                        onChange={e => setEditando({ ...editando, [c.clave]: e.target.value })}
-                        className="bg-slate-900 text-white p-2 rounded w-40"
-                      />
+                                        <div className="flex gap-2">
+                      {c.tipo === "BOOLEAN" ? (
+                        <select
+                          value={editando[c.clave] ?? "false"}
+                          onChange={e => setEditando({ ...editando, [c.clave]: e.target.value })}
+                          className="bg-slate-900 text-white p-2 rounded w-40"
+                        >
+                          <option value="true">true</option>
+                          <option value="false">false</option>
+                        </select>
+                      ) : (
+                        <input
+                          type={c.tipo === "INT" || c.tipo === "DECIMAL" ? "number" : "text"}
+                          step={c.tipo === "DECIMAL" ? "0.01" : undefined}
+                          value={editando[c.clave] ?? ""}
+                          onChange={e => setEditando({ ...editando, [c.clave]: e.target.value })}
+                          className="bg-slate-900 text-white p-2 rounded w-40"
+                        />
+                      )}
                       <button
                         onClick={() => guardar(c.clave)}
                         disabled={guardando === c.clave || editando[c.clave] === c.valor}
