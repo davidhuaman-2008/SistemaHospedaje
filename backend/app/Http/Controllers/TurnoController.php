@@ -2,105 +2,100 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Turno;
 use App\Services\TurnoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class TurnoController extends Controller
 {
-    // Inyecta el Service que maneja los turnos del personal.
-    // ⚠️ La propiedad se llama `turnoService` (no `service`).
-    public function __construct(
-        private TurnoService $turnoService
-    ) {}
+    public function __construct(private TurnoService $service) {}
 
-    // GET /turnos → lista TODOS los turnos.
-    public function index()
+    public function index(): JsonResponse
     {
-        return response()->json(
-            $this->turnoService->listar()
-        );
+        return response()->json($this->service->listar());
     }
 
-    // POST /turnos → crea un turno nuevo.
-    public function store(Request $request)
+    public function activos(): JsonResponse
     {
-        // ⚠️ `hora_inicio` y `hora_fin` son `required` pero sin formato específico.
+        return response()->json($this->service->listarActivos());
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
         $datos = $request->validate([
-            'nombre' => 'required|string|max:50',
+            'nombre' => 'required|string|max:50|unique:turnos,nombre',
             'hora_inicio' => 'required',
             'hora_fin' => 'required',
             'descripcion' => 'nullable|string|max:255',
             'activo' => 'boolean',
         ]);
 
-        $turno = $this->turnoService->crear($datos);
-
-        // ⚠️ Respuesta usa `turno` en lugar de `data`. Inconsistencia menor.
-        return response()->json([
-            'mensaje' => 'Turno creado',
-            'turno' => $turno,
-        ], 201);
+        try {
+            return response()->json([
+                'mensaje' => 'Turno creado',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // GET /turnos/{id} → un turno por ID.
-    // ⚠️ Usa Route Model Binding → Laravel resuelve `Turno $turno` automáticamente.
-    public function show(Turno $turno)
-    {
-        return response()->json($turno);
-    }
-
-    // PUT /turnos/{id} → actualiza.
-    // ⚠️ También usa Route Model Binding.
-    public function update(Request $request, Turno $turno)
+    public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
-            'nombre' => 'sometimes|string|max:50',
+            'nombre' => 'sometimes|string|max:50|unique:turnos,nombre,' . $id,
             'hora_inicio' => 'sometimes',
             'hora_fin' => 'sometimes',
             'descripcion' => 'nullable|string|max:255',
             'activo' => 'sometimes|boolean',
         ]);
 
-        $turno = $this->turnoService->actualizar($turno, $datos);
-
-        return response()->json([
-            'mensaje' => 'Turno actualizado',
-            'turno' => $turno,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Turno actualizado',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // DELETE /turnos/{id} → elimina físicamente.
-    // ⚠️ También usa Route Model Binding.
-    public function destroy(Turno $turno)
-    {
-        $this->turnoService->eliminar($turno);
-
-        return response()->json([
-            'mensaje' => 'Turno eliminado',
-        ]);
-    }
-
-    // PATCH /turnos/{id}/desactivar → soft delete.
-    // ⚠️ Este SÍ usa `int $id` (no Route Model Binding).
     public function desactivar(int $id): JsonResponse
     {
-        $turno = $this->turnoService->desactivar($id);
-        return response()->json([
-            'mensaje' => 'Turno desactivado',
-            'data' => $turno,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Turno desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // PATCH /turnos/{id}/reactivar → activo = true.
-    // ⚠️ Este también usa `int $id`.
     public function reactivar(int $id): JsonResponse
     {
-        $turno = $this->turnoService->reactivar($id);
-        return response()->json([
-            'mensaje' => 'Turno reactivado',
-            'data' => $turno,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Turno reactivado',
+                'data' => $this->service->reactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Turno eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 }

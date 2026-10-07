@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductoController;
@@ -41,7 +41,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/yo', [AuthController::class, 'yo']);
 
-    Route::apiResource('usuarios', UsuarioController::class)->parameters(['usuarios' => 'usuario']);    
+    
+    // --- Rutas /activos (agregadas en refactor M01) ---
+    Route::get('usuarios/activos', [UsuarioController::class, 'activos']);
+    Route::get('roles/activos', [RolController::class, 'activos']);
+    Route::get('turnos/activos', [TurnoController::class, 'activos']);
+Route::apiResource('usuarios', UsuarioController::class)->parameters(['usuarios' => 'usuario']);    
     // Rutas adicionales de usuarios (soft delete)
     Route::patch('usuarios/{id}/desactivar', [UsuarioController::class, 'desactivar']);
     Route::patch('usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);

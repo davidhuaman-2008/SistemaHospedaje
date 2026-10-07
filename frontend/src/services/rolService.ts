@@ -13,28 +13,37 @@ export const rolService = {
     return data
   },
 
-  async crear(datos: RolRequest) {
-    const { data } = await api.post("/roles", datos)
-    return data.data || data
+  async listarActivos(): Promise<Rol[]> {
+    const { data } = await api.get<Rol[]>("/roles/activos")
+    return data
   },
 
-  async actualizar(id: number, datos: Partial<RolRequest>) {
+  async obtener(id: number): Promise<Rol> {
+    const { data } = await api.get<Rol>(`/roles/${id}`)
+    return data
+  },
+
+  async crear(datos: RolRequest): Promise<Rol> {
+    const { data } = await api.post("/roles", datos)
+    return data.data
+  },
+
+  async actualizar(id: number, datos: Partial<RolRequest>): Promise<Rol> {
     const { data } = await api.put(`/roles/${id}`, datos)
-    return data.data || data
+    return data.data
   },
 
   async desactivar(id: number): Promise<Rol> {
     const { data } = await api.patch(`/roles/${id}/desactivar`)
-    return data.data || data
+    return data.data
   },
 
   async reactivar(id: number): Promise<Rol> {
     const { data } = await api.patch(`/roles/${id}/reactivar`)
-    return data.data || data
+    return data.data
   },
 
-  async eliminar(id: number) {
-    const { data } = await api.delete(`/roles/${id}`)
-    return data
+  async eliminar(id: number): Promise<void> {
+    await api.delete(`/roles/${id}`)
   },
 }

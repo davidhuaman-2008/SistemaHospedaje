@@ -2,24 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Usuario;
 use App\Services\UsuarioService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class UsuarioController extends Controller
 {
-    // ⚠️ Property inyectada: `$usuarioService` (no `$service`).
-    public function __construct(private UsuarioService $usuarioService) {}
+    public function __construct(private UsuarioService $service) {}
 
-    // GET /usuarios → lista TODOS los usuarios.
-    public function index()
+    public function index(): JsonResponse
     {
-        return response()->json($this->usuarioService->listar());
+        return response()->json($this->service->listar());
     }
 
-    // POST /usuarios → crea un usuario nuevo.
-    public function store(Request $request)
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    public function store(Request $request): JsonResponse
     {
         $datos = $request->validate([
             'nombre' => 'required|string|max:100',
@@ -31,78 +37,69 @@ class UsuarioController extends Controller
             'activo' => 'boolean',
         ]);
 
-        // El Service se encarga de hashear el password.
-        $usuario = $this->usuarioService->crear($datos);
-
-        // ⚠️ Respuesta usa `usuario` en lugar de `data`.
-        // Carga las relaciones rol y turno con eager loading.
-        return response()->json([
-            'mensaje' => 'Usuario creado',
-            'usuario' => $usuario->load(['rol', 'turno']),
-        ], 201);
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario creado',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // GET /usuarios/{id} → un usuario con sus relaciones.
-    // ⚠️ Route Model Binding (Usuario $usuario).
-    public function show(Usuario $usuario)
-    {
-        // Carga rol y turno con eager loading.
-        return response()->json($usuario->load(['rol', 'turno']));
-    }
-
-    // PUT /usuarios/{id} → actualiza un usuario.
-    // ⚠️ Route Model Binding + `unique` excluyendo el propio ID.
-    public function update(Request $request, Usuario $usuario)
+    public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
             'nombre' => 'sometimes|string|max:100',
             'apellido' => 'sometimes|string|max:100',
-            'nombre_usuario' => 'sometimes|string|max:50|unique:usuarios,nombre_usuario,' . $usuario->id,
+            'nombre_usuario' => 'sometimes|string|max:50|unique:usuarios,nombre_usuario,' . $id,
             'password' => 'sometimes|string|min:6',
             'id_rol' => 'sometimes|exists:roles,id',
             'id_turno' => 'nullable|exists:turnos,id',
             'activo' => 'sometimes|boolean',
         ]);
 
-        // El Service se encarga de hashear el password si viene.
-        $usuario = $this->usuarioService->actualizar($usuario, $datos);
-
-        return response()->json([
-            'mensaje' => 'Usuario actualizado',
-            'usuario' => $usuario,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario actualizado',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // DELETE /usuarios/{id} → elimina físicamente.
-    // ⚠️ Route Model Binding.
-    public function destroy(Usuario $usuario)
-    {
-        $this->usuarioService->eliminar($usuario);
-
-        return response()->json([
-            'mensaje' => 'Usuario eliminado',
-        ]);
-    }
-
-    // PATCH /usuarios/{id}/desactivar → soft delete (activo = false).
-    // ⚠️ Este SÍ usa `int $id` (no Route Model Binding).
     public function desactivar(int $id): JsonResponse
     {
-        $usuario = $this->usuarioService->desactivar($id);
-        return response()->json([
-            'mensaje' => 'Usuario desactivado',
-            'data' => $usuario,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 
-    // PATCH /usuarios/{id}/reactivar → activo = true.
-    // ⚠️ Este también usa `int $id`.
     public function reactivar(int $id): JsonResponse
     {
-        $usuario = $this->usuarioService->reactivar($id);
-        return response()->json([
-            'mensaje' => 'Usuario reactivado',
-            'data' => $usuario,
-        ]);
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario reactivado',
+                'data' => $this->service->reactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Usuario eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
     }
 }

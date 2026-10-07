@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TipoDocumento extends Model
 {
@@ -17,4 +18,9 @@ class TipoDocumento extends Model
         'activo' => 'boolean',
         'longitud' => 'integer',
     ];
+
+    public function clientes(): HasMany
+    {
+        return $this->hasMany(Cliente::class, 'id_tipo_documento', 'id_documento');
+    }
 }

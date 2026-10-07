@@ -15,28 +15,37 @@ export const turnoService = {
     return data
   },
 
-  async crear(datos: TurnoRequest) {
-    const { data } = await api.post("/turnos", datos)
-    return data.data || data
+  async listarActivos(): Promise<Turno[]> {
+    const { data } = await api.get<Turno[]>("/turnos/activos")
+    return data
   },
 
-  async actualizar(id: number, datos: Partial<TurnoRequest>) {
+  async obtener(id: number): Promise<Turno> {
+    const { data } = await api.get<Turno>(`/turnos/${id}`)
+    return data
+  },
+
+  async crear(datos: TurnoRequest): Promise<Turno> {
+    const { data } = await api.post("/turnos", datos)
+    return data.data
+  },
+
+  async actualizar(id: number, datos: Partial<TurnoRequest>): Promise<Turno> {
     const { data } = await api.put(`/turnos/${id}`, datos)
-    return data.data || data
+    return data.data
   },
 
   async desactivar(id: number): Promise<Turno> {
     const { data } = await api.patch(`/turnos/${id}/desactivar`)
-    return data.data || data
+    return data.data
   },
 
   async reactivar(id: number): Promise<Turno> {
     const { data } = await api.patch(`/turnos/${id}/reactivar`)
-    return data.data || data
+    return data.data
   },
 
-  async eliminar(id: number) {
-    const { data } = await api.delete(`/turnos/${id}`)
-    return data
+  async eliminar(id: number): Promise<void> {
+    await api.delete(`/turnos/${id}`)
   },
 }

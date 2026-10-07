@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EstadoReserva extends Model
 {
@@ -17,4 +18,9 @@ class EstadoReserva extends Model
         'activo' => 'boolean',
         'orden' => 'integer',
     ];
+
+    public function reservas(): HasMany
+    {
+        return $this->hasMany(Reserva::class, 'id_estado', 'id_estado');
+    }
 }

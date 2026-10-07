@@ -23,4 +23,14 @@ class Proveedor extends Model
     {
         return $this->hasMany(Producto::class, 'id_proveedor', 'id_proveedor');
     }
+
+    public function cuentasPagar(): HasMany
+    {
+        return $this->hasMany(CuentaPagar::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function paquetesDecoracion(): HasMany
+    {
+        return $this->hasMany(PaqueteDecoracion::class, 'id_proveedor', 'id_proveedor');
+    }
 }

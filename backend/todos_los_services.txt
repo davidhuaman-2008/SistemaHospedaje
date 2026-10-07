@@ -1,0 +1,5457 @@
+﻿
+
+================================================================================
+=== AuthService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Usuario;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+
+class AuthService
+{
+    public function login(string $nombreUsuario, string $password): array
+    {
+        $usuario = Usuario::with(['rol', 'turno'])
+            ->where('nombre_usuario', $nombreUsuario)
+            ->first();
+
+        if (! $usuario || ! Hash::check($password, $usuario->password)) {
+            throw ValidationException::withMessages([
+                'nombre_usuario' => ['Credenciales incorrectas.'],
+            ]);
+        }
+
+        if (! $usuario->activo) {
+            throw ValidationException::withMessages([
+                'nombre_usuario' => ['Usuario desactivado. Contacte al administrador.'],
+            ]);
+        }
+
+        $usuario->update(['ultimo_login' => now()]);
+
+        $token = $usuario->createToken('auth_token')->plainTextToken;
+
+        return [
+            'usuario' => $usuario,
+            'token' => $token,
+        ];
+    }
+
+    public function logout(Usuario $usuario): void
+    {
+        $usuario->currentAccessToken()?->delete();
+    }
+}
+
+================================================================================
+=== CategoriaMovimientoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\CategoriaMovimiento;
+use Illuminate\Support\Collection;
+
+class CategoriaMovimientoService
+{
+    public function listar(): Collection
+    {
+        return CategoriaMovimiento::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return CategoriaMovimiento::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function listarPorTipo(string $tipo): Collection
+    {
+        return CategoriaMovimiento::where('activo', true)
+            ->where('tipo', $tipo)
+            ->orderBy('orden')
+            ->get();
+    }
+
+    public function obtener(int $id): CategoriaMovimiento
+    {
+        return CategoriaMovimiento::findOrFail($id);
+    }
+
+    public function crear(array $datos): CategoriaMovimiento
+    {
+        return CategoriaMovimiento::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): CategoriaMovimiento
+    {
+        $item = CategoriaMovimiento::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): CategoriaMovimiento
+    {
+        $item = CategoriaMovimiento::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): CategoriaMovimiento
+    {
+        $item = CategoriaMovimiento::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        CategoriaMovimiento::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== CategoriaProductoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\CategoriaProducto;
+use Illuminate\Support\Collection;
+
+class CategoriaProductoService
+{
+    public function listar(): Collection
+    {
+        return CategoriaProducto::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return CategoriaProducto::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): CategoriaProducto
+    {
+        return CategoriaProducto::findOrFail($id);
+    }
+
+    public function crear(array $datos): CategoriaProducto
+    {
+        return CategoriaProducto::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): CategoriaProducto
+    {
+        $item = CategoriaProducto::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): CategoriaProducto
+    {
+        $item = CategoriaProducto::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): CategoriaProducto
+    {
+        $item = CategoriaProducto::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        CategoriaProducto::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== CategoriaPromocionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\CategoriaPromocion;
+use Illuminate\Support\Collection;
+
+class CategoriaPromocionService
+{
+    public function listar(): Collection
+    {
+        return CategoriaPromocion::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return CategoriaPromocion::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): CategoriaPromocion
+    {
+        return CategoriaPromocion::findOrFail($id);
+    }
+
+    public function crear(array $datos): CategoriaPromocion
+    {
+        return CategoriaPromocion::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): CategoriaPromocion
+    {
+        $item = CategoriaPromocion::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): CategoriaPromocion
+    {
+        $item = CategoriaPromocion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): CategoriaPromocion
+    {
+        $item = CategoriaPromocion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        CategoriaPromocion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ClienteNivelService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\ClienteNivel;
+use Illuminate\Support\Collection;
+
+class ClienteNivelService
+{
+    public function listar(): Collection
+    {
+        return ClienteNivel::orderBy('visitas_min')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return ClienteNivel::where('activo', true)
+            ->orderBy('visitas_min')
+            ->get();
+    }
+
+    public function obtener(int $id): ClienteNivel
+    {
+        return ClienteNivel::findOrFail($id);
+    }
+
+    public function crear(array $datos): ClienteNivel
+    {
+        return ClienteNivel::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): ClienteNivel
+    {
+        $item = ClienteNivel::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): ClienteNivel
+    {
+        $item = ClienteNivel::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): ClienteNivel
+    {
+        $item = ClienteNivel::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        ClienteNivel::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ClienteObservacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\ClienteObservacion;
+use Illuminate\Support\Collection;
+
+class ClienteObservacionService
+{
+    public function listarPorCliente(int $idCliente): Collection
+    {
+        return ClienteObservacion::with(['tipo', 'gravedad', 'usuario'])
+            ->where('id_cliente', $idCliente)
+            ->orderByDesc('id_observacion')
+            ->get();
+    }
+
+    public function listarTodas(): Collection
+    {
+        return ClienteObservacion::with(['cliente', 'tipo', 'gravedad', 'usuario'])
+            ->orderByDesc('id_observacion')
+            ->get();
+    }
+
+    public function obtener(int $id): ClienteObservacion
+    {
+        return ClienteObservacion::with(['cliente', 'tipo', 'gravedad', 'usuario'])
+            ->findOrFail($id);
+    }
+
+    public function crear(array $datos): ClienteObservacion
+    {
+        return ClienteObservacion::create($datos)
+            ->load(['tipo', 'gravedad', 'usuario']);
+    }
+
+    public function resolver(int $id): ClienteObservacion
+    {
+        $item = ClienteObservacion::findOrFail($id);
+        $item->update([
+            'resuelto' => true,
+            'fecha_resolucion' => now(),
+        ]);
+        return $item->fresh()->load(['tipo', 'gravedad', 'usuario']);
+    }
+
+    public function eliminar(int $id): void
+    {
+        ClienteObservacion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ClienteService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Cliente;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class ClienteService
+{
+    public function listar(): Collection
+    {
+        return Cliente::with(['tipoDocumento', 'nivel'])
+            ->orderByDesc('id_cliente')
+            ->get()
+            ->map(function ($cliente) {
+                // Agregar conteo de observaciones pendientes para la tabla
+                $cliente->observaciones_pendientes_count = $cliente->observacionesPendientes()->count();
+                return $cliente;
+            });
+    }
+
+    public function listarActivos(): Collection
+    {
+        return Cliente::with(['tipoDocumento', 'nivel'])
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get()
+            ->map(function ($cliente) {
+                $cliente->observaciones_pendientes_count = $cliente->observacionesPendientes()->count();
+                return $cliente;
+            });
+    }
+
+    public function buscarPorDni(string $dni): ?Cliente
+    {
+        $cliente = Cliente::with([
+            'tipoDocumento',
+            'nivel',
+            'observacionesPendientes.tipo',
+            'observacionesPendientes.gravedad',
+            'observacionesPendientes.usuario',
+        ])
+            ->where('numero_documento', $dni)
+            ->first();
+
+        if (!$cliente) {
+            return null;
+        }
+
+        // Buscar reserva activa (estado 'activa')
+        $reservaActiva = \App\Models\Reserva::with(['habitacion.tipo', 'habitacion.piso', 'tarifa'])
+            ->where('id_cliente', $cliente->id_cliente)
+            ->whereHas('estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->latest('id_reserva')
+            ->first();
+
+        // Adjuntar como atributo dinÃ¡mico
+        $cliente->setAttribute('reserva_activa', $reservaActiva);
+
+        return $cliente;
+    }
+
+    public function obtener(int $id): Cliente
+    {
+        return Cliente::with([
+            'tipoDocumento',
+            'nivel',
+            'observacionesPendientes.tipo',
+            'observacionesPendientes.gravedad',
+            'observacionesPendientes.usuario',
+        ])
+            ->findOrFail($id);
+    }
+
+    public function crear(array $datos): Cliente
+    {
+        return Cliente::create($datos)->load(['tipoDocumento', 'nivel']);
+    }
+
+    public function actualizar(int $id, array $datos): Cliente
+    {
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update($datos);
+        return $cliente->fresh()->load(['tipoDocumento', 'nivel']);
+    }
+
+    public function desactivar(int $id): Cliente
+    {
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update(['activo' => false]);
+        return $cliente;
+    }
+
+    public function reactivar(int $id): Cliente
+    {
+        $cliente = Cliente::findOrFail($id);
+        $cliente->update(['activo' => true]);
+        return $cliente;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Cliente::findOrFail($id)->delete();
+    }
+
+    /**
+     * Recalcula el nivel del cliente segÃºn sus visitas.
+     */
+    public function recalcularNivel(int $idCliente): void
+    {
+        $cliente = Cliente::findOrFail($idCliente);
+        $nivel = DB::table('clientes_niveles')
+            ->where('activo', true)
+            ->where('visitas_min', '<=', $cliente->visitas)
+            ->where(function ($q) use ($cliente) {
+                $q->whereNull('visitas_max')
+                  ->orWhere('visitas_max', '>=', $cliente->visitas);
+            })
+            ->orderByDesc('visitas_min')
+            ->first();
+
+        if ($nivel) {
+            $cliente->update(['id_nivel' => $nivel->id_nivel]);
+        }
+    }
+}
+
+================================================================================
+=== ClienteVisitaService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Cliente;
+use App\Models\ClienteNivel;
+use App\Models\ClienteVisita;
+use Carbon\Carbon;
+
+class ClienteVisitaService
+{
+    /**
+     * Registra la visita de un cliente.
+     * - Incrementa visitas
+     * - Actualiza ultima_visita
+     * - Suma total_gastado
+     * - Recalcula nivel (R34)
+     */
+    public function registrar(int $idCliente, ?int $idReserva, ?int $idHabitacion, float $monto): void
+    {
+        // 1. Crear fila en cliente_visitas
+        ClienteVisita::create([
+            'id_cliente' => $idCliente,
+            'id_reserva' => $idReserva,
+            'id_habitacion' => $idHabitacion,
+            'fecha_entrada' => Carbon::now(),
+            'monto_gastado' => $monto,
+        ]);
+
+        // 2. Actualizar cliente
+        $cliente = Cliente::findOrFail($idCliente);
+        $cliente->visitas = $cliente->visitas + 1;
+        $cliente->ultima_visita = Carbon::now()->toDateString();
+        $cliente->total_gastado = $cliente->total_gastado + $monto;
+        $cliente->save();
+
+        // 3. Recalcular nivel
+        $this->recalcularNivel($cliente);
+    }
+
+    /**
+     * Recalcula el nivel segÃºn las visitas actuales (R34).
+     * Bronce: 0-4, Plata: 5-9, Oro: 10-19, VIP: 20+
+     */
+    public function recalcularNivel(Cliente $cliente): void
+    {
+        $nivel = ClienteNivel::where('activo', true)
+            ->where('visitas_min', '<=', $cliente->visitas)
+            ->where(function ($q) use ($cliente) {
+                $q->whereNull('visitas_max')
+                  ->orWhere('visitas_max', '>=', $cliente->visitas);
+            })
+            ->orderByDesc('visitas_min')
+            ->first();
+
+        if ($nivel && $cliente->id_nivel !== $nivel->id_nivel) {
+            $cliente->id_nivel = $nivel->id_nivel;
+            $cliente->save();
+        }
+    }
+
+    /**
+     * Lista todas las visitas de un cliente.
+     */
+    public function listarPorCliente(int $idCliente): \Illuminate\Support\Collection
+    {
+        return ClienteVisita::where('id_cliente', $idCliente)
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+
+    /**
+     * Obtiene una visita por ID.
+     */
+    public function obtener(int $id): ClienteVisita
+    {
+        return ClienteVisita::findOrFail($id);
+    }
+
+    /**
+     * Crea una visita MANUAL (boton "+ Visita" en el CRUD).
+     * - Crea la fila en cliente_visitas
+     * - Incrementa visitas, actualiza ultima_visita, suma total_gastado
+     * - Recalcula nivel
+     */
+    public function crear(array $datos): ClienteVisita
+    {
+        return \DB::transaction(function () use ($datos) {
+            $idCliente = $datos['id_cliente'];
+            $monto = (float) ($datos['monto_gastado'] ?? 0);
+
+            $visita = ClienteVisita::create([
+                'id_cliente' => $idCliente,
+                'id_reserva' => $datos['id_reserva'] ?? null,
+                'id_habitacion' => $datos['id_habitacion'] ?? null,
+                'fecha_entrada' => $datos['fecha_entrada'] ?? Carbon::now(),
+                'fecha_salida' => $datos['fecha_salida'] ?? null,
+                'monto_gastado' => $monto,
+            ]);
+
+            // Actualizar contadores del cliente
+            $cliente = Cliente::findOrFail($idCliente);
+            $cliente->visitas = $cliente->visitas + 1;
+            $cliente->ultima_visita = Carbon::now()->toDateString();
+            $cliente->total_gastado = (float) $cliente->total_gastado + $monto;
+            $cliente->save();
+
+            $this->recalcularNivel($cliente);
+
+            return $visita->fresh();
+        });
+    }
+
+    /**
+     * Actualiza una visita existente.
+     * NO recalcula contadores (es solo edicion de metadata).
+     */
+    public function actualizar(int $id, array $datos): ClienteVisita
+    {
+        $visita = ClienteVisita::findOrFail($id);
+        $visita->update($datos);
+        return $visita->fresh();
+    }
+
+    /**
+     * Elimina una visita y revierte los contadores del cliente.
+     */
+    public function eliminar(int $id): void
+    {
+        \DB::transaction(function () use ($id) {
+            $visita = ClienteVisita::findOrFail($id);
+            $idCliente = $visita->id_cliente;
+            $monto = (float) $visita->monto_gastado;
+
+            // Revertir contadores
+            $cliente = Cliente::findOrFail($idCliente);
+            $cliente->visitas = max(0, $cliente->visitas - 1);
+            $cliente->total_gastado = max(0, (float) $cliente->total_gastado - $monto);
+            $cliente->save();
+
+            $this->recalcularNivel($cliente);
+
+            $visita->delete();
+        });
+    }}
+
+================================================================================
+=== CuentaPagarService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\CuentaPagar;
+use App\Models\EstadoCuentaPagar;
+use App\Models\PagoProveedor;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class CuentaPagarService
+{
+    public function listar(): Collection
+    {
+        return CuentaPagar::with([
+            'proveedor', 'estado', 'reserva', 'usuarioCreacion',
+        ])
+            ->orderByDesc('id_cuenta')
+            ->get();
+    }
+
+    public function listarPendientes(): Collection
+    {
+        return CuentaPagar::with(['proveedor', 'estado', 'reserva'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['pendiente', 'parcial']);
+            })
+            ->orderBy('fecha_vencimiento')
+            ->get();
+    }
+
+    public function listarPorProveedor(int $idProveedor): Collection
+    {
+        return CuentaPagar::with(['proveedor', 'estado', 'reserva'])
+            ->where('id_proveedor', $idProveedor)
+            ->orderByDesc('id_cuenta')
+            ->get();
+    }
+
+    public function listarVencidas(): Collection
+    {
+        return CuentaPagar::with(['proveedor', 'estado'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['pendiente', 'parcial']);
+            })
+            ->where('fecha_vencimiento', '<', now())
+            ->orderBy('fecha_vencimiento')
+            ->get();
+    }
+
+    public function obtener(int $id): CuentaPagar
+    {
+        return CuentaPagar::with([
+            'proveedor', 'estado', 'reserva', 'usuarioCreacion', 'usuarioAnulacion',
+            'pagos.metodoPago', 'pagos.usuario',
+        ])->findOrFail($id);
+    }
+
+    /**
+     * Crea una cuenta por pagar.
+     * El estado inicial es "Pendiente".
+     */
+    public function crear(array $datos, int $idUsuario): CuentaPagar
+    {
+        return DB::transaction(function () use ($datos, $idUsuario) {
+            $estadoPendiente = EstadoCuentaPagar::where('slug', 'pendiente')->firstOrFail();
+
+            $fechaEmision = isset($datos['fecha_emision'])
+                ? Carbon::parse($datos['fecha_emision'])
+                : now();
+
+            $fechaVencimiento = isset($datos['fecha_vencimiento'])
+                ? Carbon::parse($datos['fecha_vencimiento'])
+                : $fechaEmision->copy()->addDays(30);
+
+            $monto = (float) $datos['monto'];
+
+            return CuentaPagar::create([
+                'id_proveedor' => $datos['id_proveedor'],
+                'id_estado_cuenta' => $estadoPendiente->id_estado_cuenta,
+                'id_reserva' => $datos['id_reserva'] ?? null,
+                'id_decoracion' => $datos['id_decoracion'] ?? null,
+                'concepto' => $datos['concepto'],
+                'monto' => $monto,
+                'monto_pagado' => 0,
+                'saldo' => $monto,
+                'fecha_emision' => $fechaEmision,
+                'fecha_vencimiento' => $fechaVencimiento,
+                'id_usuario_creacion' => $idUsuario,
+                'notas' => $datos['notas'] ?? null,
+            ])->load(['proveedor', 'estado', 'reserva', 'usuarioCreacion']);
+        });
+    }
+
+    /**
+     * Actualiza una cuenta (solo concepto/notas/fecha_vencimiento).
+     * NO se puede cambiar el monto (anular y crear nueva).
+     */
+    public function actualizar(int $id, array $datos): CuentaPagar
+    {
+        return DB::transaction(function () use ($id, $datos) {
+            $cuenta = CuentaPagar::findOrFail($id);
+
+            // Bloquear si estÃ¡ en estado final
+            if ($cuenta->estado->es_estado_final) {
+                throw new \InvalidArgumentException(
+                    'No se puede editar una cuenta en estado ' . $cuenta->estado->nombre . '.'
+                );
+            }
+
+            $cuenta->update([
+                'concepto' => $datos['concepto'] ?? $cuenta->concepto,
+                'fecha_vencimiento' => isset($datos['fecha_vencimiento'])
+                    ? Carbon::parse($datos['fecha_vencimiento'])
+                    : $cuenta->fecha_vencimiento,
+                'notas' => $datos['notas'] ?? $cuenta->notas,
+            ]);
+
+            return $cuenta->fresh(['proveedor', 'estado', 'reserva']);
+        });
+    }
+
+    /**
+     * Anula una cuenta. Solo se puede si no tiene pagos activos.
+     */
+    public function anular(int $id, int $idUsuario, string $motivo): CuentaPagar
+    {
+        return DB::transaction(function () use ($id, $idUsuario, $motivo) {
+            $cuenta = CuentaPagar::findOrFail($id);
+
+            if ($cuenta->estado->es_estado_final) {
+                throw new \InvalidArgumentException(
+                    'Esta cuenta ya estÃ¡ en estado ' . $cuenta->estado->nombre . '.'
+                );
+            }
+
+            // Verificar que no tenga pagos activos
+            $pagosActivos = $cuenta->pagos()->where('anulado', false)->count();
+            if ($pagosActivos > 0) {
+                throw new \InvalidArgumentException(
+                    "La cuenta tiene {$pagosActivos} pago(s) activo(s). AnulÃ¡ los pagos primero."
+                );
+            }
+
+            $estadoAnulada = EstadoCuentaPagar::where('slug', 'anulada')->firstOrFail();
+
+            $cuenta->update([
+                'id_estado_cuenta' => $estadoAnulada->id_estado_cuenta,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            return $cuenta->fresh(['proveedor', 'estado']);
+        });
+    }
+
+    /**
+     * Registra un pago a la cuenta.
+     */
+    public function registrarPago(int $idCuenta, array $datos, int $idUsuario): CuentaPagar
+    {
+        return DB::transaction(function () use ($idCuenta, $datos, $idUsuario) {
+            $cuenta = CuentaPagar::findOrFail($idCuenta);
+
+            if ($cuenta->estado->es_estado_final) {
+                throw new \InvalidArgumentException(
+                    'No se puede pagar una cuenta en estado ' . $cuenta->estado->nombre . '.'
+                );
+            }
+
+            $monto = (float) $datos['monto'];
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            if ($monto > $cuenta->saldo + 0.01) {
+                throw new \InvalidArgumentException(
+                    "El monto (S/ {$monto}) excede el saldo pendiente (S/ {$cuenta->saldo})."
+                );
+            }
+
+            PagoProveedor::create([
+                'id_cuenta' => $idCuenta,
+                'monto' => $monto,
+                'id_metodo_pago' => $datos['id_metodo_pago'],
+                'fecha_pago' => now(),
+                'id_usuario' => $idUsuario,
+                'referencia' => $datos['referencia'] ?? null,
+                'observaciones' => $datos['observaciones'] ?? null,
+            ]);
+
+            // TODO: MÃ³dulo 11 (Caja) â€” Si el mÃ©todo es_de_caja=true, registrar egreso en movimientos_caja
+
+            $this->recalcular($idCuenta);
+
+            return $cuenta->fresh([
+                'proveedor', 'estado', 'reserva',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Anula un pago. Recalcula la cuenta.
+     */
+    public function anularPago(int $idPago, int $idUsuario, string $motivo): CuentaPagar
+    {
+        return DB::transaction(function () use ($idPago, $idUsuario, $motivo) {
+            $pago = PagoProveedor::findOrFail($idPago);
+
+            if ($pago->anulado) {
+                throw new \InvalidArgumentException('Este pago ya estÃ¡ anulado.');
+            }
+
+            $pago->update([
+                'anulado' => true,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            // TODO: MÃ³dulo 11 (Caja) â€” Anular el egreso correspondiente
+
+            $idCuenta = $pago->id_cuenta;
+            $this->recalcular($idCuenta);
+
+            return CuentaPagar::with([
+                'proveedor', 'estado', 'reserva',
+                'pagos.metodoPago', 'pagos.usuario',
+            ])->findOrFail($idCuenta);
+        });
+    }
+
+    /**
+     * Recalcula monto_pagado, saldo y estado de una cuenta.
+     */
+    public function recalcular(int $idCuenta): CuentaPagar
+    {
+        return DB::transaction(function () use ($idCuenta) {
+            $cuenta = CuentaPagar::findOrFail($idCuenta);
+
+            // Si estÃ¡ en estado final (Pagada/Anulada) â†’ no recalcular
+            if ($cuenta->estado->es_estado_final) {
+                return $cuenta;
+            }
+
+            $totalPagado = PagoProveedor::where('id_cuenta', $idCuenta)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $saldo = max(0, (float) $cuenta->monto - (float) $totalPagado);
+
+            // Determinar nuevo estado
+            $nuevoEstado = $this->determinarEstado($cuenta->monto, $totalPagado);
+
+            $cuenta->update([
+                'monto_pagado' => $totalPagado,
+                'saldo' => $saldo,
+                'id_estado_cuenta' => $nuevoEstado->id_estado_cuenta,
+            ]);
+
+            return $cuenta->fresh(['proveedor', 'estado']);
+        });
+    }
+
+    /**
+     * Determina el estado segÃºn monto y pagado.
+     */
+    private function determinarEstado(float $monto, float $totalPagado): EstadoCuentaPagar
+    {
+        if ($totalPagado <= 0.01) {
+            return EstadoCuentaPagar::where('slug', 'pendiente')->firstOrFail();
+        }
+
+        if ($totalPagado >= $monto - 0.01) {
+            return EstadoCuentaPagar::where('slug', 'pagada')->firstOrFail();
+        }
+
+        return EstadoCuentaPagar::where('slug', 'parcial')->firstOrFail();
+    }
+
+    /**
+     * MÃ©todo helper para R11 (MÃ³dulo 10 Decoraciones).
+     * Genera una CuentaPagar automÃ¡ticamente.
+     */
+    public function generarDesdeReserva(
+        int $idProveedor,
+        int $idReserva,
+        ?int $idDecoracion,
+        string $concepto,
+        float $monto,
+        int $idUsuario
+    ): CuentaPagar {
+        return $this->crear([
+            'id_proveedor' => $idProveedor,
+            'id_reserva' => $idReserva,
+            'id_decoracion' => $idDecoracion,
+            'concepto' => $concepto,
+            'monto' => $monto,
+        ], $idUsuario);
+    }
+}
+
+================================================================================
+=== DecoracionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Configuracion;
+use App\Models\CuentaPagar;
+use App\Models\Decoracion;
+use App\Models\PaqueteDecoracion;
+use App\Models\Reserva;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class DecoracionService
+{
+    public function __construct(
+        private CuentaPagarService $cuentaPagarService,
+    ) {}
+
+    public function listar(): Collection
+    {
+        return Decoracion::with([
+            'reserva.cliente', 'reserva.habitacion.tipo',
+            'paquete', 'proveedor', 'cuentaPagar', 'usuarioCreacion',
+        ])
+            ->orderByDesc('id_decoracion')
+            ->get();
+    }
+
+    public function listarActivas(): Collection
+    {
+        return Decoracion::with([
+            'reserva.cliente', 'reserva.habitacion.tipo',
+            'paquete', 'proveedor', 'cuentaPagar',
+        ])
+            ->whereIn('estado', ['programada', 'en-proceso'])
+            ->orderBy('fecha_programada')
+            ->get();
+    }
+
+    public function listarProximas(): Collection
+    {
+        $hoy = Carbon::today();
+        $manana = Carbon::tomorrow();
+
+        return Decoracion::with(['reserva.cliente', 'reserva.habitacion.tipo', 'paquete', 'proveedor'])
+            ->whereIn('estado', ['programada', 'en-proceso'])
+            ->whereBetween('fecha_programada', [$hoy->copy()->startOfDay(), $manana->copy()->endOfDay()])
+            ->orderBy('fecha_programada')
+            ->get();
+    }
+
+    public function listarPorReserva(int $idReserva): Collection
+    {
+        return Decoracion::with(['paquete', 'proveedor', 'cuentaPagar'])
+            ->where('id_reserva', $idReserva)
+            ->orderByDesc('id_decoracion')
+            ->get();
+    }
+
+    public function listarPorProveedor(int $idProveedor): Collection
+    {
+        return Decoracion::with(['reserva.cliente', 'reserva.habitacion.tipo', 'paquete', 'cuentaPagar'])
+            ->where('id_proveedor', $idProveedor)
+            ->orderByDesc('fecha_programada')
+            ->get();
+    }
+
+    public function obtener(int $id): Decoracion
+    {
+        return Decoracion::with([
+            'reserva.cliente', 'reserva.habitacion.tipo', 'reserva.habitacion.piso',
+            'paquete.proveedor', 'proveedor',
+            'cuentaPagar.pagos.metodoPago',
+            'usuarioCreacion', 'usuarioAnulacion',
+        ])->findOrFail($id);
+    }
+
+    /**
+     * Crea una decoracion para una reserva.
+     * Toma los valores del paquete (snapshot).
+     * Crea CuentaPagar automatica al proveedor.
+     */
+    public function crear(array $datos, int $idUsuario): Decoracion
+    {
+        return DB::transaction(function () use ($datos, $idUsuario) {
+            $reserva = Reserva::with('habitacion')->findOrFail($datos['id_reserva']);
+
+            // Verificar que no haya otra decoracion activa
+            $existente = Decoracion::where('id_reserva', $reserva->id_reserva)
+                ->whereIn('estado', ['programada', 'en-proceso'])
+                ->exists();
+
+            if ($existente) {
+                throw new \InvalidArgumentException(
+                    'Esta reserva ya tiene una decoracion activa. Anulala antes de crear una nueva.'
+                );
+            }
+
+            $paquete = PaqueteDecoracion::with('proveedor')->findOrFail($datos['id_paquete']);
+
+            // Calcular horas extra (si la reserva tiene mas horas que el paquete)
+            $horasSolicitadas = (int) $reserva->horas_base;
+            $horasIncluidas = (int) $paquete->horas_incluidas;
+            $horasExtra = max(0, $horasSolicitadas - $horasIncluidas);
+            $precioHoraAdicional = (float) $paquete->precio_hora_adicional;
+            $montoExtra = $horasExtra * $precioHoraAdicional;
+
+            // Precio base del paquete (8h)
+            $precioTotal = (float) $paquete->precio_total + $montoExtra;
+            $gananciaLocal = (float) $paquete->ganancia_local + $montoExtra; // el extra va al hospedaje
+            $gananciaProveedor = (float) $paquete->ganancia_proveedor; // el proveedor cobra lo mismo
+
+            if (abs($precioTotal - ($gananciaLocal + $gananciaProveedor)) > 0.01) {
+                throw new \InvalidArgumentException(
+                    "Error en el paquete: precio_total != ganancia_local + ganancia_proveedor"
+                );
+            }
+
+            $adelanto = (float) ($datos['adelanto'] ?? 0);
+            $saldo = max(0, $gananciaProveedor - $adelanto);
+
+            $fechaProgramada = isset($datos['fecha_programada'])
+                ? Carbon::parse($datos['fecha_programada'])
+                : Carbon::parse($reserva->fecha_entrada);
+
+            // 5h antes de la fecha programada es cuando el proveedor debe empezar
+            $horasAntes = Configuracion::obtener('horas_antes_decoracion', 5);
+            $fechaInicioPreparacion = $fechaProgramada->copy()->subHours($horasAntes);
+
+            $decoracion = Decoracion::create([
+                'id_reserva' => $reserva->id_reserva,
+                'id_paquete' => $paquete->id_paquete,
+                'id_proveedor' => $paquete->id_proveedor,
+                'estado' => 'programada',
+                'fecha_programada' => $fechaProgramada,
+                'fecha_inicio_preparacion' => $fechaInicioPreparacion,
+                'precio_total' => $precioTotal,
+                'ganancia_local' => $gananciaLocal,
+                'ganancia_proveedor' => $gananciaProveedor,
+                'adelanto' => $adelanto,
+                'saldo' => $saldo,
+                'frase_personalizada' => $datos['frase_personalizada'] ?? null,
+                'musica' => $datos['musica'] ?? null,
+                'notas' => $datos['notas'] ?? null,
+                'id_usuario_creacion' => $idUsuario,
+            ]);
+
+            // Crear CuentaPagar automatica al proveedor
+            if ($paquete->id_proveedor && $gananciaProveedor > 0) {
+                $cuenta = $this->cuentaPagarService->crear([
+                    'id_proveedor' => $paquete->id_proveedor,
+                    'id_reserva' => $reserva->id_reserva,
+                    'id_decoracion' => $decoracion->id_decoracion,
+                    'concepto' => 'Decoracion: ' . $paquete->nombre . ' - Reserva ' . $reserva->codigo_reserva,
+                    'monto' => $gananciaProveedor,
+                    'fecha_emision' => $fechaProgramada->toDateString(),
+                    'fecha_vencimiento' => $fechaProgramada->copy()->addDays(15)->toDateString(),
+                    'notas' => 'Generado automaticamente desde decoracion #' . $decoracion->id_decoracion,
+                ], $idUsuario);
+
+                $decoracion->update(['id_cuenta_pagar' => $cuenta->id_cuenta]);
+            }
+
+            return $decoracion->fresh(['reserva.cliente', 'reserva.habitacion.tipo', 'paquete', 'proveedor', 'cuentaPagar']);
+        });
+    }
+
+    public function actualizar(int $id, array $datos): Decoracion
+    {
+        $decoracion = Decoracion::findOrFail($id);
+
+        if (in_array($decoracion->estado, ['finalizada', 'cancelada'])) {
+            throw new \InvalidArgumentException(
+                'No se puede editar una decoracion ' . $decoracion->estado . '.'
+            );
+        }
+
+        $decoracion->update([
+            'frase_personalizada' => $datos['frase_personalizada'] ?? $decoracion->frase_personalizada,
+            'musica' => $datos['musica'] ?? $decoracion->musica,
+            'notas' => $datos['notas'] ?? $decoracion->notas,
+            'fecha_programada' => isset($datos['fecha_programada'])
+                ? Carbon::parse($datos['fecha_programada'])
+                : $decoracion->fecha_programada,
+        ]);
+
+        return $decoracion->fresh(['reserva.cliente', 'paquete', 'proveedor', 'cuentaPagar']);
+    }
+
+    /**
+     * Cambia el estado: programada -> en-proceso -> finalizada
+     */
+    public function cambiarEstado(int $id, string $nuevoEstado, ?string $observaciones = null): Decoracion
+    {
+        return DB::transaction(function () use ($id, $nuevoEstado, $observaciones) {
+            $decoracion = Decoracion::findOrFail($id);
+
+            if (!array_key_exists($nuevoEstado, Decoracion::estados())) {
+                throw new \InvalidArgumentException('Estado invalido: ' . $nuevoEstado);
+            }
+
+            $updateData = ['estado' => $nuevoEstado];
+
+            if ($nuevoEstado === 'en-proceso' && !$decoracion->fecha_inicio) {
+                $updateData['fecha_inicio'] = now();
+            }
+
+            if ($nuevoEstado === 'finalizada' && !$decoracion->fecha_fin) {
+                $updateData['fecha_fin'] = now();
+            }
+
+            if ($observaciones) {
+                $updateData['notas'] = ($decoracion->notas ? $decoracion->notas . "\n" : '') . $observaciones;
+            }
+
+            $decoracion->update($updateData);
+
+            return $decoracion->fresh(['reserva.cliente', 'paquete', 'proveedor', 'cuentaPagar']);
+        });
+    }
+
+    /**
+     * Registra un adelanto al proveedor (reduce el saldo).
+     */
+    public function registrarAdelanto(int $id, float $monto, int $idMetodoPago, int $idUsuario): Decoracion
+    {
+        return DB::transaction(function () use ($id, $monto, $idMetodoPago, $idUsuario) {
+            $decoracion = Decoracion::findOrFail($id);
+
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            if ($monto > $decoracion->saldo + 0.01) {
+                throw new \InvalidArgumentException(
+                    "El monto (S/ {$monto}) excede el saldo pendiente (S/ {$decoracion->saldo})."
+                );
+            }
+
+            // Registrar el pago en la CuentaPagar (esto ya maneja el saldo de la cuenta)
+            if ($decoracion->id_cuenta_pagar) {
+                $this->cuentaPagarService->registrarPago(
+                    $decoracion->id_cuenta_pagar,
+                    [
+                        'monto' => $monto,
+                        'id_metodo_pago' => $idMetodoPago,
+                        'observaciones' => 'Adelanto de decoracion #' . $decoracion->id_decoracion,
+                    ],
+                    $idUsuario
+                );
+            }
+
+            // Actualizar el adelanto y saldo de la decoracion
+            $decoracion->adelanto = (float) $decoracion->adelanto + $monto;
+            $decoracion->saldo = max(0, (float) $decoracion->ganancia_proveedor - (float) $decoracion->adelanto);
+            $decoracion->save();
+
+            return $decoracion->fresh(['reserva.cliente', 'paquete', 'proveedor', 'cuentaPagar']);
+        });
+    }
+
+    /**
+     * Anula la decoracion. Cancela la CuentaPagar si no tiene pagos.
+     */
+    public function anular(int $id, int $idUsuario, string $motivo): Decoracion
+    {
+        return DB::transaction(function () use ($id, $idUsuario, $motivo) {
+            $decoracion = Decoracion::findOrFail($id);
+
+            if (in_array($decoracion->estado, ['finalizada', 'cancelada'])) {
+                throw new \InvalidArgumentException(
+                    'Esta decoracion ya esta ' . $decoracion->estado . '.'
+                );
+            }
+
+            $decoracion->update([
+                'estado' => 'cancelada',
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            // Anular CuentaPagar si no tiene pagos activos
+            if ($decoracion->id_cuenta_pagar) {
+                $cuenta = CuentaPagar::find($decoracion->id_cuenta_pagar);
+                if ($cuenta && !$cuenta->estado->es_estado_final) {
+                    $pagosActivos = $cuenta->pagos()->where('anulado', false)->count();
+                    if ($pagosActivos === 0) {
+                        $this->cuentaPagarService->anular(
+                            $cuenta->id_cuenta,
+                            $idUsuario,
+                            'Anulada por cancelacion de decoracion: ' . $motivo
+                        );
+                    }
+                }
+            }
+
+            return $decoracion->fresh(['reserva.cliente', 'paquete', 'proveedor', 'cuentaPagar']);
+        });
+    }
+
+    public function eliminar(int $id): void
+    {
+        DB::transaction(function () use ($id) {
+            $decoracion = Decoracion::findOrFail($id);
+
+            if (in_array($decoracion->estado, ['en-proceso', 'finalizada'])) {
+                throw new \InvalidArgumentException(
+                    'No se puede eliminar una decoracion ' . $decoracion->estado . '.'
+                );
+            }
+
+            if ($decoracion->id_cuenta_pagar) {
+                $cuenta = CuentaPagar::find($decoracion->id_cuenta_pagar);
+                if ($cuenta && !$cuenta->estado->es_estado_final) {
+                    $pagosActivos = $cuenta->pagos()->where('anulado', false)->count();
+                    if ($pagosActivos === 0) {
+                        $this->cuentaPagarService->anular(
+                            $cuenta->id_cuenta,
+                            auth()->id() ?? 1,
+                            'Eliminada desde decoracion'
+                        );
+                    }
+                }
+            }
+
+            $decoracion->delete();
+        });
+    }
+}
+
+================================================================================
+=== DisponibilidadService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Configuracion;
+use App\Models\Habitacion;
+use App\Models\Limpieza;
+use App\Models\Mantenimiento;
+use App\Models\OcupacionHabitacion;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+
+class DisponibilidadService
+{
+    /**
+     * Verifica si una habitacion esta disponible en un rango.
+     *
+     * @param int $idHabitacion
+     * @param Carbon $inicio
+     * @param Carbon $fin
+     * @param int|null $excluirReserva
+     * @param int $horasAntesDecoracion  0 = sin decoracion, >0 = con decoracion
+     * @param bool $esWalkIn  true = no valida anticipacion minima (cliente ya esta)
+     */
+    public function estaDisponible(
+        int $idHabitacion,
+        Carbon $inicio,
+        Carbon $fin,
+        ?int $excluirReserva = null,
+        int $horasAntesDecoracion = 0,
+        bool $esWalkIn = false
+    ): bool {
+        // 0. Anticipacion minima (SOLO si NO es walk-in)
+        if (!$esWalkIn) {
+            $ahora = Carbon::now();
+            $minutosHastaInicio = (int) round($ahora->diffInMinutes($inicio, false));
+
+            if ($horasAntesDecoracion > 0) {
+                // Con decoracion: minimo horas_antes_decoracion
+                $horasMinimas = (int) Configuracion::obtener('horas_antes_decoracion', 24);
+                if ($minutosHastaInicio < ($horasMinimas * 60)) {
+                    return false;
+                }
+            } else {
+                // Sin decoracion: minimo anticipacion_minima_reserva_minutos
+                $anticipacionMin = (int) Configuracion::obtener('anticipacion_minima_reserva_minutos', 30);
+                if ($minutosHastaInicio < $anticipacionMin) {
+                    return false;
+                }
+            }
+        }
+
+        // 1. La habitacion debe estar activa
+        $habitacion = Habitacion::find($idHabitacion);
+        if (!$habitacion || !$habitacion->activo) {
+            return false;
+        }
+
+        // Si hay decoracion, extender el rango hacia atras
+        if ($horasAntesDecoracion > 0) {
+            $inicio = $inicio->copy()->subHours($horasAntesDecoracion);
+        }
+
+        // 2. No debe haber mantenimiento activo
+        $mantenimiento = Mantenimiento::where('id_habitacion', $idHabitacion)
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->exists();
+
+        if ($mantenimiento) {
+            return false;
+        }
+
+        // 3. Limpieza pendiente
+        $limpieza = Limpieza::where('id_habitacion', $idHabitacion)
+            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
+            ->first();
+
+        if ($limpieza) {
+            // Si NO es walk-in, validar buffer
+            if (!$esWalkIn) {
+                $bufferLimpieza = Configuracion::obtener('buffer_limpieza_minutos', 30);
+                $minutosHastaInicio = (int) round(Carbon::now()->diffInMinutes($inicio, false));
+                if ($minutosHastaInicio < $bufferLimpieza) {
+                    return false;
+                }
+            }
+        }
+
+        // 4. No debe haber ocupacion que se cruce
+        $buffer = Configuracion::obtener('buffer_limpieza_minutos', 30);
+        $inicioConBuffer = $inicio->copy()->subMinutes($buffer);
+        $finConBuffer = $fin->copy()->addMinutes($buffer);
+
+        $query = OcupacionHabitacion::where('id_habitacion', $idHabitacion)
+            ->where('estado', 'ACTIVA')
+            ->where(function ($q) use ($inicioConBuffer, $finConBuffer) {
+                $q->whereBetween('fecha_inicio', [$inicioConBuffer, $finConBuffer])
+                  ->orWhereBetween('fecha_fin', [$inicioConBuffer, $finConBuffer])
+                  ->orWhere(function ($q2) use ($inicioConBuffer, $finConBuffer) {
+                      $q2->where('fecha_inicio', '<=', $inicioConBuffer)
+                         ->where('fecha_fin', '>=', $finConBuffer);
+                  });
+            });
+
+        if ($excluirReserva) {
+            $query->where('id_reserva', '!=', $excluirReserva);
+        }
+
+        return $query->count() === 0;
+    }
+
+    public function habitacionesLibres(Carbon $inicio, Carbon $fin): array
+    {
+        $habitaciones = Habitacion::where('activo', true)->get();
+        $libres = [];
+
+        foreach ($habitaciones as $h) {
+            if ($this->estaDisponible($h->id_habitacion, $inicio, $fin)) {
+                $libres[] = $h->id_habitacion;
+            }
+        }
+
+        return $libres;
+    }
+
+    public function habitacionesLibresConInfo(Carbon $inicio, Carbon $fin, int $horasAntesDecoracion = 0): Collection
+    {
+        $habitaciones = Habitacion::with(['piso', 'tipo'])
+            ->where('activo', true)
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->get();
+
+        return $habitaciones->filter(function ($h) use ($inicio, $fin, $horasAntesDecoracion) {
+            return $this->estaDisponible($h->id_habitacion, $inicio, $fin, null, $horasAntesDecoracion);
+        })->values();
+    }
+
+    public function habitacionesConConflicto(Carbon $inicio, Carbon $fin, int $horasAntesDecoracion = 0): Collection
+    {
+        $habitaciones = Habitacion::with(['piso', 'tipo'])
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->get();
+
+        return $habitaciones->map(function ($h) use ($inicio, $fin, $horasAntesDecoracion) {
+            $conflicto = $this->obtenerConflicto($h->id_habitacion, $inicio, $fin, null, $horasAntesDecoracion);
+            if (!$conflicto) return null;
+
+            return [
+                'id_habitacion' => $h->id_habitacion,
+                'numero' => $h->numero,
+                'piso_nombre' => $h->piso?->nombre,
+                'tipo_nombre' => $h->tipo?->nombre,
+                'motivo' => $conflicto['motivo'],
+                'ocupacion' => $conflicto['ocupacion'],
+            ];
+        })->filter()->values();
+    }
+
+    public function obtenerConflicto(int $idHabitacion, Carbon $inicio, Carbon $fin, ?int $excluirReserva = null, int $horasAntesDecoracion = 0): ?array
+    {
+        $ahora = Carbon::now();
+        $minutosHastaInicio = (int) round($ahora->diffInMinutes($inicio, false));
+
+        // 0. Anticipacion minima
+        if ($horasAntesDecoracion > 0) {
+            $horasMinimas = (int) Configuracion::obtener('horas_antes_decoracion', 24);
+            if ($minutosHastaInicio < ($horasMinimas * 60)) {
+                $horasRestantes = max(0, round($minutosHastaInicio / 60, 1));
+                return [
+                    'motivo' => "Necesita {$horasMinimas}h de anticipacion para decorar (faltan {$horasRestantes}h)",
+                    'ocupacion' => null,
+                ];
+            }
+        } else {
+            $anticipacionMin = (int) Configuracion::obtener('anticipacion_minima_reserva_minutos', 30);
+            if ($minutosHastaInicio < $anticipacionMin) {
+                return [
+                    'motivo' => "Muy proximo a la hora actual (minimo {$anticipacionMin} min de anticipacion)",
+                    'ocupacion' => null,
+                ];
+            }
+        }
+
+        // 1. Inactiva
+        $habitacion = Habitacion::find($idHabitacion);
+        if (!$habitacion || !$habitacion->activo) {
+            return ['motivo' => 'Habitacion inactiva', 'ocupacion' => null];
+        }
+
+        // 2. Mantenimiento
+        $mantenimiento = Mantenimiento::with(['tipo', 'prioridad'])
+            ->where('id_habitacion', $idHabitacion)
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->first();
+
+        if ($mantenimiento) {
+            return [
+                'motivo' => 'En mantenimiento (' . ($mantenimiento->tipo?->nombre ?? 'General') . ')',
+                'ocupacion' => null,
+            ];
+        }
+
+        // 3. Limpieza
+        $limpieza = Limpieza::where('id_habitacion', $idHabitacion)
+            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
+            ->first();
+
+        if ($limpieza) {
+            $bufferLimpieza = Configuracion::obtener('buffer_limpieza_minutos', 30);
+            if ($minutosHastaInicio < $bufferLimpieza) {
+                return ['motivo' => 'En limpieza', 'ocupacion' => null];
+            }
+        }
+
+        // 4. Ocupacion
+        if ($horasAntesDecoracion > 0) {
+            $inicio = $inicio->copy()->subHours($horasAntesDecoracion);
+        }
+
+        $buffer = Configuracion::obtener('buffer_limpieza_minutos', 30);
+        $inicioConBuffer = $inicio->copy()->subMinutes($buffer);
+        $finConBuffer = $fin->copy()->addMinutes($buffer);
+
+        $query = OcupacionHabitacion::with(['reserva.cliente', 'reserva.estado'])
+            ->where('id_habitacion', $idHabitacion)
+            ->where('estado', 'ACTIVA')
+            ->where(function ($q) use ($inicioConBuffer, $finConBuffer) {
+                $q->whereBetween('fecha_inicio', [$inicioConBuffer, $finConBuffer])
+                  ->orWhereBetween('fecha_fin', [$inicioConBuffer, $finConBuffer])
+                  ->orWhere(function ($q2) use ($inicioConBuffer, $finConBuffer) {
+                      $q2->where('fecha_inicio', '<=', $inicioConBuffer)
+                         ->where('fecha_fin', '>=', $finConBuffer);
+                  });
+            });
+
+        if ($excluirReserva) {
+            $query->where('id_reserva', '!=', $excluirReserva);
+        }
+
+        $ocupacion = $query->first();
+        if (!$ocupacion) return null;
+
+        $estadoSlug = $ocupacion->reserva?->estado?->slug;
+        $motivo = match ($estadoSlug) {
+            'activa' => 'Ocupada por cliente actual',
+            'confirmada' => 'Reservada por otro cliente',
+            'pendiente' => 'Reserva pendiente de confirmar',
+            default => 'Bloqueada',
+        };
+
+        return [
+            'motivo' => $motivo,
+            'ocupacion' => [
+                'id_ocupacion' => $ocupacion->id_ocupacion,
+                'fecha_inicio' => $ocupacion->fecha_inicio->toIso8601String(),
+                'fecha_fin' => $ocupacion->fecha_fin->toIso8601String(),
+                'estado' => $ocupacion->estado,
+                'cliente' => $ocupacion->reserva?->cliente?->nombre,
+                'estado_reserva' => $estadoSlug,
+            ],
+        ];
+    }
+
+    public function bloquearHabitacion(int $idHabitacion): void
+    {
+        Habitacion::where('id_habitacion', $idHabitacion)->lockForUpdate()->first();
+    }
+}
+
+================================================================================
+=== EstadoCuentaPagarService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\EstadoCuentaPagar;
+use Illuminate\Support\Collection;
+
+class EstadoCuentaPagarService
+{
+    public function listar(): Collection
+    {
+        return EstadoCuentaPagar::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return EstadoCuentaPagar::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): EstadoCuentaPagar
+    {
+        return EstadoCuentaPagar::findOrFail($id);
+    }
+
+    public function crear(array $datos): EstadoCuentaPagar
+    {
+        return EstadoCuentaPagar::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): EstadoCuentaPagar
+    {
+        $item = EstadoCuentaPagar::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): EstadoCuentaPagar
+    {
+        $item = EstadoCuentaPagar::findOrFail($id);
+
+        // Validar que no tenga cuentas activas asociadas
+        $tieneCuentas = $item->cuentas()->exists();
+        if ($tieneCuentas) {
+            throw new \InvalidArgumentException(
+                'No se puede desactivar un estado con cuentas asociadas.'
+            );
+        }
+
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): EstadoCuentaPagar
+    {
+        $item = EstadoCuentaPagar::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        $item = EstadoCuentaPagar::findOrFail($id);
+
+        if ($item->cuentas()->exists()) {
+            throw new \InvalidArgumentException(
+                'No se puede eliminar un estado con cuentas asociadas.'
+            );
+        }
+
+        $item->delete();
+    }
+}
+
+================================================================================
+=== EstadoHabitacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Configuracion;
+use App\Models\Decoracion;
+use App\Models\Habitacion;
+use App\Models\Limpieza;
+use App\Models\Mantenimiento;
+use App\Models\OcupacionHabitacion;
+use Carbon\Carbon;
+
+class EstadoHabitacionService
+{
+    /**
+     * Calcula el estado en vivo de una habitacion.
+     * Orden de prioridad:
+     *  1. Inactiva
+     *  2. Mantenimiento activo
+     *  3. Ocupacion activa CON check-in (cliente adentro) -> Ocupada/Por vencer/Vencida
+     *  4. Reserva sin check-in -> Reservada (morado) o Con-Decoracion (rosa)
+     *  5. Limpieza pendiente
+     *  6. Disponible
+     */
+    public function calcular(Habitacion $habitacion): array
+    {
+        // 1. Inactiva
+        if (!$habitacion->activo) {
+            return $this->respuesta('Inactiva', '#475569');
+        }
+
+        // 2. Mantenimiento activo
+        $mantenimiento = Mantenimiento::with(['tipo', 'prioridad', 'usuarioAsignado'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->first();
+
+        if ($mantenimiento) {
+            return $this->respuesta('Mantenimiento', '#f97316', null, null, [
+                'id_mantenimiento' => $mantenimiento->id_mantenimiento,
+                'mantenimiento_tipo' => $mantenimiento->tipo?->nombre,
+                'mantenimiento_descripcion' => $mantenimiento->descripcion,
+                'mantenimiento_prioridad' => $mantenimiento->prioridad?->nombre,
+                'mantenimiento_prioridad_color' => $mantenimiento->prioridad?->color,
+                'mantenimiento_estado' => $mantenimiento->estado,
+                'mantenimiento_fecha_reporte' => $mantenimiento->fecha_reporte?->toIso8601String(),
+                'mantenimiento_asignado' => $mantenimiento->usuarioAsignado?->nombre,
+            ]);
+        }
+
+        $ahora = Carbon::now();
+
+        // =====================================================================
+        // 3. OCUPACION ACTIVA CON CHECK-IN (cliente adentro)
+        // =====================================================================
+        $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->where('estado', 'ACTIVA')
+            ->where('fecha_inicio', '<=', $ahora)
+            ->where('fecha_fin', '>=', $ahora)
+            ->whereHas('reserva.estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->first();
+
+        if ($ocupacionActual && $ocupacionActual->reserva) {
+            return $this->ocupadaConTiempo($ocupacionActual, $ahora);
+        }
+
+        // =====================================================================
+        // 4. RESERVA SIN CHECK-IN (futura O vencida)
+        //    Incluye las que tienen decoracion (color rosa)
+        // =====================================================================
+        $reservaSinCheckIn = OcupacionHabitacion::with(['reserva.cliente', 'reserva.estado', 'reserva.registroEstadia'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->where('estado', 'ACTIVA')
+            ->whereHas('reserva', function ($q) {
+                $q->whereHas('estado', function ($q2) {
+                    $q2->whereIn('slug', ['confirmada', 'pendiente']);
+                });
+                $q->whereDoesntHave('registroEstadia');
+            })
+            ->orderBy('fecha_inicio')
+            ->first();
+
+        if ($reservaSinCheckIn && $reservaSinCheckIn->reserva) {
+            $horasAntes = Configuracion::obtener('horas_antes_bloqueo_reserva', 4);
+            $limiteBloqueo = $ahora->copy()->addHours($horasAntes);
+            $minutosParaEntrada = (int) round($ahora->diffInMinutes($reservaSinCheckIn->fecha_inicio, false));
+
+            // Â¿Tiene decoracion activa?
+            $decoracion = Decoracion::where('id_reserva', $reservaSinCheckIn->reserva->id_reserva)
+                ->whereIn('estado', ['programada', 'en-proceso'])
+                ->first();
+
+            // Verificar si hay OTRA ocupacion activa (walk-in real) que choca
+            $otraOcupacion = OcupacionHabitacion::with(['reserva.cliente'])
+                ->where('id_habitacion', $habitacion->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('id_reserva', '!=', $reservaSinCheckIn->id_reserva)
+                ->whereHas('reserva.estado', function ($q) {
+                    $q->where('slug', 'activa');
+                })
+                ->where(function ($q) use ($ahora) {
+                    $q->where('fecha_inicio', '<=', $ahora)
+                      ->where('fecha_fin', '>=', $ahora);
+                })
+                ->first();
+
+            // Si hay conflicto -> Reservada-Urgente (rojo)
+            if ($otraOcupacion && $otraOcupacion->reserva) {
+                return $this->respuesta('Reservada-Urgente', '#dc2626', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                    'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                    'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                    'minutos_para_entrada' => $minutosParaEntrada,
+                    'alerta_reserva_ocupada' => true,
+                    'cliente_actual' => $otraOcupacion->reserva->cliente?->nombre,
+                    'id_reserva_actual' => $otraOcupacion->reserva->id_reserva,
+                    'tiene_decoracion' => $decoracion !== null,
+                ]);
+            }
+
+            // Si esta dentro de la ventana O YA PASO -> mostrar Reservada o Con-Decoracion
+            if ($reservaSinCheckIn->fecha_inicio <= $limiteBloqueo) {
+                // CON decoracion -> color rosa
+                if ($decoracion) {
+                    return $this->respuesta('Con-Decoracion', '#ec4899', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                        'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                        'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                        'minutos_para_entrada' => $minutosParaEntrada,
+                        'alerta_reserva_ocupada' => false,
+                        'tiene_decoracion' => true,
+                        'id_decoracion' => $decoracion->id_decoracion,
+                        'decoracion_estado' => $decoracion->estado,
+                        'decoracion_frase' => $decoracion->frase_personalizada,
+                        'decoracion_musica' => $decoracion->musica,
+                    ]);
+                }
+
+                // SIN decoracion -> morado
+                return $this->respuesta('Reservada', '#7c3aed', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                    'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                    'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                    'minutos_para_entrada' => $minutosParaEntrada,
+                    'alerta_reserva_ocupada' => false,
+                    'tiene_decoracion' => false,
+                ]);
+            }
+
+            // Si tiene decoracion -> mostrar ROSA desde su creacion
+            if ($decoracion) {
+                return $this->respuesta('Con-Decoracion', '#ec4899', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                    'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                    'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                    'minutos_para_entrada' => $minutosParaEntrada,
+                    'alerta_reserva_ocupada' => false,
+                    'tiene_decoracion' => true,
+                    'id_decoracion' => $decoracion->id_decoracion,
+                    'decoracion_estado' => $decoracion->estado,
+                    'decoracion_frase' => $decoracion->frase_personalizada,
+                    'decoracion_musica' => $decoracion->musica,
+                ]);
+            }
+
+            // Fuera de la ventana y SIN decoracion -> Disponible con info de reserva futura
+            return $this->respuesta('Disponible', '#10b981', null, null, [
+                'reserva_futura' => [
+                    'id_reserva' => $reservaSinCheckIn->reserva->id_reserva,
+                    'codigo' => $reservaSinCheckIn->reserva->codigo_reserva,
+                    'cliente' => $reservaSinCheckIn->reserva->cliente?->nombre,
+                    'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                    'minutos_para_entrada' => $minutosParaEntrada,
+                    'horas_antes_bloqueo' => $horasAntes,
+                    'tiene_decoracion' => false,
+                ],
+            ]);
+        }
+
+        // =====================================================================
+        // 5. LIMPIEZA PENDIENTE
+        // =====================================================================
+        $limpieza = Limpieza::where('id_habitacion', $habitacion->id_habitacion)
+            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
+            ->first();
+
+        if ($limpieza) {
+            return $this->respuesta('Limpieza', '#06b6d4');
+        }
+
+        // =====================================================================
+        // 6. VENCIDA (walk-in vencido sin check-out)
+        // =====================================================================
+        $vencida = OcupacionHabitacion::with(['reserva.cliente'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->where('estado', 'ACTIVA')
+            ->where('fecha_inicio', '<=', $ahora)
+            ->where('fecha_fin', '<', $ahora)
+            ->whereHas('reserva.estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->orderByDesc('fecha_fin')
+            ->first();
+
+        if ($vencida && $vencida->reserva) {
+            return $this->ocupadaConTiempo($vencida, $ahora);
+        }
+
+        // =====================================================================
+        // 7. DISPONIBLE
+        // =====================================================================
+        return $this->respuesta('Disponible', '#10b981');
+    }
+
+    private function ocupadaConTiempo(OcupacionHabitacion $ocupacion, Carbon $ahora): array
+    {
+        $reserva = $ocupacion->reserva;
+        $inicio = $ocupacion->fecha_inicio;
+        $fin = $ocupacion->fecha_fin;
+
+        $minutosTotales = max(1, (int) round(abs($inicio->diffInMinutes($fin))));
+        $minutosTranscurridos = max(0, (int) round(abs($inicio->diffInMinutes($ahora))));
+        $minutosRestantes = (int) round($ahora->diffInMinutes($fin, false));
+        $minutosExtra = $minutosRestantes < 0 ? abs($minutosRestantes) : 0;
+
+        if ($minutosExtra > 0) {
+            $estado = 'Vencida';
+            $color = '#dc2626';
+        } elseif ($minutosRestantes >= 0 && $minutosRestantes <= 30) {
+            $estado = 'Por vencer';
+            $color = '#f59e0b';
+        } else {
+            $estado = 'Ocupada';
+            $color = '#ef4444';
+        }
+
+        return $this->respuesta($estado, $color, $reserva->cliente?->nombre, $reserva->id_reserva, [
+            'fecha_entrada' => $inicio->toIso8601String(),
+            'fecha_salida_prevista' => $fin->toIso8601String(),
+            'minutos_transcurridos' => $minutosTranscurridos,
+            'minutos_totales' => $minutosTotales,
+            'minutos_restantes' => max(0, $minutosRestantes),
+            'minutos_extra' => $minutosExtra,
+            'horas_base' => $reserva->horas_base,
+            'pagado' => (float) $reserva->pagado,
+            'total' => (float) $reserva->total,
+        ]);
+    }
+
+    private function respuesta(string $estado, string $color, ?string $cliente = null, ?int $idReserva = null, array $extra = []): array
+    {
+        return array_merge([
+            'estado' => $estado,
+            'color' => $color,
+            'cliente' => $cliente,
+            'id_reserva' => $idReserva,
+            'fecha_entrada' => null,
+            'fecha_salida_prevista' => null,
+            'minutos_transcurridos' => null,
+            'minutos_totales' => null,
+            'minutos_restantes' => null,
+            'minutos_extra' => null,
+            'horas_base' => null,
+            'pagado' => 0,
+            'total' => 0,
+            'minutos_para_entrada' => null,
+            'alerta_reserva_ocupada' => false,
+            'cliente_actual' => null,
+            'id_reserva_actual' => null,
+            'reserva_futura' => null,
+            'tiene_decoracion' => false,
+            'id_decoracion' => null,
+            'decoracion_estado' => null,
+            'decoracion_frase' => null,
+            'decoracion_musica' => null,
+            'id_mantenimiento' => null,
+            'mantenimiento_tipo' => null,
+            'mantenimiento_descripcion' => null,
+            'mantenimiento_prioridad' => null,
+            'mantenimiento_prioridad_color' => null,
+            'mantenimiento_estado' => null,
+            'mantenimiento_fecha_reporte' => null,
+            'mantenimiento_asignado' => null,
+        ], $extra);
+    }
+
+    public function mapa(): array
+    {
+        $habitaciones = Habitacion::with(['piso', 'tipo'])
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->get();
+
+        return $habitaciones->map(function ($h) {
+            $estado = $this->calcular($h);
+            return array_merge([
+                'id_habitacion' => $h->id_habitacion,
+                'numero' => $h->numero,
+                'id_piso' => $h->id_piso,
+                'piso_nombre' => $h->piso?->nombre,
+                'id_tipo' => $h->id_tipo,
+                'tipo_nombre' => $h->tipo?->nombre,
+            ], $estado);
+        })->toArray();
+    }
+}
+
+================================================================================
+=== ExtensionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Configuracion;
+use App\Models\ExtensionReserva;
+use App\Models\Reserva;
+use App\Models\Tarifa;
+use Carbon\Carbon;
+
+class ExtensionService
+{
+    /**
+     * Calcula las opciones de extensiÃ³n para una reserva,
+     * teniendo en cuenta las extensiones YA aplicadas.
+     */
+    public function calcular(Reserva $reserva): array
+    {
+        $tarifa = Tarifa::find($reserva->id_tarifa);
+        if (!$tarifa) {
+            return $this->respuestaVacia();
+        }
+
+        // ============ TOLERANCIA ============
+        $tolerancia = Configuracion::obtener('tolerancia_extension_minutos', 30);
+
+        // ============ TIEMPO REAL ============
+        $entrada = Carbon::parse($reserva->fecha_entrada);
+        $ahora = Carbon::now();
+        $minutosTranscurridos = (int) round(abs($entrada->diffInMinutes($ahora)));
+
+        $minutosBase = $reserva->horas_base * 60;
+        $minutosExcesoTotal = max(0, $minutosTranscurridos - $minutosBase);
+
+        // ============ EXTENSIONES YA APLICADAS ============
+        $extensiones = ExtensionReserva::where('id_reserva', $reserva->id_reserva)->get();
+
+        $horasExtraYaAplicadas = $extensiones->sum('horas_extra');
+        $montoYaAplicado = (float) $extensiones->sum('monto');
+        $montoYaPagado = (float) $extensiones
+            ->where('pagado_inmediato', true)
+            ->sum('monto');
+        $montoCargadoACuenta = (float) $extensiones
+            ->where('cargado_a_cuenta', true)
+            ->sum('monto');
+        $turnosAdicionalesAplicados = $extensiones
+            ->where('es_turno_adicional', true)
+            ->count();
+
+        // ============ PENDIENTE DE APLICAR ============
+        // Minutos de exceso ya cubiertos por extensiones aplicadas
+        $minutosYaCubiertos = $horasExtraYaAplicadas * 60;
+        // Si hubo turno adicional, tambiÃ©n suma horas
+        if ($turnosAdicionalesAplicados > 0) {
+            $minutosYaCubiertos += $turnosAdicionalesAplicados * ($tarifa->horas * 60);
+        }
+
+        $minutosExcesoPendiente = max(0, $minutosExcesoTotal - $minutosYaCubiertos);
+
+        // ============ Â¿ESTÃ DENTRO DE TOLERANCIA? ============
+        // Considerando las extensiones ya aplicadas
+        $dentroTolerancia = $minutosExcesoPendiente <= $tolerancia;
+
+        // ============ HORAS SUGERIDAS NUEVAS ============
+        $horasExtraSugeridasNuevas = 0;
+        if (!$dentroTolerancia) {
+            $minutosACobrar = $minutosExcesoPendiente - $tolerancia;
+            $horasExtraSugeridasNuevas = (int) ceil($minutosACobrar / 60);
+        }
+
+        // ============ PRECIOS (desde tarifa) ============
+        $precioHoraExtra = (float) $tarifa->precio_hora_extra;
+        $maxHorasExtra = (int) $tarifa->max_horas_extra;
+        $precioTurnoAdicional = (float) $tarifa->precio_turno_adicional;
+
+        // ============ Â¿EXCEDE EL MÃXIMO? ============
+        $excedeMaximo = $horasExtraSugeridasNuevas > $maxHorasExtra;
+
+        // ============ GENERAR OPCIONES NUEVAS ============
+        $opciones = $this->generarOpciones(
+            $horasExtraSugeridasNuevas,
+            $maxHorasExtra,
+            $precioHoraExtra,
+            $precioTurnoAdicional,
+            $excedeMaximo,
+            $dentroTolerancia
+        );
+
+        return [
+            // Tiempo base
+            'horas_base' => $reserva->horas_base,
+            'minutos_transcurridos' => $minutosTranscurridos,
+            'minutos_base' => $minutosBase,
+
+            // Exceso total (desde la entrada)
+            'minutos_exceso_total' => $minutosExcesoTotal,
+            'horas_exceso_total' => round($minutosExcesoTotal / 60, 2),
+
+            // Extensiones ya aplicadas (historial)
+            'horas_extra_ya_aplicadas' => $horasExtraYaAplicadas,
+            'monto_ya_aplicado' => $montoYaAplicado,
+            'monto_ya_pagado' => $montoYaPagado,             // pagado inmediato
+            'monto_cargado_a_cuenta' => $montoCargadoACuenta, // pendiente de cobro
+            'turnos_adicionales_aplicados' => $turnosAdicionalesAplicados,
+
+            // Pendiente
+            'minutos_exceso_pendiente' => $minutosExcesoPendiente,
+            'minutos_ya_cubiertos' => $minutosYaCubiertos,
+            'horas_extra_sugeridas_nuevas' => $horasExtraSugeridasNuevas,
+            'monto_sugerido_nuevo' => $horasExtraSugeridasNuevas * $precioHoraExtra,
+
+            // Config
+            'tolerancia_minutos' => $tolerancia,
+            'dentro_tolerancia' => $dentroTolerancia,
+            'excede_maximo' => $excedeMaximo,
+            'max_horas_extra' => $maxHorasExtra,
+            'precio_hora_extra' => $precioHoraExtra,
+            'precio_turno_adicional' => $precioTurnoAdicional,
+
+            // Opciones nuevas
+            'opciones' => $opciones,
+        ];
+    }
+
+    private function generarOpciones(
+        int $horasSugeridas,
+        int $maxHoras,
+        float $precioHora,
+        float $precioTurno,
+        bool $excedeMaximo,
+        bool $dentroTolerancia
+    ): array {
+        if ($dentroTolerancia) {
+            return [];
+        }
+
+        $opciones = [];
+
+        // OpciÃ³n: no cobrar
+        $opciones[] = [
+            'horas' => 0,
+            'monto' => 0,
+            'es_turno_adicional' => false,
+            'label' => 'No cobrar (con observaciÃ³n)',
+            'sugerida' => false,
+        ];
+
+        // Opciones de horas extra (hasta maxHoras)
+        for ($h = 1; $h <= $maxHoras; $h++) {
+            $opciones[] = [
+                'horas' => $h,
+                'monto' => $h * $precioHora,
+                'es_turno_adicional' => false,
+                'label' => $h === $maxHoras
+                    ? "{$h} horas extra (mÃ¡ximo)"
+                    : "{$h} hora" . ($h > 1 ? 's' : '') . " extra",
+                'sugerida' => !$excedeMaximo && $h === $horasSugeridas,
+            ];
+        }
+
+        // Si excede el mÃ¡ximo â†’ opciones especiales
+        if ($excedeMaximo) {
+            // Cobrar las horas reales (excede mÃ¡ximo)
+            $opciones[] = [
+                'horas' => $horasSugeridas,
+                'monto' => $horasSugeridas * $precioHora,
+                'es_turno_adicional' => false,
+                'label' => "{$horasSugeridas} horas extra (excede mÃ¡ximo)",
+                'sugerida' => false,
+                'advertencia' => true,
+            ];
+
+            // Turno adicional completo (recomendado)
+            $opciones[] = [
+                'horas' => 0,
+                'monto' => $precioTurno,
+                'es_turno_adicional' => true,
+                'label' => 'Turno adicional completo (recomendado)',
+                'sugerida' => true,
+            ];
+        }
+
+        return $opciones;
+    }
+
+    private function respuestaVacia(): array
+    {
+        return [
+            'horas_base' => 0,
+            'minutos_transcurridos' => 0,
+            'minutos_base' => 0,
+            'minutos_exceso_total' => 0,
+            'horas_exceso_total' => 0,
+            'horas_extra_ya_aplicadas' => 0,
+            'monto_ya_aplicado' => 0,
+            'monto_ya_pagado' => 0,
+            'monto_cargado_a_cuenta' => 0,
+            'turnos_adicionales_aplicados' => 0,
+            'minutos_exceso_pendiente' => 0,
+            'minutos_ya_cubiertos' => 0,
+            'horas_extra_sugeridas_nuevas' => 0,
+            'monto_sugerido_nuevo' => 0,
+            'tolerancia_minutos' => 30,
+            'dentro_tolerancia' => true,
+            'excede_maximo' => false,
+            'max_horas_extra' => 3,
+            'precio_hora_extra' => 0,
+            'precio_turno_adicional' => 0,
+            'opciones' => [],
+        ];
+    }
+}
+
+================================================================================
+=== GravedadObservacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\GravedadObservacion;
+use Illuminate\Support\Collection;
+
+class GravedadObservacionService
+{
+    public function listar(): Collection
+    {
+        return GravedadObservacion::orderBy('prioridad')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return GravedadObservacion::where('activo', true)->orderBy('prioridad')->get();
+    }
+
+    public function obtener(int $id): GravedadObservacion
+    {
+        return GravedadObservacion::findOrFail($id);
+    }
+
+    public function crear(array $datos): GravedadObservacion
+    {
+        return GravedadObservacion::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): GravedadObservacion
+    {
+        $item = GravedadObservacion::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): GravedadObservacion
+    {
+        $item = GravedadObservacion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): GravedadObservacion
+    {
+        $item = GravedadObservacion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        GravedadObservacion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== HabitacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Habitacion;
+use Illuminate\Support\Collection;
+
+class HabitacionService
+{
+    public function listar(): Collection
+    {
+        return Habitacion::with(['piso', 'tipo'])
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->orderBy('numero')
+            ->get();
+    }
+
+    public function listarActivas(): Collection
+    {
+        return Habitacion::with(['piso', 'tipo'])
+            ->where('activo', true)
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->orderBy('numero')
+            ->get();
+    }
+
+    public function listarPorPiso(int $idPiso): Collection
+    {
+        return Habitacion::with(['piso', 'tipo'])
+            ->where('id_piso', $idPiso)
+            ->orderBy('orden')
+            ->orderBy('numero')
+            ->get();
+    }
+
+    public function listarPorTipo(int $idTipo): Collection
+    {
+        return Habitacion::with(['piso', 'tipo'])
+            ->where('id_tipo', $idTipo)
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->get();
+    }
+
+    public function obtener(int $id): Habitacion
+    {
+        return Habitacion::with(['piso', 'tipo'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): Habitacion
+    {
+        return Habitacion::create($datos)->load(['piso', 'tipo']);
+    }
+
+    public function actualizar(int $id, array $datos): Habitacion
+    {
+        $item = Habitacion::findOrFail($id);
+        $item->fill($datos);
+        $item->save();
+        return $item->fresh()->load(['piso', 'tipo']);
+    }
+
+    public function desactivar(int $id): Habitacion
+    {
+        $item = Habitacion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): Habitacion
+    {
+        $item = Habitacion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Habitacion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== LimpiezaService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Limpieza;
+use App\Models\Habitacion;
+use App\Models\Usuario;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+
+class LimpiezaService
+{
+    /**
+     * Roles que pueden iniciar/finalizar limpieza.
+     */
+    private const ROLES_PERMITIDOS = ['admin', 'encargado', 'limpieza'];
+
+    /**
+     * Lista todas las limpiezas.
+     */
+    public function listar(): Collection
+    {
+        return Limpieza::with(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol', 'reserva'])
+            ->orderByDesc('id_limpieza')
+            ->get();
+    }
+
+    /**
+     * Lista pendientes + en proceso, ordenadas por antigÃ¼edad.
+     */
+    public function listarPendientes(): Collection
+    {
+        return Limpieza::with(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol', 'reserva'])
+            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
+            ->orderBy('fecha_solicitud', 'asc')
+            ->get();
+    }
+
+    /**
+     * Lista completadas HOY.
+     */
+    public function listarCompletadasHoy(): Collection
+    {
+        return Limpieza::with(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol', 'reserva'])
+            ->where('estado', 'COMPLETADA')
+            ->whereDate('fecha_fin', Carbon::today())
+            ->orderByDesc('fecha_fin')
+            ->get();
+    }
+
+    public function obtener(int $id): Limpieza
+    {
+        return Limpieza::with(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol', 'reserva'])
+            ->findOrFail($id);
+    }
+
+    /**
+     * Crea una limpieza manual (ej: profunda).
+     */
+    public function crear(array $datos): Limpieza
+    {
+        $habitacion = Habitacion::findOrFail($datos['id_habitacion']);
+
+        // Validar que la habitaciÃ³n estÃ© DISPONIBLE
+        // (no se puede crear limpieza manual en habitaciÃ³n ocupada)
+        $estado = app(EstadoHabitacionService::class)->calcular($habitacion);
+
+        if ($estado['estado'] !== 'Disponible') {
+            throw new \InvalidArgumentException(
+                "Solo se puede crear limpieza manual en habitaciones disponibles. " .
+                "La habitaciÃ³n {$habitacion->numero} estÃ¡ en estado: {$estado['estado']}."
+            );
+        }
+
+        return Limpieza::create([
+            'id_habitacion' => $datos['id_habitacion'],
+            'id_reserva' => $datos['id_reserva'] ?? null,
+            'id_usuario_asignado' => null,
+            'estado' => 'PENDIENTE',
+            'tipo' => $datos['tipo'] ?? 'NORMAL',
+            'fecha_solicitud' => now(),
+            'observaciones' => $datos['observaciones'] ?? null,
+        ])->load(['habitacion.piso', 'habitacion.tipo']);
+    }
+
+    /**
+     * Inicia una limpieza (PENDIENTE â†’ EN_PROCESO).
+     * Valida que el usuario tenga rol permitido.
+     * Auto-asigna al usuario que la inicia.
+     */
+    public function iniciar(int $id, int $idUsuario): Limpieza
+    {
+        $this->validarPermiso($idUsuario);
+
+        $limpieza = Limpieza::findOrFail($id);
+
+        if ($limpieza->estado !== 'PENDIENTE') {
+            throw new \InvalidArgumentException(
+                'Solo se pueden iniciar limpiezas en estado PENDIENTE.'
+            );
+        }
+
+        $limpieza->update([
+            'estado' => 'EN_PROCESO',
+            'id_usuario_asignado' => $idUsuario,
+            'fecha_inicio' => now(),
+        ]);
+
+        return $limpieza->fresh(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol']);
+    }
+
+    /**
+     * Finaliza una limpieza (EN_PROCESO â†’ COMPLETADA).
+     * Valida que el usuario tenga rol permitido.
+     * La habitaciÃ³n vuelve a estar disponible automÃ¡ticamente.
+     */
+    public function finalizar(int $id, int $idUsuario, ?string $observaciones = null): Limpieza
+    {
+        $this->validarPermiso($idUsuario);
+
+        $limpieza = Limpieza::findOrFail($id);
+
+        if ($limpieza->estado !== 'EN_PROCESO') {
+            throw new \InvalidArgumentException(
+                'Solo se pueden finalizar limpiezas en estado EN_PROCESO.'
+            );
+        }
+
+        $limpieza->update([
+            'estado' => 'COMPLETADA',
+            'fecha_fin' => now(),
+            'observaciones' => $observaciones ?? $limpieza->observaciones,
+        ]);
+
+        return $limpieza->fresh(['habitacion.piso', 'habitacion.tipo', 'usuarioAsignado.rol']);
+    }
+
+    /**
+     * Cuenta de pendientes para badge del sidebar.
+     */
+    public function contarPendientes(): int
+    {
+        return Limpieza::whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])->count();
+    }
+
+    /**
+     * Valida que el usuario tenga un rol permitido para operar limpieza.
+     */
+    private function validarPermiso(int $idUsuario): void
+    {
+        $usuario = Usuario::with('rol')->findOrFail($idUsuario);
+        $rolNombre = $usuario->rol?->nombre;
+
+        if (!in_array($rolNombre, self::ROLES_PERMITIDOS, true)) {
+            throw new \InvalidArgumentException(
+                "Tu rol ({$rolNombre}) no tiene permiso para operar limpieza. " .
+                "Solo admin, encargado y personal de limpieza pueden hacerlo."
+            );
+        }
+    }
+
+    /**
+     * Finaliza TODAS las limpiezas pendientes/en proceso de una vez.
+     * Usado para "Limpieza RÃ¡pida" cuando el personal ya limpiÃ³ todo.
+     */
+    public function finalizarTodas(int $idUsuario, ?string $observaciones = null): array
+    {
+        $this->validarPermiso($idUsuario);
+
+        $limpiezas = Limpieza::whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])->get();
+
+        if ($limpiezas->isEmpty()) {
+            throw new \InvalidArgumentException('No hay limpiezas pendientes para finalizar.');
+        }
+
+        $ids = [];
+        foreach ($limpiezas as $l) {
+            $l->update([
+                'estado' => 'COMPLETADA',
+                'fecha_fin' => now(),
+                'id_usuario_asignado' => $l->id_usuario_asignado ?: $idUsuario,
+                'observaciones' => $observaciones ?? 'Limpieza rÃ¡pida masiva',
+            ]);
+            $ids[] = $l->id_limpieza;
+        }
+
+        return [
+            'total' => count($ids),
+            'ids' => $ids,
+        ];
+    }
+}
+
+
+================================================================================
+=== MantenimientoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Mantenimiento;
+use App\Models\Habitacion;
+use App\Models\Limpieza;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class MantenimientoService
+{
+    private const ROLES_PERMITIDOS = ['admin', 'encargado', 'recepcionista'];
+
+    public function listar(): Collection
+    {
+        return Mantenimiento::with([
+            'habitacion.piso', 'habitacion.tipo',
+            'tipo', 'prioridad',
+            'usuarioReporta', 'usuarioAsignado',
+        ])
+            ->orderByDesc('id_mantenimiento')
+            ->get();
+    }
+
+    public function listarPendientes(): Collection
+    {
+        return Mantenimiento::with([
+            'habitacion.piso', 'habitacion.tipo',
+            'tipo', 'prioridad',
+            'usuarioReporta', 'usuarioAsignado',
+        ])
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->orderByRaw("FIELD(estado, 'EN_PROCESO', 'REPORTADO')")
+            ->orderBy('fecha_reporte', 'asc')
+            ->get();
+    }
+
+    public function listarPorHabitacion(int $idHabitacion): Collection
+    {
+        return Mantenimiento::with(['tipo', 'prioridad', 'usuarioReporta', 'usuarioAsignado'])
+            ->where('id_habitacion', $idHabitacion)
+            ->orderByDesc('id_mantenimiento')
+            ->get();
+    }
+
+    public function obtener(int $id): Mantenimiento
+    {
+        return Mantenimiento::with([
+            'habitacion.piso', 'habitacion.tipo',
+            'tipo', 'prioridad',
+            'usuarioReporta', 'usuarioAsignado',
+        ])
+            ->findOrFail($id);
+    }
+
+    /**
+     * Crea un reporte de mantenimiento.
+     * La habitaciÃ³n queda bloqueada hasta que se resuelva.
+     */
+    public function crear(array $datos, int $idUsuario): Mantenimiento
+    {
+        return DB::transaction(function () use ($datos, $idUsuario) {
+            $this->validarPermiso($idUsuario);
+
+            $habitacion = Habitacion::findOrFail($datos['id_habitacion']);
+
+            // Verificar que no haya otro mantenimiento activo
+            $activo = Mantenimiento::where('id_habitacion', $datos['id_habitacion'])
+                ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+                ->exists();
+
+            if ($activo) {
+                throw new \InvalidArgumentException(
+                    "La habitaciÃ³n {$habitacion->numero} ya tiene un mantenimiento activo."
+                );
+            }
+
+            return Mantenimiento::create([
+                'id_habitacion' => $datos['id_habitacion'],
+                'id_tipo_mantenimiento' => $datos['id_tipo_mantenimiento'],
+                'id_prioridad' => $datos['id_prioridad'],
+                'id_usuario_reporta' => $idUsuario,
+                'id_usuario_asignado' => null,
+                'descripcion' => $datos['descripcion'],
+                'estado' => 'REPORTADO',
+                'fecha_reporte' => now(),
+                'observaciones' => $datos['observaciones'] ?? null,
+            ])->load([
+                'habitacion.piso', 'habitacion.tipo',
+                'tipo', 'prioridad',
+                'usuarioReporta',
+            ]);
+        });
+    }
+
+    /**
+     * Inicia el mantenimiento (REPORTADO â†’ EN_PROCESO).
+     * Auto-asigna al usuario que lo inicia.
+     */
+    public function iniciar(int $id, int $idUsuario): Mantenimiento
+    {
+        return DB::transaction(function () use ($id, $idUsuario) {
+            $this->validarPermiso($idUsuario);
+
+            $mantenimiento = Mantenimiento::findOrFail($id);
+
+            if ($mantenimiento->estado !== 'REPORTADO') {
+                throw new \InvalidArgumentException(
+                    'Solo se pueden iniciar mantenimientos en estado REPORTADO.'
+                );
+            }
+
+            $mantenimiento->update([
+                'estado' => 'EN_PROCESO',
+                'id_usuario_asignado' => $idUsuario,
+                'fecha_inicio' => now(),
+            ]);
+
+            return $mantenimiento->fresh([
+                'habitacion.piso', 'habitacion.tipo',
+                'tipo', 'prioridad',
+                'usuarioReporta', 'usuarioAsignado',
+            ]);
+        });
+    }
+
+    /**
+     * Resuelve el mantenimiento (EN_PROCESO â†’ RESUELTO).
+     * Crea automÃ¡ticamente una LIMPIEZA de la habitaciÃ³n.
+     */
+    public function resolver(int $id, int $idUsuario, ?string $observaciones = null): Mantenimiento
+    {
+        return DB::transaction(function () use ($id, $idUsuario, $observaciones) {
+            $this->validarPermiso($idUsuario);
+
+            $mantenimiento = Mantenimiento::findOrFail($id);
+
+            if (!in_array($mantenimiento->estado, ['REPORTADO', 'EN_PROCESO'])) {
+                throw new \InvalidArgumentException(
+                    'Solo se pueden resolver mantenimientos en estado REPORTADO o EN_PROCESO.'
+                );
+            }
+
+            $mantenimiento->update([
+                'estado' => 'RESUELTO',
+                'fecha_resolucion' => now(),
+                'observaciones' => $observaciones ?? $mantenimiento->observaciones,
+            ]);
+
+            // Crear LIMPIEZA automÃ¡tica (despuÃ©s de reparar, hay que limpiar)
+            Limpieza::create([
+                'id_habitacion' => $mantenimiento->id_habitacion,
+                'id_reserva' => null,
+                'id_usuario_asignado' => null,
+                'estado' => 'PENDIENTE',
+                'tipo' => 'NORMAL',
+                'fecha_solicitud' => now(),
+                'observaciones' => 'Limpieza post-mantenimiento',
+            ]);
+
+            return $mantenimiento->fresh([
+                'habitacion.piso', 'habitacion.tipo',
+                'tipo', 'prioridad',
+                'usuarioReporta', 'usuarioAsignado',
+            ]);
+        });
+    }
+
+    /**
+     * Cancela el mantenimiento (no era necesario).
+     */
+    public function cancelar(int $id, int $idUsuario, string $motivo): Mantenimiento
+    {
+        return DB::transaction(function () use ($id, $idUsuario, $motivo) {
+            $this->validarPermiso($idUsuario);
+
+            $mantenimiento = Mantenimiento::findOrFail($id);
+
+            if (in_array($mantenimiento->estado, ['RESUELTO', 'CANCELADO'])) {
+                throw new \InvalidArgumentException(
+                    'Este mantenimiento ya estÃ¡ cerrado.'
+                );
+            }
+
+            $mantenimiento->update([
+                'estado' => 'CANCELADO',
+                'motivo_cancelacion' => $motivo,
+                'fecha_resolucion' => now(),
+            ]);
+
+            return $mantenimiento->fresh([
+                'habitacion.piso', 'habitacion.tipo',
+                'tipo', 'prioridad',
+                'usuarioReporta', 'usuarioAsignado',
+            ]);
+        });
+    }
+
+    public function eliminar(int $id): void
+    {
+        Mantenimiento::findOrFail($id)->delete();
+    }
+
+    public function contarPendientes(): int
+    {
+        return Mantenimiento::whereIn('estado', ['REPORTADO', 'EN_PROCESO'])->count();
+    }
+
+    /**
+     * Verifica si una habitaciÃ³n tiene mantenimiento activo.
+     * Usado por EstadoHabitacionService.
+     */
+    public function tieneMantenimientoActivo(int $idHabitacion): ?Mantenimiento
+    {
+        return Mantenimiento::where('id_habitacion', $idHabitacion)
+            ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
+            ->with(['tipo', 'prioridad', 'usuarioAsignado'])
+            ->first();
+    }
+
+    private function validarPermiso(int $idUsuario): void
+    {
+        $usuario = \App\Models\Usuario::with('rol')->findOrFail($idUsuario);
+        $rolNombre = $usuario->rol?->nombre;
+
+        if (!in_array($rolNombre, self::ROLES_PERMITIDOS, true)) {
+            throw new \InvalidArgumentException(
+                "Tu rol ({$rolNombre}) no tiene permiso para operar mantenimiento."
+            );
+        }
+    }
+}
+
+================================================================================
+=== MetodoPagoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\MetodoPago;
+use Illuminate\Support\Collection;
+
+class MetodoPagoService
+{
+    public function listar(): Collection
+    {
+        return MetodoPago::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return MetodoPago::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function listarDeCaja(): Collection
+    {
+        return MetodoPago::where('activo', true)
+            ->where('es_de_caja', true)
+            ->orderBy('orden')
+            ->get();
+    }
+
+    public function listarDeDuenia(): Collection
+    {
+        return MetodoPago::where('activo', true)
+            ->where('es_de_caja', false)
+            ->orderBy('orden')
+            ->get();
+    }
+
+    public function obtener(int $id): MetodoPago
+    {
+        return MetodoPago::findOrFail($id);
+    }
+
+    public function crear(array $datos): MetodoPago
+    {
+        return MetodoPago::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): MetodoPago
+    {
+        $item = MetodoPago::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): MetodoPago
+    {
+        $item = MetodoPago::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): MetodoPago
+    {
+        $item = MetodoPago::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        MetodoPago::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== PaqueteDecoracionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\PaqueteDecoracion;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+
+class PaqueteDecoracionService
+{
+    public function listar(): Collection
+    {
+        return PaqueteDecoracion::with(['proveedor', 'tipoHabitacion'])
+            ->orderBy('id_paquete')
+            ->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return PaqueteDecoracion::with(['proveedor', 'tipoHabitacion'])
+            ->where('activo', true)
+            ->orderBy('id_tipo_habitacion')
+            ->orderBy('precio_total')
+            ->get();
+    }
+
+    public function listarPorTipoHabitacion(int $idTipo): Collection
+    {
+        return PaqueteDecoracion::with(['proveedor', 'tipoHabitacion'])
+            ->where('id_tipo_habitacion', $idTipo)
+            ->where('activo', true)
+            ->orderBy('precio_total')
+            ->get();
+    }
+
+    public function obtener(int $id): PaqueteDecoracion
+    {
+        return PaqueteDecoracion::with(['proveedor', 'tipoHabitacion'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): PaqueteDecoracion
+    {
+        if (empty($datos['slug'])) {
+            $datos['slug'] = Str::slug($datos['nombre']);
+        }
+
+        $this->validarFormula($datos);
+
+        return PaqueteDecoracion::create($datos)->load(['proveedor', 'tipoHabitacion']);
+    }
+
+    public function actualizar(int $id, array $datos): PaqueteDecoracion
+    {
+        $item = PaqueteDecoracion::findOrFail($id);
+
+        if (isset($datos['nombre']) && empty($datos['slug'])) {
+            $datos['slug'] = Str::slug($datos['nombre']);
+        }
+
+        $datosCombinados = array_merge($item->toArray(), $datos);
+        $this->validarFormula($datosCombinados);
+
+        $item->fill($datos);
+        $item->save();
+
+        return $item->fresh()->load(['proveedor', 'tipoHabitacion']);
+    }
+
+    public function desactivar(int $id): PaqueteDecoracion
+    {
+        $item = PaqueteDecoracion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): PaqueteDecoracion
+    {
+        $item = PaqueteDecoracion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        PaqueteDecoracion::findOrFail($id)->delete();
+    }
+
+    private function validarFormula(array $datos): void
+    {
+        $total = (float) ($datos['precio_total'] ?? 0);
+        $local = (float) ($datos['ganancia_local'] ?? 0);
+        $proveedor = (float) ($datos['ganancia_proveedor'] ?? 0);
+
+        if (abs($total - ($local + $proveedor)) > 0.01) {
+            throw new \InvalidArgumentException(
+                "Error en la fÃ³rmula: precio_total ({$total}) debe ser igual a ganancia_local ({$local}) + ganancia_proveedor ({$proveedor})"
+            );
+        }
+    }
+}
+
+================================================================================
+=== PisoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Piso;
+use Illuminate\Support\Collection;
+
+class PisoService
+{
+    public function listar(): Collection
+    {
+        return Piso::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return Piso::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): Piso
+    {
+        return Piso::findOrFail($id);
+    }
+
+    public function crear(array $datos): Piso
+    {
+        return Piso::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): Piso
+    {
+        $item = Piso::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): Piso
+    {
+        $item = Piso::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): Piso
+    {
+        $item = Piso::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Piso::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== PrioridadMantenimientoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\PrioridadMantenimiento;
+use Illuminate\Support\Collection;
+
+class PrioridadMantenimientoService
+{
+    public function listar(): Collection
+    {
+        return PrioridadMantenimiento::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return PrioridadMantenimiento::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): PrioridadMantenimiento
+    {
+        return PrioridadMantenimiento::findOrFail($id);
+    }
+
+    public function crear(array $datos): PrioridadMantenimiento
+    {
+        return PrioridadMantenimiento::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): PrioridadMantenimiento
+    {
+        $item = PrioridadMantenimiento::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): PrioridadMantenimiento
+    {
+        $item = PrioridadMantenimiento::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): PrioridadMantenimiento
+    {
+        $item = PrioridadMantenimiento::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        PrioridadMantenimiento::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ProductoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Producto;
+use Illuminate\Support\Collection;
+
+class ProductoService
+{
+    public function listar(): Collection
+    {
+        return Producto::with(['categoria', 'proveedor'])
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return Producto::with(['categoria', 'proveedor'])
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    public function listarStockBajo(): Collection
+    {
+        return Producto::with(['categoria', 'proveedor'])
+            ->whereColumn('stock_actual', '<=', 'stock_minimo')
+            ->orderBy('stock_actual')
+            ->get();
+    }
+
+    public function listarPorCategoria(int $idCategoria): Collection
+    {
+        return Producto::with(['categoria', 'proveedor'])
+            ->where('id_categoria_producto', $idCategoria)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    public function obtener(int $id): Producto
+    {
+        return Producto::with(['categoria', 'proveedor'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): Producto
+    {
+        return Producto::create($datos)->load(['categoria', 'proveedor']);
+    }
+
+    public function actualizar(int $id, array $datos): Producto
+    {
+        $producto = Producto::findOrFail($id);
+        $producto->update($datos);
+        return $producto->fresh()->load(['categoria', 'proveedor']);
+    }
+
+    public function desactivar(int $id): Producto
+    {
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => false]);
+        return $producto;
+    }
+
+    public function reactivar(int $id): Producto
+    {
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => true]);
+        return $producto;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Producto::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== PromocionClienteService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\PromocionCliente;
+use Illuminate\Support\Collection;
+
+class PromocionClienteService
+{
+    public function listar(): Collection
+    {
+        return PromocionCliente::with(['promocion', 'cliente'])
+            ->orderByDesc('id_promo_cliente')
+            ->get();
+    }
+
+    public function listarPorCliente(int $idCliente): Collection
+    {
+        return PromocionCliente::with(['promocion', 'cliente'])
+            ->where('id_cliente', $idCliente)
+            ->orderByDesc('id_promo_cliente')
+            ->get();
+    }
+
+    public function listarPorPromocion(int $idPromocion): Collection
+    {
+        return PromocionCliente::with(['promocion', 'cliente'])
+            ->where('id_promocion', $idPromocion)
+            ->get();
+    }
+
+    public function obtener(int $id): PromocionCliente
+    {
+        return PromocionCliente::with(['promocion', 'cliente'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): PromocionCliente
+    {
+        return PromocionCliente::create($datos)->load(['promocion', 'cliente']);
+    }
+
+    public function marcarUsado(int $id): PromocionCliente
+    {
+        $item = PromocionCliente::findOrFail($id);
+        $item->update([
+            'usado' => true,
+            'fecha_uso' => now(),
+        ]);
+        return $item->fresh();
+    }
+
+    public function eliminar(int $id): void
+    {
+        PromocionCliente::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== PromocionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Promocion;
+use Illuminate\Support\Collection;
+
+class PromocionService
+{
+    public function listar(): Collection
+    {
+        return Promocion::with(['categoria', 'tipoHabitacion'])
+            ->orderByDesc('id_promocion')
+            ->get();
+    }
+
+    public function listarActivas(): Collection
+    {
+        return Promocion::with(['categoria', 'tipoHabitacion'])
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    public function listarVigentes(): Collection
+    {
+        $hoy = now()->toDateString();
+        return Promocion::with(['categoria', 'tipoHabitacion'])
+            ->where('activo', true)
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_inicio')
+                  ->orWhere('fecha_inicio', '<=', $hoy);
+            })
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_fin')
+                  ->orWhere('fecha_fin', '>=', $hoy);
+            })
+            ->get();
+    }
+
+    public function listarPorCategoria(int $idCategoria): Collection
+    {
+        return Promocion::with(['categoria', 'tipoHabitacion'])
+            ->where('id_categoria_promocion', $idCategoria)
+            ->where('activo', true)
+            ->get();
+    }
+
+    public function obtener(int $id): Promocion
+    {
+        return Promocion::with(['categoria', 'tipoHabitacion'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): Promocion
+    {
+        return Promocion::create($datos)->load(['categoria', 'tipoHabitacion']);
+    }
+
+    public function actualizar(int $id, array $datos): Promocion
+    {
+        $item = Promocion::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh()->load(['categoria', 'tipoHabitacion']);
+    }
+
+    public function desactivar(int $id): Promocion
+    {
+        $item = Promocion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): Promocion
+    {
+        $item = Promocion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Promocion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ProveedorService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Proveedor;
+use Illuminate\Support\Collection;
+
+class ProveedorService
+{
+    public function listar(): Collection
+    {
+        return Proveedor::orderBy('razon_social')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return Proveedor::where('activo', true)->orderBy('razon_social')->get();
+    }
+
+    public function obtener(int $id): Proveedor
+    {
+        return Proveedor::findOrFail($id);
+    }
+
+    public function crear(array $datos): Proveedor
+    {
+        return Proveedor::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): Proveedor
+    {
+        $item = Proveedor::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): Proveedor
+    {
+        $item = Proveedor::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): Proveedor
+    {
+        $item = Proveedor::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Proveedor::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== ReservaService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Cliente;
+use App\Models\Configuracion;
+use App\Models\ExtensionReserva;
+use App\Models\EstadoReserva;
+use App\Models\Habitacion;
+use App\Models\Limpieza;
+use App\Models\OcupacionHabitacion;
+use App\Models\PagoReserva;
+use App\Models\Producto;
+use App\Models\RegistroEstadia;
+use App\Models\Reserva;
+use App\Models\ReservaAjuste;
+use App\Models\ReservaConsumo;
+use App\Models\Tarifa;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class ReservaService
+{
+    public function __construct(
+        private DisponibilidadService $disponibilidad,
+        private ClienteVisitaService $clienteVisita,
+    ) {}
+
+    public function listar()
+    {
+        return Reserva::with([
+            'cliente', 'habitacion', 'tarifa', 'estado', 'usuarioCreacion'
+        ])->orderByDesc('id_reserva')->get();
+    }
+
+    public function obtener(int $id): Reserva
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.tipo', 'habitacion.piso',
+            'tarifa', 'estado', 'usuarioCreacion',
+            'ocupaciones', 'pagos.metodoPago', 'registroEstadia',
+            'consumos.producto', 'ajustes.usuario',
+        ])->findOrFail($id);
+    }
+
+    /**
+     * Crea un WALK-IN (cliente fÃ­sico ahora).
+     * Regla de oro: el cliente DEBE pagar la habitaciÃ³n.
+     */
+    public function crearWalkIn(array $datos, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($datos, $idUsuario) {
+            $tarifa = Tarifa::findOrFail($datos['id_tarifa']);
+            $entrada = Carbon::parse($datos['fecha_entrada'] ?? now());
+            $salida = $entrada->copy()->addHours($tarifa->horas);
+
+            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida, null, 0, true)) {
+                throw new \InvalidArgumentException('La habitaciÃ³n no estÃ¡ disponible en ese horario.');
+            }
+
+            $montoHabitacion = (float) $tarifa->monto;
+            $descuentoPct = 0;
+            $descuentoMonto = 0;
+
+            if (isset($datos['id_cliente'])) {
+                $cliente = Cliente::with('nivel')->find($datos['id_cliente']);
+                if ($cliente && $cliente->nivel) {
+                    $descuentoPct = (float) $cliente->nivel->descuento;
+                    $descuentoMonto = round($montoHabitacion * ($descuentoPct / 100), 2);
+                }
+            }
+
+            $total = $montoHabitacion - $descuentoMonto;
+            $pagado = (float) ($datos['adelanto'] ?? 0);
+
+            // Regla: si el pago parcial es menor al total, se permite pero queda registrado como deuda
+            // (el campo 'saldo' lo refleja automÃ¡ticamente)
+
+            // REGLA: 1 cliente = 1 sola reserva activa
+            $reservaActiva = $this->clienteTieneReservaActiva($datos['id_cliente']);
+            if ($reservaActiva) {
+                $numeroHab = $reservaActiva->habitacion?->numero ?? 'desconocida';
+                throw new \InvalidArgumentException(
+                    "Este cliente ya tiene una reserva activa en la habitaciÃ³n {$numeroHab}. " .
+                    "Si necesita otra habitaciÃ³n, regÃ­strela a nombre de otra persona (familiar)."
+                );
+            }
+
+            // REGLA: si hay pago, el mÃ©todo es obligatorio (o pagos[] mixtos)
+            $pagosMixtos = $datos['pagos'] ?? null;
+            $tienePagosMixtos = is_array($pagosMixtos) && count($pagosMixtos) > 0;
+
+            if ($pagado > 0 && empty($datos['id_metodo_pago']) && !$tienePagosMixtos) {
+                throw new \InvalidArgumentException(
+                    'Debe seleccionar un mÃ©todo de pago cuando registra un adelanto.'
+                );
+            }
+
+            if ($tienePagosMixtos) {
+                $sumaPagos = array_sum(array_column($pagosMixtos, 'monto'));
+                if (abs($sumaPagos - $pagado) > 0.01) {
+                    throw new \InvalidArgumentException(
+                        "La suma de los pagos (S/ {$sumaPagos}) no coincide con el adelanto (S/ {$pagado})."
+                    );
+                }
+            }
+
+            $vueltoEntregado = 0; // Por defecto se guarda como saldo a favor
+
+            $estadoActiva = EstadoReserva::where('slug', 'activa')->firstOrFail();
+            $codigo = 'WK-' . strtoupper(Str::random(6));
+
+            $reserva = Reserva::create([
+                'codigo_reserva' => $codigo,
+                'tipo_reserva' => 'NORMAL',
+                'id_estado' => $estadoActiva->id_estado,
+                'id_cliente' => $datos['id_cliente'],
+                'id_habitacion' => $datos['id_habitacion'],
+                'id_tarifa' => $datos['id_tarifa'],
+                'id_usuario_creacion' => $idUsuario,
+                'cantidad_personas' => $datos['cantidad_personas'] ?? 2,
+                'fecha_entrada' => $entrada,
+                'fecha_salida_prevista' => $salida,
+                'horas_base' => $tarifa->horas,
+                'horas_extra' => 0,
+                'horas_totales' => $tarifa->horas,
+                'monto_habitacion' => $montoHabitacion,
+                'monto_horas_extra' => 0,
+                'monto_consumos' => 0,
+                'monto_ajustes' => 0,
+                'descuento' => $descuentoMonto,
+                'descuento_porcentaje' => $descuentoPct,
+                'total' => $total,
+                'pagado' => $pagado,
+                'saldo' => max(0, $total - $pagado),
+                'vuelto_entregado' => $vueltoEntregado,
+                'telefono' => $datos['telefono'] ?? null,
+                'notas' => $datos['notas'] ?? null,
+                'observaciones' => $datos['observaciones'] ?? null,
+            ]);
+
+            OcupacionHabitacion::create([
+                'id_habitacion' => $datos['id_habitacion'],
+                'id_reserva' => $reserva->id_reserva,
+                'fecha_inicio' => $entrada,
+                'fecha_fin' => $salida,
+                'estado' => 'ACTIVA',
+            ]);
+
+            RegistroEstadia::create([
+                'id_reserva' => $reserva->id_reserva,
+                'fecha_entrada' => $entrada,
+                'id_usuario_checkin' => $idUsuario,
+            ]);
+
+            // Registrar pago(s) de la habitaciÃ³n
+            if ($tienePagosMixtos) {
+                // Pagos mixtos: uno por cada mÃ©todo
+                foreach ($pagosMixtos as $pago) {
+                    PagoReserva::create([
+                        'id_reserva' => $reserva->id_reserva,
+                        'id_metodo_pago' => $pago['id_metodo_pago'],
+                        'monto' => $pago['monto'],
+                        'es_adelanto' => true,
+                        'fecha_pago' => now(),
+                        'id_usuario' => $idUsuario,
+                    ]);
+                }
+            } elseif ($pagado > 0 && isset($datos['id_metodo_pago'])) {
+                // Pago Ãºnico
+                PagoReserva::create([
+                    'id_reserva' => $reserva->id_reserva,
+                    'id_metodo_pago' => $datos['id_metodo_pago'],
+                    'monto' => $pagado,
+                    'es_adelanto' => true,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                ]);
+            }
+
+            // Recalcular pagado = SUM(pagos_reserva) â€” fuente de verdad
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $total - $totalPagadoReal);
+            $reserva->save();
+
+            $this->clienteVisita->registrar(
+                $datos['id_cliente'],
+                $reserva->id_reserva,
+                $datos['id_habitacion'],
+                $montoHabitacion
+            );
+
+            return $reserva->fresh(['cliente', 'habitacion', 'tarifa', 'estado']);
+        });
+    }
+
+    public function crearReserva(array $datos, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($datos, $idUsuario) {
+            // REGLA: 1 cliente = 1 sola reserva activa
+            $reservaActiva = $this->clienteTieneReservaActiva($datos['id_cliente']);
+            if ($reservaActiva) {
+                $numeroHab = $reservaActiva->habitacion?->numero ?? 'desconocida';
+                throw new \InvalidArgumentException(
+                    "Este cliente ya tiene una reserva activa en la habitaciÃ³n {$numeroHab}. " .
+                    "Si necesita otra habitaciÃ³n, regÃ­strela a nombre de otra persona (familiar)."
+                );
+            }
+            $tarifa = Tarifa::findOrFail($datos['id_tarifa']);
+            $entrada = Carbon::parse($datos['fecha_entrada']);
+            $salida = $entrada->copy()->addHours($tarifa->horas);
+
+            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida, null, 0, true)) {
+                throw new \InvalidArgumentException('La habitaciÃ³n no estÃ¡ disponible en ese horario.');
+            }
+
+            $montoHabitacion = (float) $tarifa->monto;
+            $descuentoPct = 0;
+            $descuentoMonto = 0;
+
+            if (isset($datos['id_cliente'])) {
+                $cliente = Cliente::with('nivel')->find($datos['id_cliente']);
+                if ($cliente && $cliente->nivel) {
+                    $descuentoPct = (float) $cliente->nivel->descuento;
+                    $descuentoMonto = round($montoHabitacion * ($descuentoPct / 100), 2);
+                }
+            }
+
+            $total = $montoHabitacion - $descuentoMonto;
+            $pagado = (float) ($datos['adelanto'] ?? 0);
+
+            $estadoConfirmada = EstadoReserva::where('slug', 'confirmada')->firstOrFail();
+            $codigo = $this->generarCodigoReserva($datos);
+
+            $reserva = Reserva::create([
+                'codigo_reserva' => $codigo,
+                'tipo_reserva' => 'NORMAL',
+                'id_estado' => $estadoConfirmada->id_estado,
+                'id_cliente' => $datos['id_cliente'],
+                'id_habitacion' => $datos['id_habitacion'],
+                'id_tarifa' => $datos['id_tarifa'],
+                'id_usuario_creacion' => $idUsuario,
+                'cantidad_personas' => $datos['cantidad_personas'] ?? 2,
+                'fecha_entrada' => $entrada,
+                'fecha_salida_prevista' => $salida,
+                'horas_base' => $tarifa->horas,
+                'horas_extra' => 0,
+                'horas_totales' => $tarifa->horas,
+                'monto_habitacion' => $montoHabitacion,
+                'monto_horas_extra' => 0,
+                'monto_consumos' => 0,
+                'monto_ajustes' => 0,
+                'descuento' => $descuentoMonto,
+                'descuento_porcentaje' => $descuentoPct,
+                'total' => $total,
+                'pagado' => $pagado,
+                'saldo' => max(0, $total - $pagado),
+                'vuelto_entregado' => 0,
+                'telefono' => $datos['telefono'] ?? null,
+                'notas' => $datos['notas'] ?? null,
+                'observaciones' => $datos['observaciones'] ?? null,
+            ]);
+
+            OcupacionHabitacion::create([
+                'id_habitacion' => $datos['id_habitacion'],
+                'id_reserva' => $reserva->id_reserva,
+                'fecha_inicio' => $entrada,
+                'fecha_fin' => $salida,
+                'estado' => 'ACTIVA',
+            ]);
+
+            if ($pagado > 0 && isset($datos['id_metodo_pago'])) {
+                PagoReserva::create([
+                    'id_reserva' => $reserva->id_reserva,
+                    'id_metodo_pago' => $datos['id_metodo_pago'],
+                    'monto' => $pagado,
+                    'es_adelanto' => true,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                ]);
+            }
+
+            return $reserva->fresh(['cliente', 'habitacion', 'tarifa', 'estado']);
+        });
+    }
+
+    public function checkIn(int $idReserva, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->registroEstadia) {
+                throw new \InvalidArgumentException('Esta reserva ya tiene check-in.');
+            }
+
+            $estadoActiva = EstadoReserva::where('slug', 'activa')->firstOrFail();
+            $ahora = Carbon::now();
+
+            $reserva->update([
+                'id_estado' => $estadoActiva->id_estado,
+                'fecha_entrada' => $ahora,
+            ]);
+
+            RegistroEstadia::create([
+                'id_reserva' => $idReserva,
+                'fecha_entrada' => $ahora,
+                'id_usuario_checkin' => $idUsuario,
+            ]);
+
+            return $reserva->fresh();
+        });
+    }
+
+    public function checkOut(int $idReserva, int $idUsuario, ?float $montoFinal = null): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $montoFinal) {
+            $reserva = Reserva::with(['registroEstadia', 'consumos'])->findOrFail($idReserva);
+            $registro = $reserva->registroEstadia;
+
+            if (!$registro || $registro->fecha_salida) {
+                throw new \InvalidArgumentException('Esta reserva no tiene check-in activo.');
+            }
+
+            $ahora = Carbon::now();
+            $horasReales = $registro->fecha_entrada->diffInHours($ahora);
+
+            $registro->update([
+                'fecha_salida' => $ahora,
+                'horas_reales' => $horasReales,
+                'id_usuario_checkout' => $idUsuario,
+                'monto_final' => $montoFinal,
+            ]);
+
+            // Si montoFinal es provisto, registrar como pago
+            if ($montoFinal && $montoFinal > 0) {
+                $reserva->pagado = (float) $reserva->pagado + $montoFinal;
+            }
+
+            $estadoFinalizada = EstadoReserva::where('slug', 'finalizada')->firstOrFail();
+
+            $reserva->update([
+                'id_estado' => $estadoFinalizada->id_estado,
+                'fecha_salida_real' => $ahora,
+                'pagado' => $reserva->pagado,
+                'saldo' => max(0, (float) $reserva->total - (float) $reserva->pagado),
+            ]);
+
+            OcupacionHabitacion::where('id_reserva', $idReserva)
+                ->update(['estado' => 'LIBERADA']);
+
+            Limpieza::create([
+                'id_habitacion' => $reserva->id_habitacion,
+                'id_reserva' => $idReserva,
+                'estado' => 'PENDIENTE',
+                'tipo' => 'NORMAL',
+                'fecha_solicitud' => now(),
+            ]);
+
+            return $reserva->fresh();
+        });
+    }
+
+    public function cancelar(int $idReserva, int $idUsuario, string $motivo): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $motivo) {
+            $reserva = Reserva::findOrFail($idReserva);
+            $estadoCancelada = EstadoReserva::where('slug', 'cancelada')->firstOrFail();
+
+            $reserva->update([
+                'id_estado' => $estadoCancelada->id_estado,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            OcupacionHabitacion::where('id_reserva', $idReserva)
+                ->update(['estado' => 'CANCELADA']);
+
+            return $reserva->fresh();
+        });
+    }
+
+    public function anular(int $idReserva, int $idUsuario, string $motivo): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $motivo) {
+            $reserva = Reserva::findOrFail($idReserva);
+            $estadoAnulada = EstadoReserva::where('slug', 'anulada')->firstOrFail();
+
+            $reserva->update([
+                'id_estado' => $estadoAnulada->id_estado,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            OcupacionHabitacion::where('id_reserva', $idReserva)
+                ->update(['estado' => 'CANCELADA']);
+
+            $registro = RegistroEstadia::where('id_reserva', $idReserva)->first();
+            if ($registro && !$registro->fecha_salida) {
+                $registro->update([
+                    'fecha_salida' => now(),
+                    'id_usuario_checkout' => $idUsuario,
+                    'observaciones' => 'Anulada: ' . $motivo,
+                ]);
+            }
+
+            PagoReserva::where('id_reserva', $idReserva)
+                ->update([
+                    'anulado' => true,
+                    'id_usuario_anulacion' => $idUsuario,
+                    'fecha_anulacion' => now(),
+                    'motivo_anulacion' => 'AnulaciÃ³n de reserva: ' . $motivo,
+                ]);
+
+            return $reserva->fresh();
+        });
+    }
+
+    /**
+     * Cambia la reserva a otra habitaciÃ³n con lÃ³gica de dinero.
+     */
+    public function cambiarHabitacion(
+        int $idReserva,
+        int $idNuevaHabitacion,
+        int $idUsuario,
+        string $modoDiferencia = 'AL_FINAL',
+        ?int $idMetodoPago = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $idNuevaHabitacion, $idUsuario, $modoDiferencia, $idMetodoPago) {
+            $reserva = Reserva::with(['ocupaciones', 'tarifa'])->findOrFail($idReserva);
+            $ocupacion = $reserva->ocupaciones()->where('estado', 'ACTIVA')->first();
+
+            if (!$ocupacion) {
+                throw new \InvalidArgumentException('Esta reserva no tiene ocupaciÃ³n activa.');
+            }
+
+            // Guardar habitaciÃ³n VIEJA (para crear limpieza)
+            $idHabitacionVieja = $ocupacion->id_habitacion;
+
+            // Guardar fechas originales
+            $fechaInicioOriginal = $ocupacion->fecha_inicio;
+            $fechaFinOriginal = $ocupacion->fecha_fin;
+
+            if (!$this->disponibilidad->estaDisponible($idNuevaHabitacion, $fechaInicioOriginal, $fechaFinOriginal, $idReserva)) {
+                throw new \InvalidArgumentException('La habitaciÃ³n destino no estÃ¡ disponible.');
+            }
+
+            // Calcular nueva tarifa
+            $nuevaHabitacion = Habitacion::with('tipo')->findOrFail($idNuevaHabitacion);
+            $horasBase = $reserva->horas_base;
+
+            // 1. Buscar tarifa con las mismas horas
+            $nuevaTarifa = Tarifa::where('id_tipo', $nuevaHabitacion->id_tipo)
+                ->where('horas', $horasBase)
+                ->where('activo', true)
+                ->first();
+
+            $horasAjustadas = false;
+
+            // 2. Si no existe, buscar la tarifa mÃ¡s chica disponible
+            if (!$nuevaTarifa) {
+                $nuevaTarifa = Tarifa::where('id_tipo', $nuevaHabitacion->id_tipo)
+                    ->where('activo', true)
+                    ->orderBy('horas', 'asc')
+                    ->first();
+
+                if ($nuevaTarifa) {
+                    $horasAjustadas = true;
+                }
+            }
+
+            if (!$nuevaTarifa) {
+                throw new \InvalidArgumentException(
+                    "El tipo {$nuevaHabitacion->tipo->nombre} no tiene tarifas activas."
+                );
+            }
+
+            $nuevasHoras = $nuevaTarifa->horas;
+
+            $montoAnterior = (float) $reserva->monto_habitacion;
+            $montoNuevo = (float) $nuevaTarifa->monto;
+            $diferencia = $montoNuevo - $montoAnterior;
+
+            // Liberar ocupaciÃ³n anterior
+            $ocupacion->update(['estado' => 'LIBERADA']);
+
+            // Crear LIMPIEZA para la habitaciÃ³n VIEJA
+            Limpieza::create([
+                'id_habitacion' => $idHabitacionVieja,
+                'id_reserva' => null,  // limpieza no atada a reserva (post-cambio)
+                'estado' => 'PENDIENTE',
+                'tipo' => 'NORMAL',
+                'fecha_solicitud' => now(),
+            ]);
+
+            // Si las horas cambiaron, recalcular fecha_fin
+            if ($horasAjustadas) {
+                $nuevaFechaFin = $fechaInicioOriginal->copy()->addHours($nuevasHoras);
+            } else {
+                $nuevaFechaFin = $fechaFinOriginal;
+            }
+
+            // Crear nueva ocupaciÃ³n MANTENIENDO fecha_inicio original
+            OcupacionHabitacion::create([
+                'id_habitacion' => $idNuevaHabitacion,
+                'id_reserva' => $idReserva,
+                'fecha_inicio' => $fechaInicioOriginal,
+                'fecha_fin' => $nuevaFechaFin,
+                'estado' => 'ACTIVA',
+            ]);
+
+            // Actualizar reserva
+            $reserva->id_habitacion = $idNuevaHabitacion;
+            $reserva->id_tarifa = $nuevaTarifa->id_tarifa;
+            $reserva->monto_habitacion = $montoNuevo;
+
+            // Si las horas cambiaron, actualizar horas y fecha_salida
+            if ($horasAjustadas) {
+                $reserva->horas_base = $nuevasHoras;
+                $reserva->horas_totales = $nuevasHoras;
+                $reserva->fecha_salida_prevista = $nuevaFechaFin;
+            }
+
+            // Si la diferencia se paga ahora Y es positiva
+            if ($modoDiferencia === 'AHORA' && $diferencia > 0) {
+                if (!$idMetodoPago) {
+                    throw new \InvalidArgumentException('Seleccione mÃ©todo de pago.');
+                }
+                $reserva->pagado = (float) $reserva->pagado + $diferencia;
+
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $diferencia,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'Cambio de habitaciÃ³n',
+                ]);
+            }
+
+            if ($modoDiferencia === 'AHORA' && $diferencia < 0) {
+                $reserva->pagado = (float) $reserva->pagado + $diferencia;
+            }
+
+            $reserva->recalcularTotal();
+            $reserva->save();
+
+            // Registrar ajuste
+            ReservaAjuste::create([
+                'id_reserva' => $idReserva,
+                'tipo' => 'CAMBIO_HABITACION',
+                'monto_anterior' => $montoAnterior,
+                'monto_nuevo' => $montoNuevo,
+                'diferencia' => $diferencia,
+                'id_usuario' => $idUsuario,
+                'fecha_ajuste' => now(),
+                'notas' => "Cambio a habitaciÃ³n {$nuevaHabitacion->numero}. Modo: {$modoDiferencia}",
+            ]);
+
+            return $reserva->fresh(['cliente', 'habitacion', 'tarifa', 'estado']);
+        });
+    }
+
+    /**
+     * Agrega un consumo de producto a la reserva.
+     */
+    public function agregarConsumo(
+        int $idReserva,
+        int $idProducto,
+        int $cantidad,
+        bool $pagado,
+        int $idUsuario,
+        ?int $idMetodoPago = null,
+        ?string $observaciones = null
+    ): ReservaConsumo {
+        return DB::transaction(function () use ($idReserva, $idProducto, $cantidad, $pagado, $idUsuario, $idMetodoPago, $observaciones) {
+            $reserva = Reserva::findOrFail($idReserva);
+            $producto = Producto::findOrFail($idProducto);
+
+            if ($cantidad <= 0) {
+                throw new \InvalidArgumentException('La cantidad debe ser mayor a 0.');
+            }
+
+            if ($producto->stock_actual < $cantidad) {
+                throw new \InvalidArgumentException(
+                    "Stock insuficiente. Disponible: {$producto->stock_actual}"
+                );
+            }
+
+            $precioUnitario = (float) $producto->precio_venta;
+            $subtotal = round($precioUnitario * $cantidad, 2);
+
+            $consumo = ReservaConsumo::create([
+                'id_reserva' => $idReserva,
+                'id_producto' => $idProducto,
+                'cantidad' => $cantidad,
+                'precio_unitario' => $precioUnitario,
+                'subtotal' => $subtotal,
+                'pagado' => $pagado,
+                'id_metodo_pago' => $pagado ? $idMetodoPago : null,
+                'id_usuario' => $idUsuario,
+                'fecha_consumo' => now(),
+                'observaciones' => $observaciones,
+            ]);
+
+            // Descontar stock
+            $producto->decrement('stock_actual', $cantidad);
+
+            // Si NO se pagÃ³ al momento â†’ sumar a la cuenta de la reserva
+            if (!$pagado) {
+                $reserva->monto_consumos = (float) $reserva->monto_consumos + $subtotal;
+                $reserva->recalcularTotal();
+                $reserva->save();
+            } else {
+                // Si pagÃ³ al momento â†’ registrar pago
+                if ($idMetodoPago) {
+                    PagoReserva::create([
+                        'id_reserva' => $idReserva,
+                        'id_metodo_pago' => $idMetodoPago,
+                        'monto' => $subtotal,
+                        'es_adelanto' => false,
+                        'fecha_pago' => now(),
+                        'id_usuario' => $idUsuario,
+                        'observaciones' => 'Consumo: ' . $producto->nombre,
+                    ]);
+
+                    $reserva->pagado = (float) $reserva->pagado + $subtotal;
+                    $reserva->save();
+                }
+            }
+
+            return $consumo->fresh(['producto', 'metodoPago']);
+        });
+    }
+
+    /**
+     * Elimina un consumo (revierte stock y montos).
+     */
+    public function eliminarConsumo(int $idConsumo, int $idUsuario): void
+    {
+        DB::transaction(function () use ($idConsumo, $idUsuario) {
+            $consumo = ReservaConsumo::with('producto')->findOrFail($idConsumo);
+            $reserva = Reserva::findOrFail($consumo->id_reserva);
+
+            // Devolver stock
+            $consumo->producto->increment('stock_actual', $consumo->cantidad);
+
+            // Si no estaba pagado, revertir monto_consumos
+            if (!$consumo->pagado) {
+                $reserva->monto_consumos = max(0, (float) $reserva->monto_consumos - (float) $consumo->subtotal);
+                $reserva->recalcularTotal();
+                $reserva->save();
+            }
+
+            $consumo->delete();
+        });
+    }
+
+    /**
+     * Aplica una extensiÃ³n de tiempo a la reserva.
+     */
+    public function agregarExtension(
+        int $idReserva,
+        int $horasExtra,
+        bool $cargarACuenta,
+        int $idUsuario,
+        ?int $idMetodoPago = null,
+        bool $esTurnoAdicional = false,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $horasExtra, $cargarACuenta, $idUsuario, $idMetodoPago, $esTurnoAdicional, $observaciones) {
+            $reserva = Reserva::with('tarifa')->findOrFail($idReserva);
+            $tarifa = $reserva->tarifa;
+
+            if (!$tarifa) {
+                throw new \InvalidArgumentException('La reserva no tiene tarifa asociada.');
+            }
+
+            // Calcular monto
+            $precioHora = (float) $tarifa->precio_hora_extra;
+            $precioTurno = (float) $tarifa->precio_turno_adicional;
+            $monto = $esTurnoAdicional ? $precioTurno : ($horasExtra * $precioHora);
+
+            // Tolerancia actual (para auditorÃ­a)
+            $tolerancia = Configuracion::obtener('tolerancia_extension_minutos', 30);
+
+            // Minutos de exceso real (para auditorÃ­a)
+            $entrada = Carbon::parse($reserva->fecha_entrada);
+            $ahora = Carbon::now();
+            $minutosTranscurridos = (int) round(abs($entrada->diffInMinutes($ahora)));
+            $minutosExceso = max(0, $minutosTranscurridos - ($reserva->horas_base * 60));
+
+            // Registrar extensiÃ³n
+            ExtensionReserva::create([
+                'id_reserva' => $idReserva,
+                'horas_extra' => $horasExtra,
+                'monto' => $monto,
+                'es_turno_adicional' => $esTurnoAdicional,
+                'minutos_exceso' => $minutosExceso,
+                'precio_hora_extra_aplicado' => $precioHora,
+                'tolerancia_minutos' => $tolerancia,
+                'pagado_inmediato' => !$cargarACuenta && $idMetodoPago !== null,
+                'cargado_a_cuenta' => $cargarACuenta,
+                'id_metodo_pago' => $idMetodoPago,
+                'id_usuario' => $idUsuario,
+                'fecha_extension' => now(),
+                'observaciones' => $observaciones,
+            ]);
+
+            // Actualizar la reserva
+            $reserva->monto_horas_extra = (float) $reserva->monto_horas_extra + $monto;
+
+            if ($esTurnoAdicional) {
+                // Turno adicional extiende las horas base
+                $horasExtraTurno = $tarifa->horas;
+                $reserva->horas_extra = (int) $reserva->horas_extra + $horasExtraTurno;
+                $reserva->horas_totales = (int) $reserva->horas_totales + $horasExtraTurno;
+                $reserva->fecha_salida_prevista = Carbon::parse($reserva->fecha_salida_prevista)->addHours($horasExtraTurno);
+            } else {
+                $reserva->horas_extra = (int) $reserva->horas_extra + $horasExtra;
+                $reserva->horas_totales = (int) $reserva->horas_totales + $horasExtra;
+                $reserva->fecha_salida_prevista = Carbon::parse($reserva->fecha_salida_prevista)->addHours($horasExtra);
+            }
+
+            // Si NO se carga a cuenta â†’ es pago inmediato
+            if (!$cargarACuenta && $idMetodoPago) {
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $monto,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'ExtensiÃ³n de tiempo: ' . ($esTurnoAdicional ? 'Turno adicional' : "{$horasExtra}h extra"),
+                ]);
+
+                $reserva->pagado = (float) $reserva->pagado + $monto;
+            }
+
+            $reserva->recalcularTotal();
+            $reserva->save();
+
+            return $reserva->fresh(['cliente', 'habitacion', 'tarifa', 'estado', 'extensiones']);
+        });
+    }
+
+    /**
+     * Lista las extensiones de una reserva.
+     */
+    public function listarExtensiones(int $idReserva): \Illuminate\Support\Collection
+    {
+        return ExtensionReserva::with(['metodoPago', 'usuario'])
+            ->where('id_reserva', $idReserva)
+            ->orderByDesc('id_extension')
+            ->get();
+    }
+    /**
+     * Agrega un pago adicional a una reserva existente (pago parcial / mixto).
+     */
+    public function agregarPago(int $idReserva, array $datos, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $datos, $idUsuario) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se pueden agregar pagos a una reserva finalizada.');
+            }
+
+            $monto = (float) $datos['monto'];
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            PagoReserva::create([
+                'id_reserva' => $idReserva,
+                'id_metodo_pago' => $datos['id_metodo_pago'],
+                'monto' => $monto,
+                'es_adelanto' => false,
+                'fecha_pago' => now(),
+                'id_usuario' => $idUsuario,
+                'observaciones' => $datos['observaciones'] ?? 'Pago adicional',
+            ]);
+
+            // Recalcular pagado y saldo
+            $totalPagado = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagado);
+            $reserva->save();
+
+            // Recalcular pagado y saldo desde la tabla de pagos (fuente de verdad)
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Anula un pago especifico de una reserva.
+     */
+    public function anularPago(int $idPago, int $idUsuario, string $motivo): Reserva
+    {
+        return DB::transaction(function () use ($idPago, $idUsuario, $motivo) {
+            $pago = PagoReserva::findOrFail($idPago);
+            $pago->update([
+                'anulado' => true,
+                'id_usuario_anulacion' => $idUsuario,
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $motivo,
+            ]);
+
+            $reserva = Reserva::findOrFail($pago->id_reserva);
+            $totalPagado = PagoReserva::where('id_reserva', $pago->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagado);
+            $reserva->save();
+
+            // Recalcular pagado y saldo desde la tabla de pagos (fuente de verdad)
+            $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Entrega el vuelto al cliente.
+     * Se registra como un PAGO NEGATIVO en pagos_reserva.
+     * El campo 'pagado' se recalcula como SUM(pagos.monto WHERE anulado = false).
+     */
+    public function entregarVuelto(int $idReserva, float $monto, int $idMetodoPago, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $monto, $idMetodoPago, $idUsuario) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se puede entregar vuelto a una reserva finalizada.');
+            }
+
+            if ($monto <= 0) {
+                throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+            }
+
+            // Calcular vuelto pendiente desde reserva.pagado (fuente de verdad)
+            $vueltoPendiente = (float) $reserva->pagado - (float) $reserva->total;
+
+            if ($vueltoPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay vuelto pendiente para esta reserva. ' .
+                    "(Pagado: S/ {$reserva->pagado}, Total: S/ {$reserva->total})"
+                );
+            }
+
+            if ($monto > $vueltoPendiente + 0.01) {
+                throw new \InvalidArgumentException(
+                    "El monto (S/ {$monto}) excede el vuelto pendiente (S/ {$vueltoPendiente})."
+                );
+            }
+
+            // Registrar pago NEGATIVO
+            PagoReserva::create([
+                'id_reserva' => $idReserva,
+                'id_metodo_pago' => $idMetodoPago,
+                'monto' => -$monto,  // NEGATIVO
+                'es_adelanto' => false,
+                'fecha_pago' => now(),
+                'id_usuario' => $idUsuario,
+                'observaciones' => 'Vuelto entregado al cliente',
+            ]);
+
+            // Recalcular pagado y saldo
+            $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $nuevoPagado;
+            $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'habitacion.piso',
+                'tarifa', 'estado', 'usuarioCreacion',
+                'ocupaciones', 'pagos.metodoPago', 'registroEstadia',
+                'consumos.producto', 'ajustes.usuario',
+            ]);
+        });
+    }
+
+    /**
+     * Verifica si un cliente ya tiene una reserva activa (estado 'Activa').
+     * Regla: 1 cliente = 1 sola reserva activa.
+     * Si quiere alquilar otra habitaciÃ³n, debe registrarse con otro nombre (familiar).
+     */
+    public function clienteTieneReservaActiva(int $idCliente): ?Reserva
+    {
+        return Reserva::with(['habitacion'])
+            ->where('id_cliente', $idCliente)
+            ->whereHas('estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->first();
+    }
+
+    /**
+     * Check-out con decisiÃ³n sobre el vuelto pendiente.
+     * 
+     * Decisiones posibles:
+     * - ENTREGADO: se registra pago negativo (sale de caja)
+     * - NO_RECLAMADO: el vuelto queda como ingreso (no sale de caja)
+     * - OTRO: se registra observaciÃ³n libre
+     */
+    public function checkOutConVuelto(
+        int $idReserva,
+        int $idUsuario,
+        ?float $montoFinal,
+        string $decisionTipo,  // 'ENTREGADO' | 'NO_RECLAMADO' | 'OTRO'
+        ?int $idMetodoPago = null,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $montoFinal, $decisionTipo, $idMetodoPago, $observaciones) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            // Calcular vuelto pendiente desde reserva.pagado (fuente de verdad)
+            $vueltoPendiente = (float) $reserva->pagado - (float) $reserva->total;
+
+            if ($vueltoPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay vuelto pendiente para esta reserva. ' .
+                    "(Pagado: S/ {$reserva->pagado}, Total: S/ {$reserva->total})"
+                );
+            }
+
+            // Decidir quÃ© hacer
+            if ($decisionTipo === 'ENTREGADO') {
+                if (!$idMetodoPago) {
+                    throw new \InvalidArgumentException('Seleccione un mÃ©todo para entregar el vuelto.');
+                }
+
+                // Registrar pago NEGATIVO (el vuelto sale de caja)
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => -$vueltoPendiente,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => $observaciones ?? 'Vuelto entregado al cliente',
+                ]);
+
+                // Recalcular pagado
+                $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                    ->where('anulado', false)
+                    ->sum('monto');
+
+                $reserva->pagado = $nuevoPagado;
+                $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'NO_RECLAMADO') {
+                // NO se registra pago negativo.
+                // El vuelto queda como "ingreso" del hospedaje.
+                // Se guarda observaciÃ³n en la reserva.
+                $reserva->observaciones = $observaciones ?? 'Cliente se retirÃ³ sin reclamar el vuelto de S/ ' . number_format($vueltoPendiente, 2);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'OTRO') {
+                if (!$observaciones) {
+                    throw new \InvalidArgumentException('Se requiere una observaciÃ³n para esta decisiÃ³n.');
+                }
+                $reserva->observaciones = $observaciones;
+                $reserva->save();
+            } else {
+                throw new \InvalidArgumentException('DecisiÃ³n invÃ¡lida sobre el vuelto.');
+            }
+
+            // Ejecutar el check-out normal
+            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+        });
+    }
+
+    /**
+     * Check-out con decisiÃ³n sobre deuda pendiente.
+     * 
+     * Decisiones posibles:
+     * - PAGO: el cliente pagÃ³ al salir â†’ registra pago positivo
+     * - NO_PAGO: el cliente se fue debiendo â†’ crea observaciÃ³n al cliente
+     */
+    public function checkOutConDeuda(
+        int $idReserva,
+        int $idUsuario,
+        ?float $montoFinal,
+        string $decisionTipo,  // 'PAGO' | 'NO_PAGO'
+        ?float $montoPago = null,
+        ?int $idMetodoPago = null,
+        ?int $idGravedad = null,
+        ?string $motivo = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $idUsuario, $montoFinal, $decisionTipo, $montoPago, $idMetodoPago, $idGravedad, $motivo) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            // Calcular deuda pendiente desde reserva.pagado (fuente de verdad)
+            $deudaPendiente = (float) $reserva->total - (float) $reserva->pagado;
+
+            if ($deudaPendiente <= 0.01) {
+                throw new \InvalidArgumentException(
+                    'No hay deuda pendiente para esta reserva. ' .
+                    "(Total: S/ {$reserva->total}, Pagado: S/ {$reserva->pagado})"
+                );
+            }
+
+            if ($decisionTipo === 'PAGO') {
+                if (!$idMetodoPago) {
+                    throw new \InvalidArgumentException('Seleccione un mÃ©todo de pago.');
+                }
+                if (!$montoPago || $montoPago <= 0) {
+                    throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
+                }
+
+                // Registrar pago positivo
+                PagoReserva::create([
+                    'id_reserva' => $idReserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $montoPago,
+                    'es_adelanto' => false,
+                    'fecha_pago' => now(),
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'Pago al salir (cierre de deuda)',
+                ]);
+
+                // Recalcular pagado
+                $nuevoPagado = PagoReserva::where('id_reserva', $idReserva)
+                    ->where('anulado', false)
+                    ->sum('monto');
+
+                $reserva->pagado = $nuevoPagado;
+                $reserva->saldo = max(0, (float) $reserva->total - $nuevoPagado);
+                $reserva->save();
+
+            } elseif ($decisionTipo === 'NO_PAGO') {
+                if (!$idGravedad || !$motivo) {
+                    throw new \InvalidArgumentException('Se requiere gravedad y motivo para registrar la deuda.');
+                }
+
+                // Crear observaciÃ³n al cliente
+                \App\Models\ClienteObservacion::create([
+                    'id_cliente' => $reserva->id_cliente,
+                    'id_tipo_observacion' => 1,  // 1 = Deuda (ID conocido del seeder)
+                    'id_gravedad' => $idGravedad,
+                    'motivo' => $motivo,
+                    'monto_deuda' => $deudaPendiente,
+                    'resuelto' => false,
+                    'id_usuario_creacion' => $idUsuario,
+                ]);
+
+                // Guardar referencia en la reserva
+                $reserva->observaciones = 'Cliente se retirÃ³ debiendo S/ ' . number_format($deudaPendiente, 2) . '. ' . $motivo;
+                $reserva->save();
+            } else {
+                throw new \InvalidArgumentException('DecisiÃ³n invÃ¡lida sobre la deuda.');
+            }
+
+            // Ejecutar el check-out normal
+            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+        });
+    }
+
+    /**
+     * Agrega MÃšLTIPLES consumos a la reserva en una sola transacciÃ³n.
+     * Soporta:
+     * - Pagar todo ahora (1 o varios pagos mixtos)
+     * - Pagar parcialmente (resto se carga a la cuenta)
+     * - No pagar nada (todo a la cuenta)
+     *
+     * @param array $consumos  [['id_producto' => X, 'cantidad' => Y], ...]
+     * @param array $pagos     [['id_metodo_pago' => X, 'monto' => Y], ...]
+     * @param bool  $cargarACuenta  Si true, el saldo no pagado va a la cuenta
+     */
+    public function agregarConsumosMultiple(
+        int $idReserva,
+        array $consumos,
+        array $pagos,
+        bool $cargarACuenta,
+        int $idUsuario,
+        ?string $observaciones = null
+    ): Reserva {
+        return DB::transaction(function () use ($idReserva, $consumos, $pagos, $cargarACuenta, $idUsuario, $observaciones) {
+            $reserva = Reserva::findOrFail($idReserva);
+
+            if ($reserva->id_estado === 4) {
+                throw new \InvalidArgumentException('No se pueden agregar consumos a una reserva finalizada.');
+            }
+
+            if (empty($consumos)) {
+                throw new \InvalidArgumentException('Debe agregar al menos un producto.');
+            }
+
+            // 1. VALIDAR STOCK DE TODOS LOS PRODUCTOS
+            $productosValidados = [];
+            foreach ($consumos as $item) {
+                $producto = Producto::findOrFail($item['id_producto']);
+                $cantidad = (int) $item['cantidad'];
+
+                if ($cantidad <= 0) {
+                    throw new \InvalidArgumentException(
+                        "La cantidad debe ser mayor a 0 para '{$producto->nombre}'."
+                    );
+                }
+
+                if ($producto->stock_actual < $cantidad) {
+                    throw new \InvalidArgumentException(
+                        "Stock insuficiente para '{$producto->nombre}'. Disponible: {$producto->stock_actual}."
+                    );
+                }
+
+                $productosValidados[] = [
+                    'producto' => $producto,
+                    'cantidad' => $cantidad,
+                    'subtotal' => round((float) $producto->precio_venta * $cantidad, 2),
+                ];
+            }
+
+            // 2. CALCULAR TOTAL DE CONSUMOS
+            $totalConsumos = array_sum(array_column($productosValidados, 'subtotal'));
+
+            // 3. CREAR CADA CONSUMO
+            $consumosCreados = [];
+            foreach ($productosValidados as $item) {
+                $consumo = ReservaConsumo::create([
+                    'id_reserva' => $idReserva,
+                    'id_producto' => $item['producto']->id_producto,
+                    'cantidad' => $item['cantidad'],
+                    'precio_unitario' => (float) $item['producto']->precio_venta,
+                    'subtotal' => $item['subtotal'],
+                    'pagado' => false,  // se maneja con pagos abajo
+                    'id_metodo_pago' => null,
+                    'id_usuario' => $idUsuario,
+                    'fecha_consumo' => now(),
+                    'observaciones' => $observaciones,
+                ]);
+
+                // Descontar stock
+                $item['producto']->decrement('stock_actual', $item['cantidad']);
+
+                $consumosCreados[] = $consumo;
+            }
+
+            // 4. REGISTRAR PAGOS (si hay)
+            $totalPagadoConsumos = 0;
+            if (!empty($pagos)) {
+                foreach ($pagos as $pago) {
+                    $monto = (float) $pago['monto'];
+                    if ($monto <= 0) {
+                        throw new \InvalidArgumentException('Cada pago debe ser mayor a 0.');
+                    }
+
+                    PagoReserva::create([
+                        'id_reserva' => $idReserva,
+                        'id_metodo_pago' => $pago['id_metodo_pago'],
+                        'monto' => $monto,
+                        'es_adelanto' => false,
+                        'fecha_pago' => now(),
+                        'id_usuario' => $idUsuario,
+                        'observaciones' => 'Consumo: ' . count($consumosCreados) . ' producto(s)',
+                    ]);
+
+                    $totalPagadoConsumos += $monto;
+                }
+            }
+
+            // 5. SI NO SE PAGÃ“ TODO Y SE CARGA A CUENTA â†’ sumar a monto_consumos
+            $saldoConsumos = $totalConsumos - $totalPagadoConsumos;
+
+            if ($cargarACuenta && $saldoConsumos > 0.01) {
+                $reserva->monto_consumos = (float) $reserva->monto_consumos + $saldoConsumos;
+            } elseif (!$cargarACuenta && $saldoConsumos > 0.01) {
+                throw new \InvalidArgumentException(
+                    "El pago (S/ {$totalPagadoConsumos}) no cubre el total de consumos (S/ {$totalConsumos}). " .
+                    "ActivÃ¡ 'cargar a cuenta' o cobrÃ¡ el resto."
+                );
+            }
+
+            // 6. RECALCULAR TOTAL Y PAGADO
+            $reserva->recalcularTotal();
+
+            $totalPagadoReal = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
+
+            $reserva->pagado = $totalPagadoReal;
+            $reserva->saldo = max(0, (float) $reserva->total - $totalPagadoReal);
+            $reserva->save();
+
+            return $reserva->fresh()->load([
+                'cliente', 'habitacion.tipo', 'tarifa', 'estado',
+                'consumos.producto', 'extensiones', 'ajustes',
+                'pagos.metodoPago', 'pagos.usuario',
+            ]);
+        });
+    }
+
+    // ========================================================================
+    // MODULO 09B â€” RESERVAS FUTURAS
+    // ========================================================================
+
+    public function listarProximasConAlerta(): \Illuminate\Support\Collection
+    {
+        $ahora = Carbon::now();
+        $horasAntes = Configuracion::obtener('horas_antes_bloqueo_reserva', 4);
+        $limite = $ahora->copy()->addHours($horasAntes);
+
+        $reservas = Reserva::with(['cliente', 'habitacion.piso', 'habitacion.tipo', 'estado', 'ocupaciones'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->where('fecha_entrada', '>=', $ahora)
+            ->where('fecha_entrada', '<=', $limite)
+            ->orderBy('fecha_entrada')
+            ->get();
+
+        return $reservas->map(function ($r) use ($ahora) {
+            $minutosParaEntrada = (int) round($ahora->diffInMinutes($r->fecha_entrada, false));
+
+            $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente'])
+                ->where('id_habitacion', $r->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('fecha_inicio', '<=', $ahora)
+                ->where('fecha_fin', '>=', $ahora)
+                ->where('id_reserva', '!=', $r->id_reserva)
+                ->first();
+
+            return [
+                'id_reserva' => $r->id_reserva,
+                'codigo_reserva' => $r->codigo_reserva,
+                'cliente' => $r->cliente?->nombre . ' ' . $r->cliente?->apellido,
+                'telefono' => $r->telefono ?? $r->cliente?->celular,
+                'habitacion' => [
+                    'id_habitacion' => $r->habitacion?->id_habitacion,
+                    'numero' => $r->habitacion?->numero,
+                    'piso' => $r->habitacion?->piso?->nombre,
+                    'tipo' => $r->habitacion?->tipo?->nombre,
+                ],
+                'fecha_entrada' => $r->fecha_entrada->toIso8601String(),
+                'minutos_para_entrada' => $minutosParaEntrada,
+                'estado_reserva' => $r->estado?->slug,
+                'alerta_reserva_ocupada' => $ocupacionActual !== null,
+                'cliente_actual' => $ocupacionActual?->reserva?->cliente?->nombre,
+                'id_reserva_actual' => $ocupacionActual?->reserva?->id_reserva,
+                'fecha_fin_ocupacion_actual' => $ocupacionActual?->fecha_fin?->toIso8601String(),
+            ];
+        });
+    }
+
+    public function listarHoy(): \Illuminate\Support\Collection
+    {
+        return Reserva::with(['cliente', 'habitacion.piso', 'estado'])
+            ->whereDate('fecha_entrada', Carbon::today())
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->orderBy('fecha_entrada')
+            ->get();
+    }
+
+    public function listarProximasCheckIn(): \Illuminate\Support\Collection
+    {
+        $ahora = Carbon::now();
+        $tolerancia = Configuracion::obtener('tolerancia_no_show_minutos', 60);
+
+        return Reserva::with(['cliente', 'habitacion.piso', 'estado'])
+            ->whereHas('estado', function ($q) {
+                $q->whereIn('slug', ['confirmada', 'pendiente']);
+            })
+            ->where('fecha_entrada', '<=', $ahora->copy()->addMinutes($tolerancia))
+            ->where('fecha_entrada', '>=', $ahora->copy()->subMinutes($tolerancia))
+            ->orderBy('fecha_entrada')
+            ->get();
+    }
+
+    public function procesarNoShow(): int
+    {
+        return DB::transaction(function () {
+            $ahora = Carbon::now();
+            $tolerancia = Configuracion::obtener('tolerancia_no_show_minutos', 60);
+            $limite = $ahora->copy()->subMinutes($tolerancia);
+
+            $reservas = Reserva::with('estado')
+                ->whereHas('estado', function ($q) {
+                    $q->whereIn('slug', ['confirmada', 'pendiente']);
+                })
+                ->where('fecha_entrada', '<', $limite)
+                ->get();
+
+            $contador = 0;
+            $estadoNoShow = EstadoReserva::where('slug', 'no-show')->first();
+
+            if (!$estadoNoShow) {
+                throw new \RuntimeException('No existe el estado No-Show.');
+            }
+
+            foreach ($reservas as $reserva) {
+                $reserva->update([
+                    'id_estado' => $estadoNoShow->id_estado,
+                    'observaciones' => ($reserva->observaciones ?? '') . ' [No-Show automatico]',
+                ]);
+
+                OcupacionHabitacion::where('id_reserva', $reserva->id_reserva)
+                    ->update(['estado' => 'LIBERADA']);
+
+                $contador++;
+            }
+
+            return $contador;
+        });
+    }
+
+    /**
+     * Lista habitaciones libres en el rango SOLO si su tipo tiene tarifa de $horas.
+     */
+    public function listarDisponiblesEnRango(Carbon $inicio, Carbon $fin, int $horas, int $horasAntesDecoracion = 0): \Illuminate\Support\Collection
+    {
+        $libres = $this->disponibilidad->habitacionesLibresConInfo($inicio, $fin, $horasAntesDecoracion);
+
+        // Filtrar: solo habitaciones cuyo tipo tenga tarifa activa con esas horas exactas
+        return $libres->filter(function ($h) use ($horas) {
+            return Tarifa::where('id_tipo', $h->id_tipo)
+                ->where('horas', $horas)
+                ->where('activo', true)
+                ->exists();
+        })->values();
+    }
+
+    public function listarConConflictoEnRango(Carbon $inicio, Carbon $fin, int $horasAntesDecoracion = 0): \Illuminate\Support\Collection
+    {
+        return $this->disponibilidad->habitacionesConConflicto($inicio, $fin, $horasAntesDecoracion);
+    }
+    // ========================================================================
+    // FILTRADO â€” Reservas (RES-) vs Estadias (WK-)
+    // ========================================================================
+
+    /**
+     * Lista SOLO reservas futuras (codigo RES-).
+     * Incluye pendientes y confirmadas, ordenadas por fecha de entrada.
+     */
+    public function listarSoloReservas(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'RES-%')
+            ->orderByDesc('fecha_entrada')
+            ->get()
+            ->values();
+    }
+
+    /**
+     * Lista SOLO estadias walk-in (codigo WK-).
+     * Ordenadas por fecha de entrada descendente.
+     */
+    public function listarSoloWalkIns(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion',
+            'registroEstadia'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'WK-%')
+            ->orderByDesc('fecha_entrada')
+            ->get()
+            ->values();
+    }
+
+    /**
+     * Lista el historial COMPLETO (todas las reservas + walk-ins).
+     */
+    public function listarHistorialCompleto(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->orderByDesc('fecha_entrada')
+            ->get();
+    }
+    // ========================================================================
+    // CHECK-IN DE RESERVA FUTURA
+    // ========================================================================
+
+    /**
+     * Devuelve toda la info necesaria para la pantalla de Check-In:
+     * - Reserva con cliente, habitacion, tarifa, pagos
+     * - Observaciones pendientes del cliente
+     * - Si la habitacion esta disponible AHORA
+     * - Si ya tiene check-in hecho
+     */
+    public function obtenerInfoCheckIn(int $idReserva): array
+    {
+        $reserva = Reserva::with([
+            'cliente.nivel',
+            'habitacion.piso',
+            'habitacion.tipo',
+            'tarifa',
+            'estado',
+            'pagos.metodoPago',
+            'usuarioCreacion',
+        ])->findOrFail($idReserva);
+
+        // Observaciones pendientes del cliente
+        $observaciones = \App\Models\ClienteObservacion::with(['tipo', 'gravedad'])
+            ->where('id_cliente', $reserva->id_cliente)
+            ->where('resuelto', false)
+            ->get();
+
+        // Â¿Ya tiene check-in?
+        $yaTieneCheckIn = $reserva->registroEstadia !== null;
+
+        // Â¿La habitacion esta disponible AHORA?
+        $ahora = Carbon::now();
+        $habitacionDisponible = $this->disponibilidad->estaDisponible(
+            $reserva->id_habitacion,
+            $ahora,
+            $ahora->copy()->addHours((int) $reserva->horas_base),
+            $reserva->id_reserva, // excluir esta reserva
+            0,                    // horasAntesDecoracion
+            true                  // esWalkIn = true (no validar anticipacion, el cliente esta aca)
+        );
+
+        // Â¿Que la esta ocupando? (si no esta disponible)
+        $ocupacionActual = null;
+        if (!$habitacionDisponible) {
+            $ocupacion = OcupacionHabitacion::with(['reserva.cliente'])
+                ->where('id_habitacion', $reserva->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('id_reserva', '!=', $reserva->id_reserva)
+                ->where('fecha_inicio', '<=', $ahora)
+                ->where('fecha_fin', '>=', $ahora)
+                ->first();
+
+            if ($ocupacion) {
+                $ocupacionActual = [
+                    'id_reserva' => $ocupacion->reserva?->id_reserva,
+                    'codigo_reserva' => $ocupacion->reserva?->codigo_reserva,
+                    'cliente' => $ocupacion->reserva?->cliente?->nombre . ' ' . $ocupacion->reserva?->cliente?->apellido,
+                    'fecha_fin' => $ocupacion->fecha_fin?->toIso8601String(),
+                ];
+            }
+        }
+
+        // Estado de la reserva
+        $estadoSlug = $reserva->estado?->slug;
+        $esConfirmada = in_array($estadoSlug, ['confirmada', 'pendiente']);
+        $esActiva = $estadoSlug === 'activa';
+        $esCerrada = in_array($estadoSlug, ['finalizada', 'cancelada', 'anulada', 'no-show']);
+
+        // Â¿Puede hacer check-in?
+        $puedeCheckIn = $esConfirmada && !$yaTieneCheckIn && $habitacionDisponible;
+
+        // Motivo por el que NO puede
+        $motivoBloqueo = null;
+        if (!$esConfirmada) {
+            $motivoBloqueo = $esActiva
+                ? 'Esta reserva ya tiene check-in activo.'
+                : 'Esta reserva no esta en estado confirmada.';
+        } elseif ($yaTieneCheckIn) {
+            $motivoBloqueo = 'Esta reserva ya tiene check-in hecho.';
+        } elseif (!$habitacionDisponible) {
+            $motivoBloqueo = 'La habitacion esta ocupada por otro cliente. Resolver el conflicto primero.';
+        }
+
+        return [
+            'reserva' => $reserva,
+            'observaciones_pendientes' => $observaciones,
+            'puede_check_in' => $puedeCheckIn,
+            'motivo_bloqueo' => $motivoBloqueo,
+            'ya_tiene_check_in' => $yaTieneCheckIn,
+            'es_confirmada' => $esConfirmada,
+            'es_activa' => $esActiva,
+            'es_cerrada' => $esCerrada,
+            'habitacion_disponible' => $habitacionDisponible,
+            'ocupacion_actual' => $ocupacionActual,
+            'saldo_pendiente' => max(0, (float) $reserva->total - (float) $reserva->pagado),
+        ];
+    }
+
+    /**
+     * Hace el check-in de una reserva futura CON validaciones.
+     * - Valida que este confirmada/pendiente
+     * - Valida que la habitacion este disponible AHORA
+     * - Valida que no tenga ya check-in
+     * - Registra la visita del cliente
+     * - Crea el registro_estadia
+     */
+    public function checkInValidado(int $idReserva, int $idUsuario): Reserva
+    {
+        return DB::transaction(function () use ($idReserva, $idUsuario) {
+            $reserva = Reserva::with(['habitacion'])->findOrFail($idReserva);
+
+            // Validar estado
+            $estadoSlug = $reserva->estado?->slug;
+            if (!in_array($estadoSlug, ['confirmada', 'pendiente'])) {
+                throw new \InvalidArgumentException(
+                    'Esta reserva no esta en estado confirmada (actual: ' . ($estadoSlug ?? 'desconocido') . ').'
+                );
+            }
+
+            // Validar que no tenga check-in
+            if ($reserva->registroEstadia) {
+                throw new \InvalidArgumentException('Esta reserva ya tiene check-in hecho.');
+            }
+
+            // FECHA ORIGINAL de la reserva (se mantiene aunque llegue tarde)
+            $fechaEntradaOriginal = Carbon::parse($reserva->fecha_entrada);
+            $fechaSalidaOriginal = Carbon::parse($reserva->fecha_salida_prevista);
+
+            // Validar que la habitacion NO este ocupada por OTRA reserva
+            $otraOcupacion = OcupacionHabitacion::where('id_habitacion', $reserva->id_habitacion)
+                ->where('estado', 'ACTIVA')
+                ->where('id_reserva', '!=', $reserva->id_reserva)
+                ->where('fecha_inicio', '<=', Carbon::now())
+                ->where('fecha_fin', '>=', Carbon::now())
+                ->first();
+
+            if ($otraOcupacion) {
+                throw new \InvalidArgumentException(
+                    'La habitacion esta ocupada por otro cliente. Resolver el conflicto antes de hacer check-in.'
+                );
+            }
+
+            // Cambiar estado a activa
+            $estadoActiva = EstadoReserva::where('slug', 'activa')->firstOrFail();
+
+            // IMPORTANTE: NO cambiamos fecha_entrada ni fecha_salida_prevista
+            // Se mantiene la fecha original de la reserva (el cliente pierde el tiempo que llego tarde)
+            $reserva->update([
+                'id_estado' => $estadoActiva->id_estado,
+                // NO tocamos fecha_entrada, mantiene la original
+                // NO tocamos fecha_salida_prevista, mantiene la original
+            ]);
+
+            // Crear registro de estadia CON la fecha original (no la de llegada)
+            RegistroEstadia::create([
+                'id_reserva' => $idReserva,
+                'fecha_entrada' => $fechaEntradaOriginal,
+                'id_usuario_checkin' => $idUsuario,
+            ]);
+
+            // La ocupacion mantiene sus fechas originales (ya estaba asi)
+
+            // Registrar la visita del cliente (1 visita mas)
+            $this->clienteVisita->registrar(
+                $reserva->id_cliente,
+                $idReserva,
+                $reserva->id_habitacion,
+                (float) $reserva->monto_habitacion
+            );
+
+            return $reserva->fresh([
+                'cliente', 'habitacion.tipo', 'habitacion.piso', 'tarifa', 'estado'
+            ]);
+        });
+    }
+    /**
+     * Genera el codigo de reserva segun el tipo:
+     * - RES-XXXXXX -> Reserva normal
+     * - DEC-XXXXXX -> Reserva con decoracion
+     */
+    private function generarCodigoReserva(array $datos): string
+    {
+        $prefijo = !empty($datos['con_decoracion']) ? 'DEC-' : 'RES-';
+
+        do {
+            $codigo = $prefijo . strtoupper(Str::random(6));
+        } while (Reserva::where('codigo_reserva', $codigo)->exists());
+
+        return $codigo;
+    }
+    /**
+     * Lista SOLO reservas con decoracion (codigo DEC-).
+     * Ordenadas por fecha de entrada descendente.
+     */
+    public function listarSoloDecoraciones(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'DEC-%')
+            ->orderByDesc('fecha_entrada')
+            ->get()
+            ->values();
+    }}
+
+================================================================================
+=== RolService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Rol;
+use InvalidArgumentException;
+
+class RolService
+{
+    public function listar()
+    {
+        return Rol::orderBy('id')->get();
+    }
+
+    public function listarActivos()
+    {
+        return Rol::where('activo', true)->orderBy('id')->get();
+    }
+
+    public function obtener(int $id): Rol
+    {
+        return Rol::findOrFail($id);
+    }
+
+    public function crear(array $datos): Rol
+    {
+        return Rol::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): Rol
+    {
+        $rol = Rol::findOrFail($id);
+        $rol->fill($datos);
+        $rol->save();
+        return $rol->fresh();
+    }
+
+    public function eliminar(int $id): void
+    {
+        $rol = Rol::findOrFail($id);
+
+        // R53: no eliminar si hay usuarios asociados.
+        if ($rol->usuarios()->exists()) {
+            throw new InvalidArgumentException(
+                'No se puede eliminar el rol porque tiene usuarios asociados. DesactÃ­velo en su lugar.'
+            );
+        }
+
+        $rol->delete();
+    }
+
+    public function desactivar(int $id): Rol
+    {
+        $rol = Rol::findOrFail($id);
+
+        // No desactivar si hay usuarios activos con este rol.
+        if ($rol->usuarios()->where('activo', true)->exists()) {
+            throw new InvalidArgumentException(
+                'No se puede desactivar el rol porque tiene usuarios activos. Reasigne o desactive a esos usuarios primero.'
+            );
+        }
+
+        $rol->activo = false;
+        $rol->save();
+        return $rol->fresh();
+    }
+
+    public function reactivar(int $id): Rol
+    {
+        $rol = Rol::findOrFail($id);
+        $rol->activo = true;
+        $rol->save();
+        return $rol->fresh();
+    }
+}
+
+================================================================================
+=== TarifaService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Tarifa;
+use Illuminate\Support\Collection;
+
+class TarifaService
+{
+    public function listar(): Collection
+    {
+        return Tarifa::with('tipo')->orderBy('id_tipo')->orderBy('horas')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return Tarifa::with('tipo')
+            ->where('activo', true)
+            ->orderBy('id_tipo')
+            ->orderBy('horas')
+            ->get();
+    }
+
+    public function listarPorTipo(int $idTipo): Collection
+    {
+        return Tarifa::where('id_tipo', $idTipo)
+            ->where('activo', true)
+            ->orderBy('horas')
+            ->get();
+    }
+
+    public function obtener(int $id): Tarifa
+    {
+        return Tarifa::with('tipo')->findOrFail($id);
+    }
+
+    public function crear(array $datos): Tarifa
+    {
+        return Tarifa::create($datos)->load('tipo');
+    }
+
+    public function actualizar(int $id, array $datos): Tarifa
+    {
+        $item = Tarifa::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh()->load('tipo');
+    }
+
+    public function desactivar(int $id): Tarifa
+    {
+        $item = Tarifa::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): Tarifa
+    {
+        $item = Tarifa::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        Tarifa::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== TipoDocumentoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\TipoDocumento;
+use Illuminate\Support\Collection;
+
+class TipoDocumentoService
+{
+    public function listar(): Collection
+    {
+        return TipoDocumento::orderBy('nombre')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return TipoDocumento::where('activo', true)->orderBy('nombre')->get();
+    }
+
+    public function obtener(int $id): TipoDocumento
+    {
+        return TipoDocumento::findOrFail($id);
+    }
+
+    public function crear(array $datos): TipoDocumento
+    {
+        return TipoDocumento::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): TipoDocumento
+    {
+        $item = TipoDocumento::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): TipoDocumento
+    {
+        $item = TipoDocumento::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): TipoDocumento
+    {
+        $item = TipoDocumento::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        TipoDocumento::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== TipoHabitacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\TipoHabitacion;
+use Illuminate\Support\Collection;
+
+class TipoHabitacionService
+{
+    public function listar(): Collection
+    {
+        return TipoHabitacion::orderBy('nombre')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return TipoHabitacion::where('activo', true)->orderBy('nombre')->get();
+    }
+
+    public function obtener(int $id): TipoHabitacion
+    {
+        return TipoHabitacion::findOrFail($id);
+    }
+
+    public function crear(array $datos): TipoHabitacion
+    {
+        return TipoHabitacion::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): TipoHabitacion
+    {
+        $item = TipoHabitacion::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): TipoHabitacion
+    {
+        $item = TipoHabitacion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): TipoHabitacion
+    {
+        $item = TipoHabitacion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        TipoHabitacion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== TipoMantenimientoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\TipoMantenimiento;
+use Illuminate\Support\Collection;
+
+class TipoMantenimientoService
+{
+    public function listar(): Collection
+    {
+        return TipoMantenimiento::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return TipoMantenimiento::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): TipoMantenimiento
+    {
+        return TipoMantenimiento::findOrFail($id);
+    }
+
+    public function crear(array $datos): TipoMantenimiento
+    {
+        return TipoMantenimiento::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): TipoMantenimiento
+    {
+        $item = TipoMantenimiento::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): TipoMantenimiento
+    {
+        $item = TipoMantenimiento::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): TipoMantenimiento
+    {
+        $item = TipoMantenimiento::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        TipoMantenimiento::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== TipoObservacionService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\TipoObservacion;
+use Illuminate\Support\Collection;
+
+class TipoObservacionService
+{
+    public function listar(): Collection
+    {
+        return TipoObservacion::orderBy('orden')->get();
+    }
+
+    public function listarActivos(): Collection
+    {
+        return TipoObservacion::where('activo', true)->orderBy('orden')->get();
+    }
+
+    public function obtener(int $id): TipoObservacion
+    {
+        return TipoObservacion::findOrFail($id);
+    }
+
+    public function crear(array $datos): TipoObservacion
+    {
+        return TipoObservacion::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): TipoObservacion
+    {
+        $item = TipoObservacion::findOrFail($id);
+        $item->update($datos);
+        return $item->fresh();
+    }
+
+    public function desactivar(int $id): TipoObservacion
+    {
+        $item = TipoObservacion::findOrFail($id);
+        $item->update(['activo' => false]);
+        return $item;
+    }
+
+    public function reactivar(int $id): TipoObservacion
+    {
+        $item = TipoObservacion::findOrFail($id);
+        $item->update(['activo' => true]);
+        return $item;
+    }
+
+    public function eliminar(int $id): void
+    {
+        TipoObservacion::findOrFail($id)->delete();
+    }
+}
+
+================================================================================
+=== TurnoService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Turno;
+
+class TurnoService
+{
+    public function listar()
+    {
+        return Turno::orderBy('id')->get();
+    }
+
+    public function listarActivos()
+    {
+        return Turno::where('activo', true)->orderBy('id')->get();
+    }
+
+    public function obtener(int $id): Turno
+    {
+        return Turno::findOrFail($id);
+    }
+
+    public function crear(array $datos): Turno
+    {
+        return Turno::create($datos);
+    }
+
+    public function actualizar(int $id, array $datos): Turno
+    {
+        $turno = Turno::findOrFail($id);
+        $turno->fill($datos);
+        $turno->save();
+        return $turno->fresh();
+    }
+
+    public function eliminar(int $id): void
+    {
+        Turno::findOrFail($id)->delete();
+    }
+
+    public function desactivar(int $id): Turno
+    {
+        $turno = Turno::findOrFail($id);
+        $turno->activo = false;
+        $turno->save();
+        return $turno->fresh();
+    }
+
+    public function reactivar(int $id): Turno
+    {
+        $turno = Turno::findOrFail($id);
+        $turno->activo = true;
+        $turno->save();
+        return $turno->fresh();
+    }
+}
+
+================================================================================
+=== UsuarioService.php ===
+================================================================================
+<?php
+
+namespace App\Services;
+
+use App\Models\Usuario;
+use Illuminate\Support\Facades\Hash;
+
+class UsuarioService
+{
+    public function listar()
+    {
+        return Usuario::with(['rol', 'turno'])
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    public function listarActivos()
+    {
+        return Usuario::with(['rol', 'turno'])
+            ->where('activo', true)
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    public function obtener(int $id): Usuario
+    {
+        return Usuario::with(['rol', 'turno'])->findOrFail($id);
+    }
+
+    public function crear(array $datos): Usuario
+    {
+        $datos['password'] = Hash::make($datos['password']);
+        $usuario = Usuario::create($datos);
+        return $usuario->fresh(['rol', 'turno']);
+    }
+
+    public function actualizar(int $id, array $datos): Usuario
+    {
+        $usuario = Usuario::findOrFail($id);
+
+        if (isset($datos['password']) && $datos['password']) {
+            $datos['password'] = Hash::make($datos['password']);
+        } else {
+            unset($datos['password']);
+        }
+
+        $usuario->update($datos);
+        return $usuario->fresh(['rol', 'turno']);
+    }
+
+    public function eliminar(int $id): void
+    {
+        Usuario::findOrFail($id)->delete();
+    }
+
+    public function desactivar(int $id): Usuario
+    {
+        $usuario = Usuario::findOrFail($id);
+        $usuario->update(['activo' => false]);
+        return $usuario->fresh(['rol', 'turno']);
+    }
+
+    public function reactivar(int $id): Usuario
+    {
+        $usuario = Usuario::findOrFail($id);
+        $usuario->update(['activo' => true]);
+        return $usuario->fresh(['rol', 'turno']);
+    }
+}
