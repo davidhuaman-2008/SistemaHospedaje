@@ -39,7 +39,7 @@ class ClienteVisitaService
     }
 
     /**
-     * Recalcula el nivel según las visitas actuales (R34).
+     * Recalcula el nivel segun las visitas actuales (R34).
      * Bronce: 0-4, Plata: 5-9, Oro: 10-19, VIP: 20+
      */
     public function recalcularNivel(Cliente $cliente): void
@@ -79,9 +79,6 @@ class ClienteVisitaService
 
     /**
      * Crea una visita MANUAL (boton "+ Visita" en el CRUD).
-     * - Crea la fila en cliente_visitas
-     * - Incrementa visitas, actualiza ultima_visita, suma total_gastado
-     * - Recalcula nivel
      */
     public function crear(array $datos): ClienteVisita
     {
@@ -113,13 +110,32 @@ class ClienteVisitaService
 
     /**
      * Actualiza una visita existente.
-     * NO recalcula contadores (es solo edicion de metadata).
+     * FIX #5: recalcula contadores del cliente (total_gastado, ultima_visita).
      */
     public function actualizar(int $id, array $datos): ClienteVisita
     {
-        $visita = ClienteVisita::findOrFail($id);
-        $visita->update($datos);
-        return $visita->fresh();
+        return \DB::transaction(function () use ($id, $datos) {
+            $visita = ClienteVisita::findOrFail($id);
+            $idCliente = $visita->id_cliente;
+
+            // Guardar monto anterior para ajustar el total_gastado
+            $montoAnterior = (float) $visita->monto_gastado;
+
+            // Actualizar la visita
+            $visita->update($datos);
+
+            // FIX #5: recalcular contadores del cliente
+            $montoNuevo = (float) $visita->fresh()->monto_gastado;
+            $diferencia = $montoNuevo - $montoAnterior;
+
+            if (abs($diferencia) > 0.01) {
+                $cliente = Cliente::findOrFail($idCliente);
+                $cliente->total_gastado = max(0, (float) $cliente->total_gastado + $diferencia);
+                $cliente->save();
+            }
+
+            return $visita->fresh();
+        });
     }
 
     /**
@@ -142,4 +158,5 @@ class ClienteVisitaService
 
             $visita->delete();
         });
-    }}
+    }
+}

@@ -1,0 +1,736 @@
+﻿
+
+================================================================================
+=== src/pages/promociones/categoriaPromocion/CategoriaPromocionForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { CategoriaPromocion, CategoriaPromocionRequest } from "@/types/promocion"
+
+import { IconPicker } from "@/components/IconPicker"
+interface Props {
+  inicial: CategoriaPromocion | null
+  onGuardar: (datos: CategoriaPromocionRequest) => void
+  onCancelar: () => void
+}
+
+export function CategoriaPromocionForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [slug, setSlug] = useState(inicial?.slug || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [icono, setIcono] = useState(inicial?.icono || "")
+  const [color, setColor] = useState(inicial?.color || "#ec4899")
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !slug.trim()) return
+    onGuardar({ nombre, slug, descripcion: descripcion || null, icono: icono || null, color, orden, activo: true })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug *</label>
+          <input value={slug} onChange={e => setSlug(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono (lucide)</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-full h-10 bg-slate-900 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/categoriaPromocion/CategoriaPromocionPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { categoriaPromocionService } from "@/services/categoriaPromocionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { CategoriaPromocion, CategoriaPromocionRequest } from "@/types/promocion"
+import { CategoriaPromocionForm } from "./CategoriaPromocionForm"
+import { CategoriaPromocionTabla } from "./CategoriaPromocionTabla"
+
+export function CategoriaPromocionPage() {
+  const [items, setItems] = useState<CategoriaPromocion[]>([])
+  const [editando, setEditando] = useState<CategoriaPromocion | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await categoriaPromocionService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await categoriaPromocionService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: CategoriaPromocion) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: CategoriaPromocionRequest) => {
+    try {
+      if (editando) {
+        await categoriaPromocionService.actualizar(editando.id_categoria_promocion, datos)
+        toast.success("Actualizado")
+      } else {
+        await categoriaPromocionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: CategoriaPromocion) => {
+    try {
+      if (item.activo) {
+        await categoriaPromocionService.desactivar(item.id_categoria_promocion)
+        toast.success("Desactivado")
+      } else {
+        await categoriaPromocionService.reactivar(item.id_categoria_promocion)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: CategoriaPromocion) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await categoriaPromocionService.eliminar(item.id_categoria_promocion)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">CategorÃ­as de PromociÃ³n</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva
+        </button>
+      </div>
+      {mostrarForm && <CategoriaPromocionForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <CategoriaPromocionTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/categoriaPromocion/CategoriaPromocionTabla.tsx ===
+================================================================================
+import type { CategoriaPromocion } from "@/types/promocion"
+import { IconoDinamico } from "@/components/IconoDinamico"
+
+interface Props {
+  items: CategoriaPromocion[]
+  onEditar: (item: CategoriaPromocion) => void
+  onCambiarEstado: (item: CategoriaPromocion) => void
+  onEliminar: (item: CategoriaPromocion) => void
+}
+
+export function CategoriaPromocionTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Slug</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_categoria_promocion} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_categoria_promocion}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2 font-mono text-xs">{item.slug}</td>
+              <td className="p-2">
+                {item.color && <span className="inline-block w-4 h-4 rounded" style={{ background: item.color }} />}
+              </td>
+              <td className="p-2">
+                <IconoDinamico
+                  nombre={item.icono}
+                  size={20}
+                  style={{ color: item.color ?? undefined }}
+                />
+              </td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/promocion/PromocionForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { Promocion, PromocionRequest, CategoriaPromocion, TipoPromocion } from "@/types/promocion"
+import type { TipoHabitacion } from "@/types/configuracion"
+
+interface Props {
+  inicial: Promocion | null
+  categorias: CategoriaPromocion[]
+  tiposHabitacion: TipoHabitacion[]
+  onGuardar: (datos: PromocionRequest) => void
+  onCancelar: () => void
+}
+
+/**
+ * Convierte fecha ISO a "YYYY-MM-DD" para <input type="date">
+ */
+function normalizarFecha(valor: string | null | undefined): string {
+  if (!valor) return ""
+  return valor.substring(0, 10)
+}
+
+export function PromocionForm({ inicial, categorias, tiposHabitacion, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [idCategoria, setIdCategoria] = useState<number | null>(inicial?.id_categoria_promocion ?? null)
+  const [tipo, setTipo] = useState<TipoPromocion>(inicial?.tipo || "PORCENTAJE")
+  const [valor, setValor] = useState(inicial?.valor || 0)
+  const [fechaInicio, setFechaInicio] = useState(normalizarFecha(inicial?.fecha_inicio))
+  const [fechaFin, setFechaFin] = useState(normalizarFecha(inicial?.fecha_fin))
+  const [idTipoHabitacion, setIdTipoHabitacion] = useState<number | null>(inicial?.id_tipo_habitacion ?? null)
+  const [montoMinimo, setMontoMinimo] = useState(inicial?.monto_minimo || 0)
+  const [requiereCodigo, setRequiereCodigo] = useState(inicial?.requiere_codigo || false)
+  const [codigo, setCodigo] = useState(inicial?.codigo || "")
+  const [limiteUso, setLimiteUso] = useState(inicial?.limite_uso || 0)
+  const [limitePorCliente, setLimitePorCliente] = useState(inicial?.limite_por_cliente || 0)
+  const [acumulable, setAcumulable] = useState(inicial?.acumulable || false)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || valor <= 0) return
+    onGuardar({
+      nombre,
+      descripcion: descripcion || null,
+      id_categoria_promocion: idCategoria,
+      tipo,
+      valor,
+      fecha_inicio: fechaInicio || null,
+      fecha_fin: fechaFin || null,
+      id_tipo_habitacion: idTipoHabitacion,
+      monto_minimo: montoMinimo || null,
+      requiere_codigo: requiereCodigo,
+      codigo: codigo || null,
+      limite_uso: limiteUso || null,
+      limite_por_cliente: limitePorCliente || null,
+      acumulable,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">CategorÃ­a</label>
+          <select value={idCategoria ?? ""} onChange={e => setIdCategoria(e.target.value ? Number(e.target.value) : null)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="">â€” Sin categorÃ­a â€”</option>
+            {categorias.map(c => (
+              <option key={c.id_categoria_promocion} value={c.id_categoria_promocion}>{c.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo *</label>
+          <select value={tipo} onChange={e => setTipo(e.target.value as TipoPromocion)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="PORCENTAJE">Porcentaje (%)</option>
+            <option value="MONTO_FIJO">Monto fijo (S/)</option>
+            <option value="NOCHE_GRATIS">Noche gratis</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Valor *</label>
+          <input type="number" step="0.01" value={valor} onChange={e => setValor(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Fecha inicio</label>
+          <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Fecha fin</label>
+          <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo de habitaciÃ³n</label>
+          <select value={idTipoHabitacion ?? ""} onChange={e => setIdTipoHabitacion(e.target.value ? Number(e.target.value) : null)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="">â€” Todas â€”</option>
+            {tiposHabitacion.map(t => (
+              <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Monto mÃ­nimo (S/)</label>
+          <input type="number" step="0.01" value={montoMinimo} onChange={e => setMontoMinimo(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">LÃ­mite uso global</label>
+          <input type="number" value={limiteUso} onChange={e => setLimiteUso(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">LÃ­mite por cliente</label>
+          <input type="number" value={limitePorCliente} onChange={e => setLimitePorCliente(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={requiereCodigo} onChange={e => setRequiereCodigo(e.target.checked)} className="w-4 h-4" />
+          <label className="text-slate-300 text-sm">Requiere cÃ³digo</label>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">CÃ³digo</label>
+          <input value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="DESC10" className="w-full bg-slate-900 text-white p-2 rounded" disabled={!requiereCodigo} />
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={acumulable} onChange={e => setAcumulable(e.target.checked)} className="w-4 h-4" />
+          <label className="text-slate-300 text-sm">Acumulable</label>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/promocion/PromocionPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { promocionService } from "@/services/promocionService"
+import { categoriaPromocionService } from "@/services/categoriaPromocionService"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Promocion, PromocionRequest, CategoriaPromocion } from "@/types/promocion"
+import type { TipoHabitacion } from "@/types/configuracion"
+import { PromocionForm } from "./PromocionForm"
+import { PromocionTabla } from "./PromocionTabla"
+
+export function PromocionPage() {
+  const [items, setItems] = useState<Promocion[]>([])
+  const [categorias, setCategorias] = useState<CategoriaPromocion[]>([])
+  const [tiposHabitacion, setTiposHabitacion] = useState<TipoHabitacion[]>([])
+  const [editando, setEditando] = useState<Promocion | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const promos = await promocionService.listar()
+        if (!cancelado) setItems(promos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const cargarDatosFormulario = async () => {
+    try {
+      const [cats, tipos] = await Promise.all([
+        categoriaPromocionService.listarActivos(),
+        tipoHabitacionService.listarActivos(),
+      ])
+      setCategorias(cats)
+      setTiposHabitacion(tipos)
+    } catch {
+      toast.error("Error al cargar datos del formulario")
+    }
+  }
+
+  const recargar = async () => {
+    try { setItems(await promocionService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = async () => {
+    setEditando(null)
+    await cargarDatosFormulario()
+    setMostrarForm(true)
+  }
+
+  const abrirEditar = async (item: Promocion) => {
+    setEditando(item)
+    await cargarDatosFormulario()
+    setMostrarForm(true)
+  }
+
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: PromocionRequest) => {
+    try {
+      if (editando) {
+        await promocionService.actualizar(editando.id_promocion, datos)
+        toast.success("Actualizado")
+      } else {
+        await promocionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Promocion) => {
+    try {
+      if (item.activo) {
+        await promocionService.desactivar(item.id_promocion)
+        toast.success("Desactivado")
+      } else {
+        await promocionService.reactivar(item.id_promocion)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Promocion) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await promocionService.eliminar(item.id_promocion)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Promociones</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva PromociÃ³n
+        </button>
+      </div>
+      {mostrarForm && (
+        <PromocionForm
+          inicial={editando}
+          categorias={categorias}
+          tiposHabitacion={tiposHabitacion}
+          onGuardar={guardar}
+          onCancelar={cerrar}
+        />
+      )}
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <PromocionTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/promocion/PromocionTabla.tsx ===
+================================================================================
+import type { Promocion } from "@/types/promocion"
+
+interface Props {
+  items: Promocion[]
+  onEditar: (item: Promocion) => void
+  onCambiarEstado: (item: Promocion) => void
+  onEliminar: (item: Promocion) => void
+}
+
+function formatearTipo(tipo: string, valor: number): string {
+  if (tipo === "PORCENTAJE") return `${valor}%`
+  if (tipo === "MONTO_FIJO") return `S/ ${Number(valor).toFixed(2)}`
+  if (tipo === "NOCHE_GRATIS") return "Noche gratis"
+  return `S/ ${Number(valor).toFixed(2)}`
+}
+
+/**
+ * Convierte "2026-10-03T05:00:00.000000Z" a "03/10/2026"
+ */
+function formatearFecha(fecha: string | null): string {
+  if (!fecha) return "â€”"
+  const soloFecha = fecha.substring(0, 10) // "2026-10-03"
+  const [anio, mes, dia] = soloFecha.split("-")
+  return `${dia}/${mes}/${anio}`
+}
+
+export function PromocionTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[900px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">CategorÃ­a</th>
+            <th className="p-2 text-left">Valor</th>
+            <th className="p-2 text-left">Vigencia</th>
+            <th className="p-2 text-left">CÃ³digo</th>
+            <th className="p-2 text-left">Usos</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_promocion} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_promocion}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">
+                {item.categoria ? (
+                  <span
+                    className="px-2 py-1 rounded text-xs font-medium"
+                    style={{
+                      background: item.categoria.color ? `${item.categoria.color}22` : "#334155",
+                      color: item.categoria.color ?? "#e2e8f0",
+                      border: `1px solid ${item.categoria.color ?? "#475569"}`,
+                    }}
+                  >
+                    {item.categoria.nombre}
+                  </span>
+                ) : "â€”"}
+              </td>
+              <td className="p-2 font-semibold text-cyan-300">{formatearTipo(item.tipo, item.valor)}</td>
+              <td className="p-2 text-xs">
+                {item.fecha_inicio || item.fecha_fin
+                  ? `${formatearFecha(item.fecha_inicio)} â†’ ${formatearFecha(item.fecha_fin)}`
+                  : "Sin fecha"}
+              </td>
+              <td className="p-2 font-mono text-xs">{item.codigo ?? "â€”"}</td>
+              <td className="p-2 text-xs">
+                {item.limite_uso ? `${item.usos_actuales}/${item.limite_uso}` : "Ilimitados"}
+              </td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/promocionCliente/PromocionClientePage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { promocionClienteService } from "@/services/promocionClienteService"
+import { mensajeDeError } from "@/lib/errores"
+import type { PromocionCliente } from "@/types/promocion"
+import { PromocionClienteTabla } from "./PromocionClienteTabla"
+
+export function PromocionClientePage() {
+  const [items, setItems] = useState<PromocionCliente[]>([])
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await promocionClienteService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await promocionClienteService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const marcarUsado = async (item: PromocionCliente) => {
+    if (!confirm(`Marcar como usado la promociÃ³n "${item.promocion?.nombre}"?`)) return
+    try {
+      await promocionClienteService.marcarUsado(item.id_promo_cliente)
+      toast.success("Marcado como usado")
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: PromocionCliente) => {
+    if (!confirm("Eliminar esta asignaciÃ³n?")) return
+    try {
+      await promocionClienteService.eliminar(item.id_promo_cliente)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Promociones Asignadas</h1>
+      </div>
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <PromocionClienteTabla items={items} onMarcarUsado={marcarUsado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/promociones/promocionCliente/PromocionClienteTabla.tsx ===
+================================================================================
+import type { PromocionCliente } from "@/types/promocion"
+
+interface Props {
+  items: PromocionCliente[]
+  onMarcarUsado: (item: PromocionCliente) => void
+  onEliminar: (item: PromocionCliente) => void
+}
+
+export function PromocionClienteTabla({ items, onMarcarUsado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">PromociÃ³n</th>
+            <th className="p-2 text-left">CÃ³digo</th>
+            <th className="p-2 text-left">Vencimiento</th>
+            <th className="p-2 text-left">Usado</th>
+            <th className="p-2 text-left">Fecha uso</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_promo_cliente} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_promo_cliente}</td>
+              <td className="p-2">{item.promocion?.nombre ?? "â€”"}</td>
+              <td className="p-2 font-mono text-xs">{item.codigo_personalizado ?? "â€”"}</td>
+              <td className="p-2 text-xs">{item.fecha_vencimiento ?? "â€”"}</td>
+              <td className="p-2">
+                <span className={item.usado ? "text-red-400" : "text-green-400"}>
+                  {item.usado ? "Usado" : "Disponible"}
+                </span>
+              </td>
+              <td className="p-2 text-xs">{item.fecha_uso ?? "â€”"}</td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  {!item.usado && (
+                    <button onClick={() => onMarcarUsado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">Marcar usado</button>
+                  )}
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

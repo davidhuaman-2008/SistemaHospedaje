@@ -1,0 +1,1252 @@
+﻿
+
+================================================================================
+=== database/seeders/CategoriaProductoSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class CategoriaProductoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('categorias_producto')->insert([
+            ['nombre' => 'Bebidas', 'slug' => 'bebidas', 'descripcion' => 'Gaseosas, aguas, cervezas', 'icono' => 'cup-soda', 'color' => '#0ea5e9', 'orden' => 1, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Licores', 'slug' => 'licores', 'descripcion' => 'Vinos, piscos, chilcanos', 'icono' => 'wine', 'color' => '#7c3aed', 'orden' => 2, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Golosinas', 'slug' => 'golosinas', 'descripcion' => 'Papas, piqueos, galletas', 'icono' => 'cookie', 'color' => '#f59e0b', 'orden' => 3, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Snacks', 'slug' => 'snacks', 'descripcion' => 'Snacks varios', 'icono' => 'popcorn', 'color' => '#ef4444', 'orden' => 4, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Cuidado Personal', 'slug' => 'cuidado-personal', 'descripcion' => 'Preservativos, lubricantes', 'icono' => 'heart', 'color' => '#ec4899', 'orden' => 5, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Aseo', 'slug' => 'aseo', 'descripcion' => 'Shampoo, desodorante, jabÃ³n', 'icono' => 'spray-can', 'color' => '#06b6d4', 'orden' => 6, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Peluches', 'slug' => 'peluches', 'descripcion' => 'Peluches y baby dolkers', 'icono' => 'teddy-bear', 'color' => '#a855f7', 'orden' => 7, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ CategorÃ­as de productos insertadas: 7 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/CategoriaPromocionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class CategoriaPromocionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('categorias_promocion')->insert([
+            ['nombre' => 'CumpleaÃ±os', 'slug' => 'cumpleanos', 'descripcion' => 'Descuento por cumpleaÃ±os del cliente', 'icono' => 'cake', 'color' => '#ec4899', 'orden' => 1, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Aniversario', 'slug' => 'aniversario', 'descripcion' => 'Descuento por aniversario de pareja', 'icono' => 'heart', 'color' => '#ef4444', 'orden' => 2, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Temporada Alta', 'slug' => 'temporada-alta', 'descripcion' => 'Promociones en temporada alta', 'icono' => 'sun', 'color' => '#f59e0b', 'orden' => 3, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Fidelidad', 'slug' => 'fidelidad', 'descripcion' => 'Descuento por nivel de fidelizaciÃ³n', 'icono' => 'award', 'color' => '#8b5cf6', 'orden' => 4, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'ReactivaciÃ³n', 'slug' => 'reactivacion', 'descripcion' => 'Para clientes inactivos', 'icono' => 'user-plus', 'color' => '#06b6d4', 'orden' => 5, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Referido', 'slug' => 'referido', 'descripcion' => 'Cliente que trae a otro cliente', 'icono' => 'users', 'color' => '#10b981', 'orden' => 6, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Primera Visita', 'slug' => 'primera-visita', 'descripcion' => 'Para clientes nuevos', 'icono' => 'sparkles', 'color' => '#a855f7', 'orden' => 7, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Otros', 'slug' => 'otros', 'descripcion' => 'Otras promociones', 'icono' => 'tag', 'color' => '#64748b', 'orden' => 8, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ CategorÃ­as de promociÃ³n insertadas: 8 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/ConfiguracionBaseSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ConfiguracionBaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // ===== PISOS =====
+        DB::table('pisos')->insert([
+            ['nombre' => 'Piso 1', 'orden' => 1, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Piso 2', 'orden' => 2, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Piso 3', 'orden' => 3, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Piso 4', 'orden' => 4, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ===== TIPOS DE HABITACIÃ“N =====
+        DB::table('tipos_habitacion')->insert([
+            ['nombre' => 'Simple',           'slug' => 'simple',                'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'EstÃ¡ndar',         'slug' => 'estandar',              'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Premium',          'slug' => 'premium',               'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Safari',           'slug' => 'safari',                'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Marina',           'slug' => 'marina',                'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'RomÃ¡ntica',        'slug' => 'romantica',             'capacidad' => 2, 'camas' => 1, 'tiene_jacuzzi' => false, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Jacuzzi VIP',      'slug' => 'jacuzzi-suite-vip',     'capacidad' => 3, 'camas' => 1, 'tiene_jacuzzi' => true,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Jacuzzi Estelar',  'slug' => 'jacuzzi-suite-estelar', 'capacidad' => 3, 'camas' => 1, 'tiene_jacuzzi' => true,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ===== TIPOS DE DOCUMENTO =====
+        DB::table('tipos_documento')->insert([
+            ['nombre' => 'DNI',                  'abreviatura' => 'DNI', 'longitud' => 8,    'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'RUC',                  'abreviatura' => 'RUC', 'longitud' => 11,   'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'CarnÃ© de ExtranjerÃ­a', 'abreviatura' => 'CE',  'longitud' => 12,   'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Pasaporte',            'abreviatura' => 'PAS', 'longitud' => null, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ===== MÃ‰TODOS DE PAGO =====
+        DB::table('metodos_pago')->insert([
+            ['nombre' => 'Efectivo',                 'es_de_caja' => true,  'icono' => 'banknote',         'color' => '#16a34a', 'orden' => 1,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Tarjeta (POS)',            'es_de_caja' => true,  'icono' => 'credit-card',      'color' => '#2563eb', 'orden' => 2,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Yape Hospedaje',           'es_de_caja' => true,  'icono' => 'smartphone',       'color' => '#7c3aed', 'orden' => 3,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Yape DueÃ±a',               'es_de_caja' => false, 'icono' => 'smartphone',       'color' => '#f59e0b', 'orden' => 4,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Plin Hospedaje',           'es_de_caja' => true,  'icono' => 'smartphone',       'color' => '#06b6d4', 'orden' => 5,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Plin DueÃ±a',               'es_de_caja' => false, 'icono' => 'smartphone',       'color' => '#f59e0b', 'orden' => 6,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'DepÃ³sito Hospedaje',       'es_de_caja' => true,  'icono' => 'building',         'color' => '#0891b2', 'orden' => 7,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'DepÃ³sito DueÃ±a',           'es_de_caja' => false, 'icono' => 'building',         'color' => '#f59e0b', 'orden' => 8,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Transferencia Hospedaje',  'es_de_caja' => true,  'icono' => 'arrow-right-left', 'color' => '#7c3aed', 'orden' => 9,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Transferencia DueÃ±a',      'es_de_caja' => false, 'icono' => 'arrow-right-left', 'color' => '#f59e0b', 'orden' => 10, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ===== CATEGORÃAS DE MOVIMIENTO =====
+        DB::table('categorias_movimiento')->insert([
+            // Ingresos (9)
+            ['nombre' => 'Alquiler habitaciÃ³n',        'tipo' => 'Ingreso', 'orden' => 1,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'ExtensiÃ³n de estadÃ­a',       'tipo' => 'Ingreso', 'orden' => 2,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Turno adicional',            'tipo' => 'Ingreso', 'orden' => 3,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Consumo frigobar',           'tipo' => 'Ingreso', 'orden' => 4,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'DecoraciÃ³n (ganancia local)', 'tipo' => 'Ingreso', 'orden' => 5,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Servicios adicionales',      'tipo' => 'Ingreso', 'orden' => 6,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Propinas',                   'tipo' => 'Ingreso', 'orden' => 7,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Hallazgos',                  'tipo' => 'Ingreso', 'orden' => 8,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Ajuste positivo',            'tipo' => 'Ingreso', 'orden' => 9,  'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            // Egresos (14)
+            ['nombre' => 'Pago a proveedor',           'tipo' => 'Egreso',  'orden' => 10, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Compra de insumos',          'tipo' => 'Egreso',  'orden' => 11, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Pago al personal',           'tipo' => 'Egreso',  'orden' => 12, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Desayuno',                   'tipo' => 'Egreso',  'orden' => 13, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Transporte',                 'tipo' => 'Egreso',  'orden' => 14, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Mantenimiento',              'tipo' => 'Egreso',  'orden' => 15, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Servicios bÃ¡sicos',          'tipo' => 'Egreso',  'orden' => 16, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Publicidad',                 'tipo' => 'Egreso',  'orden' => 17, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Ajuste negativo',            'tipo' => 'Egreso',  'orden' => 18, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Retiro a caja fuerte',       'tipo' => 'Egreso',  'orden' => 19, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'DevoluciÃ³n a cliente',       'tipo' => 'Egreso',  'orden' => 20, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Compra de decoraciÃ³n',       'tipo' => 'Egreso',  'orden' => 21, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Productos de limpieza',      'tipo' => 'Egreso',  'orden' => 22, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Otros egresos',              'tipo' => 'Egreso',  'orden' => 23, 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        // ===== NIVELES DE CLIENTE =====
+        DB::table('clientes_niveles')->insert([
+            ['nombre' => 'Bronce', 'visitas_min' => 0,  'visitas_max' => 4,    'descuento' => 0.00,  'color' => '#cd7f32', 'icono' => 'award', 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Plata',  'visitas_min' => 5,  'visitas_max' => 9,    'descuento' => 5.00,  'color' => '#c0c0c0', 'icono' => 'award', 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'Oro',    'visitas_min' => 10, 'visitas_max' => 19,   'descuento' => 10.00, 'color' => '#ffd700', 'icono' => 'award', 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['nombre' => 'VIP',    'visitas_min' => 20, 'visitas_max' => null, 'descuento' => 15.00, 'color' => '#9b59b6', 'icono' => 'crown', 'activo' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $this->command->info('âœ“ ConfiguraciÃ³n Base insertada: 53 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/ConfiguracionSistemaSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ConfiguracionSistemaSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        $configs = [
+            ['clave' => 'tolerancia_extension_minutos', 'valor' => '30', 'tipo' => 'INT', 'descripcion' => 'Minutos de tolerancia antes de cobrar hora extra', 'grupo' => 'reservas'],
+            ['clave' => 'buffer_limpieza_minutos', 'valor' => '30', 'tipo' => 'INT', 'descripcion' => 'Buffer entre reservas (limpieza + check-in)', 'grupo' => 'reservas'],
+            ['clave' => 'tolerancia_no_show_minutos', 'valor' => '60', 'tipo' => 'INT', 'descripcion' => 'Tiempo para marcar No-Show', 'grupo' => 'reservas'],
+            ['clave' => 'horas_antes_bloqueo_reserva', 'valor' => '4', 'tipo' => 'INT', 'descripcion' => 'Horas antes del check-in para bloquear visualmente', 'grupo' => 'reservas'],
+            ['clave' => 'horas_antes_decoracion', 'valor' => '24', 'tipo' => 'INT', 'descripcion' => 'Horas de anticipacion minima para reservar con decoracion (proveedor necesita tiempo)', 'grupo' => 'reservas'],
+            ['clave' => 'anticipacion_minima_reserva_minutos', 'valor' => '30', 'tipo' => 'INT', 'descripcion' => 'Minutos de anticipacion minima para reservar SIN decoracion', 'grupo' => 'reservas'],
+            ['clave' => 'igv_porcentaje', 'valor' => '18', 'tipo' => 'DECIMAL', 'descripcion' => 'IGV aplicado a comprobantes', 'grupo' => 'comprobantes'],
+            ['clave' => 'moneda_simbolo', 'valor' => 'S/', 'tipo' => 'STRING', 'descripcion' => 'Simbolo de moneda', 'grupo' => 'general'],
+        ];
+
+        foreach ($configs as $c) {
+            DB::table('configuraciones')->updateOrInsert(
+                ['clave' => $c['clave']],
+                array_merge($c, ['created_at' => $ahora, 'updated_at' => $ahora])
+            );
+        }
+
+        $this->command->info('OK Configuraciones insertadas: ' . count($configs));
+    }
+}
+
+================================================================================
+=== database/seeders/DatabaseSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Rol;
+use App\Models\Turno;
+use App\Models\Usuario;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $roles = [
+            ['nombre' => 'admin', 'descripcion' => 'Acceso total al sistema'],
+            ['nombre' => 'encargado', 'descripcion' => 'Turno dÃ­a, supervisa'],
+            ['nombre' => 'recepcionista', 'descripcion' => 'RecepciÃ³n y limpieza noche'],
+            ['nombre' => 'limpieza', 'descripcion' => 'Solo habitaciones'],
+            ['nombre' => 'cajero', 'descripcion' => 'Solo caja y pagos'],
+        ];
+
+        foreach ($roles as $rol) {
+            Rol::create($rol);
+        }
+
+        $turnos = [
+            ['nombre' => 'MaÃ±ana', 'hora_inicio' => '08:00:00', 'hora_fin' => '20:00:00', 'descripcion' => 'Turno dÃ­a'],
+            ['nombre' => 'Noche', 'hora_inicio' => '20:00:00', 'hora_fin' => '08:00:00', 'descripcion' => 'Turno noche'],
+            ['nombre' => 'Libre', 'hora_inicio' => '00:00:00', 'hora_fin' => '23:59:59', 'descripcion' => 'Sin restricciÃ³n (admin)'],
+        ];
+
+        foreach ($turnos as $turno) {
+            Turno::create($turno);
+        }
+
+        Usuario::create([
+            'nombre' => 'Nancy',
+            'apellido' => 'Admin',
+            'nombre_usuario' => 'nancy',
+            'password' => Hash::make('admin123'),
+            'id_rol' => 1,
+            'id_turno' => 3,
+            'activo' => true,
+        ]);
+    }
+}
+
+================================================================================
+=== database/seeders/EstadoCuentaPagarSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class EstadoCuentaPagarSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $estados = [
+            ['Pendiente', 'pendiente', 'Deuda sin pagos aÃºn', '#f59e0b', 'clock', false, 1],
+            ['Parcial', 'parcial', 'Deuda con pagos parciales', '#3b82f6', 'circle-half', false, 2],
+            ['Pagada', 'pagada', 'Deuda totalmente pagada', '#10b981', 'check-circle', true, 3],
+            ['Anulada', 'anulada', 'Deuda anulada', '#64748b', 'x-circle', true, 4],
+        ];
+
+        foreach ($estados as $e) {
+            DB::table('estados_cuenta_pagar')->insert([
+                'nombre' => $e[0],
+                'slug' => $e[1],
+                'descripcion' => $e[2],
+                'color' => $e[3],
+                'icono' => $e[4],
+                'es_estado_final' => $e[5],
+                'orden' => $e[6],
+                'activo' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
+
+================================================================================
+=== database/seeders/EstadoReservaSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class EstadoReservaSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('estados_reserva')->insert([
+            ['nombre' => 'Pendiente', 'slug' => 'pendiente', 'color' => '#fbbf24', 'descripcion' => 'Reserva pendiente de confirmaciÃ³n', 'orden' => 1, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Confirmada', 'slug' => 'confirmada', 'color' => '#3b82f6', 'descripcion' => 'Reserva confirmada', 'orden' => 2, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Activa', 'slug' => 'activa', 'color' => '#ef4444', 'descripcion' => 'Cliente ya estÃ¡ en la habitaciÃ³n', 'orden' => 3, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Finalizada', 'slug' => 'finalizada', 'color' => '#10b981', 'descripcion' => 'EstadÃ­a completada', 'orden' => 4, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Cancelada', 'slug' => 'cancelada', 'color' => '#64748b', 'descripcion' => 'Reserva cancelada', 'orden' => 5, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'No-Show', 'slug' => 'no-show', 'color' => '#7c3aed', 'descripcion' => 'Cliente no llegÃ³', 'orden' => 6, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Anulada', 'slug' => 'anulada', 'color' => '#991b1b', 'descripcion' => 'Registro anulado (no cuenta para SUNAT)', 'orden' => 7, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ Estados de reserva insertados: 7');
+    }
+}
+
+================================================================================
+=== database/seeders/GravedadesObservacionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class GravedadesObservacionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('gravedades_observacion')->insert([
+            ['nombre' => 'Baja', 'slug' => 'baja', 'color' => '#16a34a', 'prioridad' => 1, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Media', 'slug' => 'media', 'color' => '#f59e0b', 'prioridad' => 2, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Alta', 'slug' => 'alta', 'color' => '#dc2626', 'prioridad' => 3, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'CrÃ­tica', 'slug' => 'critica', 'color' => '#7f1d1d', 'prioridad' => 4, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ Gravedades insertadas: 4 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/HabitacionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class HabitacionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        // Formato: [numero, id_piso, id_tipo, orden, activo]
+        // Tipos: 1=Simple, 2=EstÃ¡ndar, 3=Premium, 4=Safari, 5=Marina,
+        //        6=RomÃ¡ntica, 7=Jacuzzi VIP, 8=Jacuzzi Estelar
+        // Pisos: 1, 2, 3, 4
+
+        $habitaciones = [
+            // --- PISO 1 (7 habitaciones) ---
+            ['101', 1, 2, 1, true],
+            ['102', 1, 2, 2, true],
+            ['103', 1, 4, 3, true],
+            ['104', 1, 5, 4, true],
+            ['105', 1, 4, 5, true],
+            ['106', 1, 2, 6, true],
+            ['107', 1, 1, 7, true],
+
+            // --- PISO 2 (9 habitaciones, 208 inactiva) ---
+            ['201', 2, 3, 1, true],
+            ['202', 2, 1, 2, true],
+            ['203', 2, 2, 3, true],
+            ['204', 2, 2, 4, true],
+            ['205', 2, 6, 5, true],
+            ['206', 2, 2, 6, true],
+            ['207', 2, 2, 7, true],
+            ['208', 2, 2, 8, false],   // INACTIVA (almacÃ©n/recepciÃ³n)
+            ['209', 2, 7, 9, true],
+
+            // --- PISO 3 (8 habitaciones) ---
+            ['301', 3, 7, 1, true],
+            ['302', 3, 3, 2, true],
+            ['303', 3, 1, 3, true],
+            ['304', 3, 2, 4, true],
+            ['305', 3, 2, 5, true],
+            ['306', 3, 6, 6, true],
+            ['307', 3, 2, 7, true],
+            ['308', 3, 8, 8, true],
+
+            // --- PISO 4 (8 habitaciones) ---
+            ['401', 4, 7, 1, true],
+            ['402', 4, 3, 2, true],
+            ['403', 4, 1, 3, true],
+            ['404', 4, 2, 4, true],
+            ['405', 4, 2, 5, true],
+            ['406', 4, 5, 6, true],
+            ['407', 4, 3, 7, true],
+            ['408', 4, 6, 8, true],
+        ];
+
+        foreach ($habitaciones as $h) {
+            DB::table('habitaciones')->insert([
+                'numero' => $h[0],
+                'id_piso' => $h[1],
+                'id_tipo' => $h[2],
+                'orden' => $h[3],
+                'activo' => $h[4],
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ]);
+        }
+
+        $this->command->info('âœ“ Habitaciones insertadas: ' . count($habitaciones));
+        $this->command->info('  - Activas: 31');
+        $this->command->info('  - Inactivas: 1 (208)');
+    }
+}
+
+================================================================================
+=== database/seeders/PaqueteDecoracionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Proveedor;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class PaqueteDecoracionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        $proveedor = Proveedor::firstOrCreate(
+            ['razon_social' => 'Decoraciones & FantasÃ­a SAC'],
+            [
+                'nombre_comercial' => 'DecoFantasÃ­a',
+                'ruc' => '20901234572',
+                'telefono' => '989-666-777',
+                'email' => 'ventas@decofantasia.pe',
+                'direccion' => 'Av. Las Flores 789, Lima',
+                'contacto' => 'Patricia Vega',
+                'tipo' => 'Servicios',
+                'notas' => 'Proveedor de paquetes de decoraciÃ³n temÃ¡ticos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ]
+        );
+
+        $idProveedor = $proveedor->id_proveedor;
+
+        // Tipos de habitaciÃ³n: 1=Simple, 2=EstÃ¡ndar, 3=Premium, 4=Safari,
+        //                      5=Marina, 6=RomÃ¡ntica, 7=Jacuzzi VIP, 8=Jacuzzi Estelar
+
+        $paquetes = [
+            ['nombre' => 'Paquete RomÃ¡ntico NÂ°1 - Suite VIP', 'slug' => 'romantico-1-suite-vip', 'descripcion' => 'DecoraciÃ³n romÃ¡ntica clÃ¡sica para Suite VIP', 'precio_total' => 199.00, 'ganancia_local' => 30.00, 'ganancia_proveedor' => 169.00, 'id_tipo_habitacion' => 7, 'horas_incluidas' => 8, 'incluye_jacuzzi' => true, 'incluye_vino' => true, 'incluye_decoracion' => true, 'incluye_sexshop' => false, 'incluye_netflix' => false],
+            ['nombre' => 'Paquete RomÃ¡ntico NÂ°2 - Suite VIP', 'slug' => 'romantico-2-suite-vip', 'descripcion' => 'DecoraciÃ³n romÃ¡ntica premium para Suite VIP', 'precio_total' => 219.00, 'ganancia_local' => 35.00, 'ganancia_proveedor' => 184.00, 'id_tipo_habitacion' => 7, 'horas_incluidas' => 8, 'incluye_jacuzzi' => true, 'incluye_vino' => true, 'incluye_decoracion' => true, 'incluye_sexshop' => true, 'incluye_netflix' => false],
+            ['nombre' => 'Paquete Estelar NÂ°3 - Suite Estelar', 'slug' => 'estelar-3-suite-estelar', 'descripcion' => 'DecoraciÃ³n con ambiente estelar nocturno', 'precio_total' => 259.00, 'ganancia_local' => 40.00, 'ganancia_proveedor' => 219.00, 'id_tipo_habitacion' => 8, 'horas_incluidas' => 12, 'incluye_jacuzzi' => true, 'incluye_vino' => true, 'incluye_decoracion' => true, 'incluye_sexshop' => false, 'incluye_netflix' => true],
+            ['nombre' => 'Paquete RomÃ¡ntico NÂ°4 - TemÃ¡tica RomÃ¡ntica', 'slug' => 'romantico-4-tematica', 'descripcion' => 'DecoraciÃ³n temÃ¡tica romÃ¡ntica estÃ¡ndar', 'precio_total' => 159.00, 'ganancia_local' => 25.00, 'ganancia_proveedor' => 134.00, 'id_tipo_habitacion' => 6, 'horas_incluidas' => 8, 'incluye_jacuzzi' => false, 'incluye_vino' => true, 'incluye_decoracion' => true, 'incluye_sexshop' => false, 'incluye_netflix' => false],
+            ['nombre' => 'Paquete FantasÃ­a NÂ°5 - TemÃ¡tica Safari', 'slug' => 'fantasia-5-safari', 'descripcion' => 'DecoraciÃ³n con temÃ¡tica safari/africana', 'precio_total' => 159.00, 'ganancia_local' => 25.00, 'ganancia_proveedor' => 134.00, 'id_tipo_habitacion' => 4, 'horas_incluidas' => 8, 'incluye_jacuzzi' => false, 'incluye_vino' => false, 'incluye_decoracion' => true, 'incluye_sexshop' => true, 'incluye_netflix' => false],
+            ['nombre' => 'Paquete Aniversario NÂ°6 - Suite Estelar Completo', 'slug' => 'aniversario-6-estelar-completo', 'descripcion' => 'Paquete completo para aniversarios en Suite Estelar', 'precio_total' => 299.00, 'ganancia_local' => 45.00, 'ganancia_proveedor' => 254.00, 'id_tipo_habitacion' => 8, 'horas_incluidas' => 12, 'incluye_jacuzzi' => true, 'incluye_vino' => true, 'incluye_decoracion' => true, 'incluye_sexshop' => true, 'incluye_netflix' => true],
+        ];
+
+        foreach ($paquetes as $p) {
+            DB::table('paquetes_decoracion')->insert(array_merge($p, [
+                'id_proveedor' => $idProveedor,
+                'imagen' => null,
+                'activo' => true,
+                'created_at' => $ahora,
+            ]));
+        }
+
+        $this->command->info('âœ“ Paquetes de decoraciÃ³n insertados: ' . count($paquetes));
+    }
+}
+
+================================================================================
+=== database/seeders/PrioridadMantenimientoSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class PrioridadMantenimientoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $prioridades = [
+            ['Baja', 'baja', '#10b981', 1],
+            ['Media', 'media', '#f59e0b', 2],
+            ['Alta', 'alta', '#ef4444', 3],
+            ['Urgente', 'urgente', '#dc2626', 4],
+        ];
+
+        foreach ($prioridades as $p) {
+            DB::table('prioridades_mantenimiento')->insert([
+                'nombre' => $p[0],
+                'slug' => $p[1],
+                'color' => $p[2],
+                'orden' => $p[3],
+                'activo' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
+
+================================================================================
+=== database/seeders/ProductoSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ProductoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        // id_categoria_producto: 1=Bebidas, 2=Licores, 3=Golosinas, 4=Snacks, 5=Cuidado Personal, 6=Aseo, 7=Peluches
+        // id_proveedor: 1=DistriBebidas, 2=GoloMax, 3=ImportLima, 4=LicorPremium, 5=AseoLimpio
+
+        DB::table('productos')->insert([
+            // Bebidas
+            ['nombre' => 'Coca-Cola 500ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 2.00, 'precio_venta' => 4.00, 'stock_actual' => 24, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Coca-Cola 1L', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 3.50, 'precio_venta' => 6.00, 'stock_actual' => 12, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Inca Kola 500ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 2.00, 'precio_venta' => 4.00, 'stock_actual' => 18, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Agua Mineral 600ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 0.80, 'precio_venta' => 2.00, 'stock_actual' => 30, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Cerveza Pilsen 650ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 4.50, 'precio_venta' => 8.00, 'stock_actual' => 15, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Cerveza CusqueÃ±a 650ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 5.00, 'precio_venta' => 9.00, 'stock_actual' => 12, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Cerveza Trigo 650ml', 'id_categoria_producto' => 1, 'id_proveedor' => 1, 'precio_compra' => 5.50, 'precio_venta' => 10.00, 'stock_actual' => 8, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+
+            // Licores
+            ['nombre' => 'Vino Queirolo 750ml', 'id_categoria_producto' => 2, 'id_proveedor' => 4, 'precio_compra' => 18.00, 'precio_venta' => 35.00, 'stock_actual' => 6, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Vino Tabernero 750ml', 'id_categoria_producto' => 2, 'id_proveedor' => 4, 'precio_compra' => 15.00, 'precio_venta' => 30.00, 'stock_actual' => 8, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Vino TÃº y Yo 750ml', 'id_categoria_producto' => 2, 'id_proveedor' => 4, 'precio_compra' => 12.00, 'precio_venta' => 25.00, 'stock_actual' => 5, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Chilcano 1L', 'id_categoria_producto' => 2, 'id_proveedor' => 4, 'precio_compra' => 22.00, 'precio_venta' => 45.00, 'stock_actual' => 4, 'stock_minimo' => 10, 'unidad_medida' => 'botella', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+
+            // Golosinas
+            ['nombre' => 'Papas Lays ClÃ¡sicas', 'id_categoria_producto' => 3, 'id_proveedor' => 2, 'precio_compra' => 1.50, 'precio_venta' => 3.00, 'stock_actual' => 20, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Galletas TentaciÃ³n', 'id_categoria_producto' => 3, 'id_proveedor' => 2, 'precio_compra' => 1.00, 'precio_venta' => 2.50, 'stock_actual' => 25, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+
+            // Snacks
+            ['nombre' => 'Piqueo Snax', 'id_categoria_producto' => 4, 'id_proveedor' => 2, 'precio_compra' => 1.20, 'precio_venta' => 3.00, 'stock_actual' => 18, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+
+            // Cuidado personal
+            ['nombre' => 'Preservativos Pack x3', 'id_categoria_producto' => 5, 'id_proveedor' => 3, 'precio_compra' => 3.00, 'precio_venta' => 8.00, 'stock_actual' => 15, 'stock_minimo' => 10, 'unidad_medida' => 'pack', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Lubricante 50ml', 'id_categoria_producto' => 5, 'id_proveedor' => 3, 'precio_compra' => 4.00, 'precio_venta' => 10.00, 'stock_actual' => 12, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+
+            // Aseo
+            ['nombre' => 'Shampoo 30ml', 'id_categoria_producto' => 6, 'id_proveedor' => 5, 'precio_compra' => 0.80, 'precio_venta' => 2.50, 'stock_actual' => 40, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Desodorante Personal', 'id_categoria_producto' => 6, 'id_proveedor' => 5, 'precio_compra' => 5.00, 'precio_venta' => 12.00, 'stock_actual' => 10, 'stock_minimo' => 10, 'unidad_medida' => 'unidad', 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ Productos insertados: 19 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/PromocionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class PromocionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+        $hoy = now()->toDateString();
+        $finAnio = now()->endOfYear()->toDateString();
+
+        // CategorÃ­as: 1=CumpleaÃ±os, 2=Aniversario, 3=Temporada Alta, 4=Fidelidad,
+        //             5=ReactivaciÃ³n, 6=Referido, 7=Primera Visita, 8=Otros
+
+        $promociones = [
+            [
+                'nombre' => 'Descuento CumpleaÃ±os 20%',
+                'descripcion' => '20% de descuento en el dÃ­a del cumpleaÃ±os del cliente',
+                'id_categoria_promocion' => 1,
+                'tipo' => 'PORCENTAJE',
+                'valor' => 20.00,
+                'fecha_inicio' => $hoy,
+                'fecha_fin' => $finAnio,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => null,
+                'requiere_codigo' => false,
+                'codigo' => null,
+                'limite_uso' => null,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => 1,
+                'acumulable' => false,
+                'activo' => true,
+            ],
+            [
+                'nombre' => 'Descuento Aniversario 15%',
+                'descripcion' => '15% para parejas que celebren su aniversario',
+                'id_categoria_promocion' => 2,
+                'tipo' => 'PORCENTAJE',
+                'valor' => 15.00,
+                'fecha_inicio' => $hoy,
+                'fecha_fin' => $finAnio,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => null,
+                'requiere_codigo' => false,
+                'codigo' => null,
+                'limite_uso' => null,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => 1,
+                'acumulable' => false,
+                'activo' => true,
+            ],
+            [
+                'nombre' => 'Cliente VIP 10%',
+                'descripcion' => '10% para clientes nivel VIP',
+                'id_categoria_promocion' => 4,
+                'tipo' => 'PORCENTAJE',
+                'valor' => 10.00,
+                'fecha_inicio' => null,
+                'fecha_fin' => null,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => null,
+                'requiere_codigo' => false,
+                'codigo' => null,
+                'limite_uso' => null,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => null,
+                'acumulable' => false,
+                'activo' => true,
+            ],
+            [
+                'nombre' => 'Cliente Nuevo S/ 10 dscto',
+                'descripcion' => 'S/ 10 de descuento para primera visita',
+                'id_categoria_promocion' => 7,
+                'tipo' => 'MONTO_FIJO',
+                'valor' => 10.00,
+                'fecha_inicio' => $hoy,
+                'fecha_fin' => $finAnio,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => 30.00,
+                'requiere_codigo' => false,
+                'codigo' => null,
+                'limite_uso' => null,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => 1,
+                'acumulable' => true,
+                'activo' => true,
+            ],
+            [
+                'nombre' => 'Promo DESC10',
+                'descripcion' => '10% con cÃ³digo DESC10',
+                'id_categoria_promocion' => 8,
+                'tipo' => 'PORCENTAJE',
+                'valor' => 10.00,
+                'fecha_inicio' => $hoy,
+                'fecha_fin' => $finAnio,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => null,
+                'requiere_codigo' => true,
+                'codigo' => 'DESC10',
+                'limite_uso' => 100,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => 1,
+                'acumulable' => false,
+                'activo' => true,
+            ],
+            [
+                'nombre' => 'ReactivaciÃ³n 20%',
+                'descripcion' => '20% para clientes sin visitas en 60+ dÃ­as',
+                'id_categoria_promocion' => 5,
+                'tipo' => 'PORCENTAJE',
+                'valor' => 20.00,
+                'fecha_inicio' => $hoy,
+                'fecha_fin' => $finAnio,
+                'dias_semana' => null,
+                'hora_inicio' => null,
+                'hora_fin' => null,
+                'id_tipo_habitacion' => null,
+                'monto_minimo' => null,
+                'requiere_codigo' => false,
+                'codigo' => null,
+                'limite_uso' => null,
+                'usos_actuales' => 0,
+                'limite_por_cliente' => 1,
+                'acumulable' => false,
+                'activo' => true,
+            ],
+        ];
+
+        foreach ($promociones as $promo) {
+            DB::table('promociones')->insert(array_merge($promo, [
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ]));
+        }
+
+        $this->command->info('âœ“ Promociones insertadas: ' . count($promociones) . ' registros');
+    }
+}
+
+================================================================================
+=== database/seeders/ProveedorSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ProveedorSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('proveedores')->insert([
+            [
+                'razon_social' => 'Distribuidora de Bebidas del Sur SAC',
+                'nombre_comercial' => 'DistriBebidas Sur',
+                'ruc' => '20481234567',
+                'telefono' => '984-111-222',
+                'email' => 'ventas@distribebidas.pe',
+                'direccion' => 'Av. Los Sauces 123, Lima',
+                'contacto' => 'Carlos Mendoza',
+                'tipo' => 'Productos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ],
+            [
+                'razon_social' => 'Comercializadora de Golosinas EIRL',
+                'nombre_comercial' => 'GoloMax',
+                'ruc' => '20591234568',
+                'telefono' => '985-222-333',
+                'email' => 'pedidos@golomax.pe',
+                'direccion' => 'Jr. Comercio 456, Lima',
+                'contacto' => 'MarÃ­a Quispe',
+                'tipo' => 'Productos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ],
+            [
+                'razon_social' => 'Importaciones y Distribuciones Lima SAC',
+                'nombre_comercial' => 'ImportLima',
+                'ruc' => '20601234569',
+                'telefono' => '986-333-444',
+                'email' => 'contacto@importlima.pe',
+                'direccion' => 'Av. AviaciÃ³n 789, Lima',
+                'contacto' => 'Jorge RamÃ­rez',
+                'tipo' => 'Productos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ],
+            [
+                'razon_social' => 'Distribuidora de Licores Premium SAC',
+                'nombre_comercial' => 'LicorPremium',
+                'ruc' => '20701234570',
+                'telefono' => '987-444-555',
+                'email' => 'ventas@licorpremium.pe',
+                'direccion' => 'Calle Los Pinos 321, Lima',
+                'contacto' => 'Ana Torres',
+                'tipo' => 'Productos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ],
+            [
+                'razon_social' => 'Distribuidora de Productos de Aseo SAC',
+                'nombre_comercial' => 'AseoLimpio',
+                'ruc' => '20801234571',
+                'telefono' => '988-555-666',
+                'email' => 'pedidos@aseolimpio.pe',
+                'direccion' => 'Av. Universitaria 654, Lima',
+                'contacto' => 'Luis FernÃ¡ndez',
+                'tipo' => 'Productos',
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ],
+        ]);
+
+        $this->command->info('âœ“ Proveedores insertados: 5 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/ReservaTestCleaner.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Cliente;
+use App\Models\Reserva;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * ReservaTestCleaner â€” Borra SOLO las reservas de prueba (WK-TEST*)
+ * y sus clientes asociados (7777XXXX).
+ *
+ * âš ï¸ NO toca reservas reales.
+ */
+class ReservaTestCleaner extends Seeder
+{
+    public function run(): void
+    {
+        $reservasTest = Reserva::where('codigo_reserva', 'LIKE', 'WK-TEST%')
+            ->pluck('id_reserva')->toArray();
+
+        if (empty($reservasTest)) {
+            $this->command->info("No hay reservas de test para borrar.");
+            return;
+        }
+
+        $totalReservas = count($reservasTest);
+        $this->command->info("Borrando {$totalReservas} reservas de test...");
+
+        DB::transaction(function () use ($reservasTest) {
+            // Orden importante por FKs
+            DB::table('pagos_reserva')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('registros_estadia')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('reserva_consumos')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('reserva_ajustes')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('extensiones_reserva')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('cliente_visitas')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('ocupacion_habitacion')->whereIn('id_reserva', $reservasTest)->delete();
+            DB::table('limpieza')->whereIn('id_reserva', $reservasTest)->delete();
+
+            Reserva::whereIn('id_reserva', $reservasTest)->delete();
+
+            // Borrar clientes de test (7777XXXX)
+            Cliente::where('numero_documento', 'LIKE', '7777%')
+                ->whereNotIn('id_cliente', function ($q) {
+                    $q->select('id_cliente')->from('reservas');
+                })
+                ->delete();
+        });
+
+        $this->command->info("âœ… {$totalReservas} reservas y sus dependencias eliminadas.");
+    }
+}
+
+================================================================================
+=== database/seeders/ReservaTestSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Cliente;
+use App\Models\ClienteNivel;
+use App\Models\ClienteVisita;
+use App\Models\EstadoReserva;
+use App\Models\Habitacion;
+use App\Models\Limpieza;
+use App\Models\OcupacionHabitacion;
+use App\Models\PagoReserva;
+use App\Models\RegistroEstadia;
+use App\Models\Reserva;
+use App\Models\Tarifa;
+use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * ReservaTestSeeder v4 â€” Usa DNIs 88888801..88888810 que NO existen.
+ *
+ * Estrategia:
+ * - Cada habitaciÃ³n usa la tarifa que EXISTE para su tipo
+ * - DNI Ãºnico por cliente (rango 888888XX, no choca con nada)
+ * - NO borra nada antes, solo crea
+ */
+class ReservaTestSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = Carbon::now();
+        $idUsuario = 1;
+        $idMetodoPago = 1; // Efectivo
+
+        // -------------------------------------------------------------------
+        // 1. DETECTAR HABITACIONES NO DISPONIBLES
+        // -------------------------------------------------------------------
+        $ocupadas = OcupacionHabitacion::where('estado', 'ACTIVA')
+            ->pluck('id_habitacion')->toArray();
+
+        $limpieza = Limpieza::whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
+            ->pluck('id_habitacion')->toArray();
+
+        $inactivas = Habitacion::where('activo', false)
+            ->pluck('id_habitacion')->toArray();
+
+        $noDisponibles = array_merge($ocupadas, $limpieza, $inactivas);
+
+        // -------------------------------------------------------------------
+        // 2. OBTENER HABITACIONES DISPONIBLES
+        // -------------------------------------------------------------------
+        $disponibles = Habitacion::with(['tipo'])
+            ->where('activo', true)
+            ->whereNotIn('id_habitacion', $noDisponibles)
+            ->orderBy('id_piso')
+            ->orderBy('orden')
+            ->get();
+
+        $this->command->info("Ocupadas: " . (empty($ocupadas) ? '(ninguna)' : implode(',', $ocupadas)));
+        $this->command->info("Limpieza: " . (empty($limpieza) ? '(ninguna)' : implode(',', $limpieza)));
+        $this->command->info("Inactivas: " . (empty($inactivas) ? '(ninguna)' : implode(',', $inactivas)));
+        $this->command->info("Disponibles: {$disponibles->count()}");
+        $this->command->info('');
+
+        if ($disponibles->count() < 10) {
+            $this->command->warn("âš ï¸ Solo hay {$disponibles->count()} disponibles. Se necesitan 10.");
+            return;
+        }
+
+        // -------------------------------------------------------------------
+        // 3. VERIFICAR DNIs 888888XX (borrar si existen de antes)
+        // -------------------------------------------------------------------
+        $existentes = Cliente::where('numero_documento', 'LIKE', '888888%')
+            ->pluck('id_cliente')->toArray();
+
+        if (!empty($existentes)) {
+            $this->command->info("ðŸ§¹ Borrando " . count($existentes) . " clientes previos 888888XX...");
+            // Borrar reservas asociadas (por si acaso)
+            $reservas = Reserva::whereIn('id_cliente', $existentes)->pluck('id_reserva')->toArray();
+            if (!empty($reservas)) {
+                DB::table('pagos_reserva')->whereIn('id_reserva', $reservas)->delete();
+                DB::table('registros_estadia')->whereIn('id_reserva', $reservas)->delete();
+                DB::table('cliente_visitas')->whereIn('id_reserva', $reservas)->delete();
+                DB::table('ocupacion_habitacion')->whereIn('id_reserva', $reservas)->delete();
+                DB::table('limpieza')->whereIn('id_reserva', $reservas)->delete();
+                Reserva::whereIn('id_reserva', $reservas)->delete();
+            }
+            Cliente::whereIn('id_cliente', $existentes)->delete();
+        }
+
+        // -------------------------------------------------------------------
+        // 4. ESCENARIOS: [minutos_atras, descripcion]
+        // -------------------------------------------------------------------
+        $escenarios = [
+            [30,   'Apenas entrÃ³'],
+            [90,   'Normal temprano'],
+            [240,  'Normal medio'],
+            [450,  'Normal avanzada'],
+            [470,  'POR VENCER'],
+            [370,  'Excedido 10m (dentro tolerancia)'],
+            [420,  'Excedido 60m'],
+            [620,  'Excedido 2h 20m'],
+            [500,  'Excedido 1h 40m'],
+            [540,  'Excedido 3h (turno adicional)'],
+        ];
+
+        $estadoActiva = EstadoReserva::where('slug', 'activa')->firstOrFail();
+        $nivelBronce = ClienteNivel::where('nombre', 'Bronce')->first();
+
+        $creadas = 0;
+
+        // -------------------------------------------------------------------
+        // 5. CREAR LAS RESERVAS
+        // -------------------------------------------------------------------
+        DB::transaction(function () use (
+            $disponibles, $escenarios, $ahora, $idUsuario, $idMetodoPago,
+            $estadoActiva, $nivelBronce, &$creadas
+        ) {
+            foreach ($disponibles as $habitacion) {
+                if ($creadas >= 10) break;
+
+                [$minutosAtras, $descripcion] = $escenarios[$creadas];
+
+                // Buscar la tarifa MÃS CHICA de este tipo
+                $tarifa = Tarifa::where('id_tipo', $habitacion->id_tipo)
+                    ->where('activo', true)
+                    ->orderBy('horas', 'asc')
+                    ->first();
+
+                if (!$tarifa) {
+                    $this->command->warn("Hab {$habitacion->numero}: sin tarifas, saltando...");
+                    continue;
+                }
+
+                $horasBase = $tarifa->horas;
+
+                // Fechas retroactivas
+                $entrada = $ahora->copy()->subMinutes($minutosAtras);
+                $salidaPrevista = $entrada->copy()->addHours($horasBase);
+
+                // DNI Ãºnico: 88888801, 88888802, ...
+                $numeroDoc = '888888' . str_pad($creadas + 1, 2, '0', STR_PAD_LEFT);
+
+                $cliente = Cliente::create([
+                    'nombre' => 'CLIENTE TEST ' . str_pad($creadas + 1, 2, '0', STR_PAD_LEFT),
+                    'apellido' => 'PRUEBA',
+                    'numero_documento' => $numeroDoc,
+                    'celular' => '888888' . str_pad($creadas + 1, 3, '0', STR_PAD_LEFT),
+                    'visitas' => 1,
+                    'ultima_visita' => $entrada->toDateString(),
+                    'total_gastado' => $tarifa->monto,
+                    'id_nivel' => $nivelBronce?->id_nivel,
+                    'activo' => true,
+                ]);
+
+                // Crear reserva
+                $reserva = Reserva::create([
+                    'codigo_reserva' => 'WK-TEST' . str_pad($creadas + 1, 2, '0', STR_PAD_LEFT),
+                    'tipo_reserva' => 'NORMAL',
+                    'id_estado' => $estadoActiva->id_estado,
+                    'id_cliente' => $cliente->id_cliente,
+                    'id_habitacion' => $habitacion->id_habitacion,
+                    'id_tarifa' => $tarifa->id_tarifa,
+                    'id_usuario_creacion' => $idUsuario,
+                    'cantidad_personas' => 2,
+                    'fecha_entrada' => $entrada,
+                    'fecha_salida_prevista' => $salidaPrevista,
+                    'horas_base' => $horasBase,
+                    'horas_extra' => 0,
+                    'horas_totales' => $horasBase,
+                    'monto_habitacion' => $tarifa->monto,
+                    'monto_horas_extra' => 0,
+                    'monto_consumos' => 0,
+                    'monto_ajustes' => 0,
+                    'descuento' => 0,
+                    'descuento_porcentaje' => 0,
+                    'total' => $tarifa->monto,
+                    'pagado' => $tarifa->monto,
+                    'saldo' => 0,
+                    'vuelto_entregado' => 0,
+                    'telefono' => $cliente->celular,
+                    'notas' => $descripcion . " ({$horasBase}h)",
+                ]);
+
+                // OcupaciÃ³n
+                OcupacionHabitacion::create([
+                    'id_habitacion' => $habitacion->id_habitacion,
+                    'id_reserva' => $reserva->id_reserva,
+                    'fecha_inicio' => $entrada,
+                    'fecha_fin' => $salidaPrevista,
+                    'estado' => 'ACTIVA',
+                ]);
+
+                // Registro estadÃ­a
+                RegistroEstadia::create([
+                    'id_reserva' => $reserva->id_reserva,
+                    'fecha_entrada' => $entrada,
+                    'id_usuario_checkin' => $idUsuario,
+                ]);
+
+                // Pago completo
+                PagoReserva::create([
+                    'id_reserva' => $reserva->id_reserva,
+                    'id_metodo_pago' => $idMetodoPago,
+                    'monto' => $tarifa->monto,
+                    'es_adelanto' => true,
+                    'fecha_pago' => $entrada,
+                    'id_usuario' => $idUsuario,
+                    'observaciones' => 'Pago inicial (test)',
+                ]);
+
+                // Visita
+                ClienteVisita::create([
+                    'id_cliente' => $cliente->id_cliente,
+                    'id_reserva' => $reserva->id_reserva,
+                    'id_habitacion' => $habitacion->id_habitacion,
+                    'fecha_entrada' => $entrada,
+                    'monto_gastado' => $tarifa->monto,
+                ]);
+
+                $creadas++;
+                $this->command->info("âœ“ Hab {$habitacion->numero} ({$habitacion->tipo->nombre}, {$horasBase}h) â†’ {$descripcion}");
+            }
+        });
+
+        $this->command->info('');
+        $this->command->info("âœ… Total: {$creadas} reservas creadas");
+        $this->command->info('');
+        $this->command->info('Para limpiar:');
+        $this->command->info('  EjecutÃ¡ este mismo seeder otra vez (borra los 888888XX automÃ¡ticamente)');
+    }
+}
+
+================================================================================
+=== database/seeders/TarifaSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class TarifaSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        // 15 tarifas reales del hospedaje
+        // id_tipo: 1=Simple, 2=EstÃ¡ndar, 3=Premium, 4=Safari,
+        //          5=Marina, 6=RomÃ¡ntica, 7=Jacuzzi VIP, 8=Jacuzzi Estelar
+        $tarifas = [
+            // Simple
+            ['id_tipo' => 1, 'horas' => 4,  'monto' => 25,  'precio_hora_extra' => 5,  'max_horas_extra' => 3, 'precio_turno_adicional' => 25],
+
+            // EstÃ¡ndar
+            ['id_tipo' => 2, 'horas' => 6,  'monto' => 40,  'precio_hora_extra' => 5,  'max_horas_extra' => 3, 'precio_turno_adicional' => 40],
+            ['id_tipo' => 2, 'horas' => 12, 'monto' => 45,  'precio_hora_extra' => 5,  'max_horas_extra' => 3, 'precio_turno_adicional' => 45],
+
+            // Premium
+            ['id_tipo' => 3, 'horas' => 8,  'monto' => 55,  'precio_hora_extra' => 5,  'max_horas_extra' => 3, 'precio_turno_adicional' => 55],
+            ['id_tipo' => 3, 'horas' => 12, 'monto' => 70,  'precio_hora_extra' => 5,  'max_horas_extra' => 3, 'precio_turno_adicional' => 70],
+
+            // Safari
+            ['id_tipo' => 4, 'horas' => 8,  'monto' => 70,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 70],
+            ['id_tipo' => 4, 'horas' => 12, 'monto' => 90,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 90],
+
+            // Marina
+            ['id_tipo' => 5, 'horas' => 8,  'monto' => 60,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 60],
+            ['id_tipo' => 5, 'horas' => 12, 'monto' => 80,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 80],
+
+            // RomÃ¡ntica
+            ['id_tipo' => 6, 'horas' => 8,  'monto' => 60,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 60],
+            ['id_tipo' => 6, 'horas' => 12, 'monto' => 80,  'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 80],
+
+            // Jacuzzi VIP
+            ['id_tipo' => 7, 'horas' => 8,  'monto' => 100, 'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 100],
+            ['id_tipo' => 7, 'horas' => 12, 'monto' => 135, 'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 135],
+
+            // Jacuzzi Estelar
+            ['id_tipo' => 8, 'horas' => 8,  'monto' => 135, 'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 135],
+            ['id_tipo' => 8, 'horas' => 12, 'monto' => 165, 'precio_hora_extra' => 10, 'max_horas_extra' => 3, 'precio_turno_adicional' => 165],
+        ];
+
+        foreach ($tarifas as $tarifa) {
+            DB::table('tarifas')->insert(array_merge($tarifa, [
+                'activo' => true,
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ]));
+        }
+
+        $this->command->info('âœ“ Tarifas insertadas: 15 registros');
+    }
+}
+
+================================================================================
+=== database/seeders/TipoMantenimientoSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class TipoMantenimientoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $tipos = [
+            ['ElÃ©ctrico', 'electrico', 'Problemas elÃ©ctricos: tomacorrientes, luces, cables', 'zap', '#f59e0b', 1],
+            ['PlomerÃ­a', 'plomeria', 'Fugas de agua, inodoros, duchas, caÃ±os', 'droplets', '#06b6d4', 2],
+            ['Jacuzzi', 'jacuzzi', 'Jacuzzi no funciona, no calienta, fugas', 'bath', '#7c3aed', 3],
+            ['Muebles', 'muebles', 'Camas, roperos, mesas rotas o daÃ±adas', 'sofa', '#a855f7', 4],
+            ['Pintura', 'pintura', 'Paredes manchadas, descascaradas, retoques', 'paintbrush', '#ec4899', 5],
+            ['Aire Acondicionado', 'aire-acondicionado', 'Aire no enfrÃ­a, no calienta, hace ruido', 'wind', '#0ea5e9', 6],
+            ['Cerraduras', 'cerraduras', 'Puertas que no cierran, chapas, llaves', 'key', '#64748b', 7],
+            ['Otro', 'otro', 'Otros problemas no clasificados', 'wrench', '#6b7280', 8],
+        ];
+
+        foreach ($tipos as $t) {
+            DB::table('tipos_mantenimiento')->insert([
+                'nombre' => $t[0],
+                'slug' => $t[1],
+                'descripcion' => $t[2],
+                'icono' => $t[3],
+                'color' => $t[4],
+                'orden' => $t[5],
+                'activo' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+}
+
+================================================================================
+=== database/seeders/TiposObservacionSeeder.php ===
+================================================================================
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class TiposObservacionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $ahora = now();
+
+        DB::table('tipos_observacion')->insert([
+            ['nombre' => 'Deuda', 'slug' => 'deuda', 'icono' => 'dollar-sign', 'color' => '#dc2626', 'descripcion' => 'Cliente con deuda pendiente', 'orden' => 1, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'DaÃ±o a la habitaciÃ³n', 'slug' => 'dano_habitacion', 'icono' => 'hammer', 'color' => '#ef4444', 'descripcion' => 'RompiÃ³ o daÃ±Ã³ algo', 'orden' => 2, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Mal comportamiento', 'slug' => 'mal_comportamiento', 'icono' => 'alert-triangle', 'color' => '#f59e0b', 'descripcion' => 'EscÃ¡ndalo, agresiÃ³n, etc.', 'orden' => 3, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Documento falso', 'slug' => 'documento_falso', 'icono' => 'file-x', 'color' => '#7c3aed', 'descripcion' => 'PresentÃ³ documento falso', 'orden' => 4, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+            ['nombre' => 'Bloqueo permanente', 'slug' => 'bloqueo', 'icono' => 'shield-x', 'color' => '#111827', 'descripcion' => 'No se le da servicio nunca mÃ¡s', 'orden' => 5, 'activo' => true, 'created_at' => $ahora, 'updated_at' => $ahora],
+        ]);
+
+        $this->command->info('âœ“ Tipos de observaciÃ³n insertados: 5 registros');
+    }
+}

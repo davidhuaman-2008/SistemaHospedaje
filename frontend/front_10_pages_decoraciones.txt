@@ -1,0 +1,488 @@
+﻿
+
+================================================================================
+=== src/pages/decoraciones/paqueteDecoracion/PaqueteDecoracionForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { PaqueteDecoracion, PaqueteDecoracionRequest } from "@/types/paqueteDecoracion"
+import type { TipoHabitacion } from "@/types/configuracion"
+
+interface Props {
+  inicial: PaqueteDecoracion | null
+  proveedores: any[]
+  tiposHabitacion: TipoHabitacion[]
+  onGuardar: (datos: PaqueteDecoracionRequest) => void
+  onCancelar: () => void
+}
+
+export function PaqueteDecoracionForm({ inicial, proveedores, tiposHabitacion, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+   const [precioTotal, setPrecioTotal] = useState(inicial?.precio_total || 0)
+  const [gananciaLocal, setGananciaLocal] = useState(inicial?.ganancia_local || 0)
+  const [gananciaProveedor, setGananciaProveedor] = useState(inicial?.ganancia_proveedor || 0)
+  const [precioHoraAdicional, setPrecioHoraAdicional] = useState(inicial?.precio_hora_adicional || 0)
+  const [idProveedor, setIdProveedor] = useState<number | null>(inicial?.id_proveedor ?? null)
+  const [idTipoHabitacion, setIdTipoHabitacion] = useState<number | null>(inicial?.id_tipo_habitacion ?? null)
+  const [horasIncluidas, setHorasIncluidas] = useState(inicial?.horas_incluidas || 8)
+  const [incluyeJacuzzi, setIncluyeJacuzzi] = useState(inicial?.incluye_jacuzzi || false)
+  const [incluyeVino, setIncluyeVino] = useState(inicial?.incluye_vino || false)
+  const [incluyeDecoracion, setIncluyeDecoracion] = useState(inicial?.incluye_decoracion ?? true)
+  const [incluyeSexshop, setIncluyeSexshop] = useState(inicial?.incluye_sexshop || false)
+  const [incluyeNetflix, setIncluyeNetflix] = useState(inicial?.incluye_netflix || false)
+
+  const sumaGanancias = Number(gananciaLocal) + Number(gananciaProveedor)
+  const formulaOk = Math.abs(Number(precioTotal) - sumaGanancias) < 0.01
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !formulaOk) return
+    onGuardar({
+      nombre,
+      descripcion: descripcion || null,
+      precio_total: Number(precioTotal),
+      ganancia_local: Number(gananciaLocal),
+      ganancia_proveedor: Number(gananciaProveedor),
+      precio_hora_adicional: Number(precioHoraAdicional),
+      id_proveedor: idProveedor,
+      id_tipo_habitacion: idTipoHabitacion,
+      horas_incluidas: Number(horasIncluidas),
+      incluye_jacuzzi: incluyeJacuzzi,
+      incluye_vino: incluyeVino,
+      incluye_decoracion: incluyeDecoracion,
+      incluye_sexshop: incluyeSexshop,
+      incluye_netflix: incluyeNetflix,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="col-span-1 md:col-span-2">
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo de HabitaciÃ³n</label>
+          <select value={idTipoHabitacion ?? ""} onChange={e => setIdTipoHabitacion(e.target.value ? Number(e.target.value) : null)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="">â€” Sin tipo especÃ­fico â€”</option>
+            {tiposHabitacion.map(t => (
+              <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Proveedor</label>
+          <select value={idProveedor ?? ""} onChange={e => setIdProveedor(e.target.value ? Number(e.target.value) : null)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="">â€” Sin proveedor â€”</option>
+            {proveedores.map(p => (
+              <option key={p.id_proveedor} value={p.id_proveedor}>{p.razon_social}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Horas incluidas</label>
+          <input type="number" value={horasIncluidas} onChange={e => setHorasIncluidas(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio total (S/) *</label>
+          <input type="number" step="0.01" value={precioTotal} onChange={e => setPrecioTotal(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ganancia local (S/) *</label>
+          <input type="number" step="0.01" value={gananciaLocal} onChange={e => setGananciaLocal(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ganancia proveedor (S/) *</label>
+          <input type="number" step="0.01" value={gananciaProveedor} onChange={e => setGananciaProveedor(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio hora adicional (S/)</label>
+          <input type="number" step="0.01" value={precioHoraAdicional} onChange={e => setPrecioHoraAdicional(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+          <p className="text-slate-500 text-xs mt-1">Cuanto se cobra por cada hora extra</p>
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+
+        <div className={`col-span-1 md:col-span-2 lg:col-span-3 p-2 rounded ${formulaOk ? "bg-green-900/30 border border-green-700" : "bg-red-900/30 border border-red-700"}`}>
+          <span className={formulaOk ? "text-green-300" : "text-red-300"}>
+            {formulaOk
+              ? `âœ… FÃ³rmula OK: S/ ${precioTotal} = S/ ${gananciaLocal} + S/ ${gananciaProveedor}`
+              : `âŒ FÃ³rmula error: S/ ${precioTotal} â‰  S/ ${gananciaLocal} + S/ ${gananciaProveedor} = S/ ${sumaGanancias.toFixed(2)}`}
+          </span>
+        </div>
+
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm block mb-2">Incluye:</label>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={incluyeJacuzzi} onChange={e => setIncluyeJacuzzi(e.target.checked)} className="w-4 h-4" /><span className="text-slate-300 text-sm">Jacuzzi</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={incluyeVino} onChange={e => setIncluyeVino(e.target.checked)} className="w-4 h-4" /><span className="text-slate-300 text-sm">Vino</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={incluyeDecoracion} onChange={e => setIncluyeDecoracion(e.target.checked)} className="w-4 h-4" /><span className="text-slate-300 text-sm">DecoraciÃ³n</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={incluyeSexshop} onChange={e => setIncluyeSexshop(e.target.checked)} className="w-4 h-4" /><span className="text-slate-300 text-sm">Sex shop</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={incluyeNetflix} onChange={e => setIncluyeNetflix(e.target.checked)} className="w-4 h-4" /><span className="text-slate-300 text-sm">Netflix</span></label>
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" disabled={!formulaOk} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/decoraciones/paqueteDecoracion/PaqueteDecoracionPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { paqueteDecoracionService } from "@/services/paqueteDecoracionService"
+import { proveedorService } from "@/services/proveedorService"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { PaqueteDecoracion, PaqueteDecoracionRequest } from "@/types/paqueteDecoracion"
+import type { TipoHabitacion } from "@/types/configuracion"
+import { PaqueteDecoracionForm } from "./PaqueteDecoracionForm"
+import { PaqueteDecoracionTabla } from "./PaqueteDecoracionTabla"
+
+export function PaqueteDecoracionPage() {
+  const [items, setItems] = useState<PaqueteDecoracion[]>([])
+  const [proveedores, setProveedores] = useState<any[]>([])
+  const [tiposHabitacion, setTiposHabitacion] = useState<TipoHabitacion[]>([])
+  const [editando, setEditando] = useState<PaqueteDecoracion | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await paqueteDecoracionService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const cargarDatosFormulario = async () => {
+    try {
+      const [provs, tipos] = await Promise.all([
+        proveedorService.listarActivos(),
+        tipoHabitacionService.listarActivos(),
+      ])
+      setProveedores(provs)
+      setTiposHabitacion(tipos)
+    } catch {
+      toast.error("Error al cargar datos del formulario")
+    }
+  }
+
+  const recargar = async () => {
+    try { setItems(await paqueteDecoracionService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = async () => {
+    setEditando(null)
+    await cargarDatosFormulario()
+    setMostrarForm(true)
+  }
+
+  const abrirEditar = async (item: PaqueteDecoracion) => {
+    setEditando(item)
+    await cargarDatosFormulario()
+    setMostrarForm(true)
+  }
+
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: PaqueteDecoracionRequest) => {
+    try {
+      if (editando) {
+        await paqueteDecoracionService.actualizar(editando.id_paquete, datos)
+        toast.success("Actualizado")
+      } else {
+        await paqueteDecoracionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: PaqueteDecoracion) => {
+    try {
+      if (item.activo) {
+        await paqueteDecoracionService.desactivar(item.id_paquete)
+        toast.success("Desactivado")
+      } else {
+        await paqueteDecoracionService.reactivar(item.id_paquete)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: PaqueteDecoracion) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await paqueteDecoracionService.eliminar(item.id_paquete)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Paquetes de DecoraciÃ³n</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Paquete
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <PaqueteDecoracionForm
+          inicial={editando}
+          proveedores={proveedores}
+          tiposHabitacion={tiposHabitacion}
+          onGuardar={guardar}
+          onCancelar={cerrar}
+        />
+      )}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <PaqueteDecoracionTabla
+          items={items}
+          onEditar={abrirEditar}
+          onCambiarEstado={cambiarEstado}
+          onEliminar={eliminar}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/decoraciones/paqueteDecoracion/PaqueteDecoracionTabla.tsx ===
+================================================================================
+import type { PaqueteDecoracion } from "@/types/paqueteDecoracion"
+
+interface Props {
+  items: PaqueteDecoracion[]
+  onEditar: (item: PaqueteDecoracion) => void
+  onCambiarEstado: (item: PaqueteDecoracion) => void
+  onEliminar: (item: PaqueteDecoracion) => void
+}
+
+function money(v: number): string {
+  return `S/ ${Number(v).toFixed(2)}`
+}
+
+export function PaqueteDecoracionTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[1100px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Tipo HabitaciÃ³n</th>
+            <th className="p-2 text-left">Precio</th>
+            <th className="p-2 text-left">Local</th>
+            <th className="p-2 text-left">Proveedor</th>
+            <th className="p-2 text-left">Horas</th>
+            <th className="p-2 text-left">Incluye</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_paquete} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_paquete}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">
+                {item.tipo_habitacion ? (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-200">
+                    {item.tipo_habitacion.nombre}
+                  </span>
+                ) : "â€”"}
+              </td>
+              <td className="p-2 font-semibold text-cyan-300">{money(item.precio_total)}</td>
+              <td className="p-2 text-green-300">{money(item.ganancia_local)}</td>
+              <td className="p-2 text-yellow-300">{money(item.ganancia_proveedor)}</td>
+              <td className="p-2 text-center">{item.horas_incluidas}h</td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  {item.incluye_jacuzzi && <span title="Jacuzzi" className="text-xs">ðŸ›</span>}
+                  {item.incluye_vino && <span title="Vino" className="text-xs">ðŸ·</span>}
+                  {item.incluye_decoracion && <span title="DecoraciÃ³n" className="text-xs">ðŸŽ¨</span>}
+                  {item.incluye_sexshop && <span title="Sex shop" className="text-xs">ðŸ’</span>}
+                  {item.incluye_netflix && <span title="Netflix" className="text-xs">ðŸ“º</span>}
+                </div>
+              </td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/decoraciones/reservasDecoradas/ReservasDecoradasPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
+import { toast } from "sonner"
+import { Plus, RefreshCw, Sparkles } from "lucide-react"
+import AppLayout from "@/components/layout/AppLayout"
+import { reservaService } from "@/services/reservaService"
+import type { Reserva } from "@/types/reserva"
+import { ReservasTabla } from "@/pages/reservas/ReservasTabla"
+
+type Filtro = "Todas" | "Programadas" | "En proceso" | "Finalizadas" | "Canceladas"
+
+export function ReservasDecoradasPage() {
+  const [items, setItems] = useState<Reserva[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [filtro, setFiltro] = useState<Filtro>("Todas")
+  const [busqueda, setBusqueda] = useState("")
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      const datos = await reservaService.listarSoloDecoraciones()
+      setItems(datos)
+    } catch {
+      toast.error("Error al cargar reservas decoradas")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+    const intervalo = setInterval(cargar, 30000)
+    return () => clearInterval(intervalo)
+  }, [])
+
+  const filtradas = items.filter((r) => {
+    if (filtro === "Programadas" && r.estado?.slug !== "confirmada" && r.estado?.slug !== "pendiente") return false
+    if (filtro === "En proceso" && r.estado?.slug !== "activa") return false
+    if (filtro === "Finalizadas" && r.estado?.slug !== "finalizada") return false
+    if (filtro === "Canceladas" && r.estado?.slug !== "cancelada" && r.estado?.slug !== "anulada") return false
+
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase()
+      const coincide =
+        r.codigo_reserva.toLowerCase().includes(q) ||
+        r.cliente?.nombre.toLowerCase().includes(q) ||
+        r.cliente?.apellido?.toLowerCase().includes(q) ||
+        r.cliente?.numero_documento?.toLowerCase().includes(q)
+      if (!coincide) return false
+    }
+
+    return true
+  })
+
+  const filtros: { key: Filtro; label: string }[] = [
+    { key: "Todas", label: "Todas" },
+    { key: "Programadas", label: "Programadas" },
+    { key: "En proceso", label: "Activas" },
+    { key: "Finalizadas", label: "Finalizadas" },
+    { key: "Canceladas", label: "Canceladas/Anuladas" },
+  ]
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Sparkles className="text-pink-400" size={24} /> Reservas con DecoraciÃ³n
+          </h1>
+          <p className="text-slate-400 text-sm">
+            {items.length} reservas con decoraciÃ³n (cÃ³digo DEC-)
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={cargar}
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg flex items-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Actualizar
+          </button>
+          <Link
+            to="/reservas/nueva"
+            className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Nueva con DecoraciÃ³n
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {filtros.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFiltro(f.key)}
+            className={`px-3 py-1.5 rounded text-sm transition ${
+              filtro === f.key
+                ? "bg-pink-600 text-white"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por cÃ³digo, cliente o DNI..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="w-full bg-slate-800 text-white p-2 rounded border border-slate-700"
+        />
+      </div>
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <ReservasTabla items={filtradas} />
+      )}
+    </AppLayout>
+  )
+}

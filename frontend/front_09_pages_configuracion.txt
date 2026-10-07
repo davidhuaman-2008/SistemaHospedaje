@@ -1,0 +1,2911 @@
+﻿
+
+================================================================================
+=== src/pages/configuracion/categoriaMovimiento/CategoriaMovimientoForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { CategoriaMovimiento, CategoriaMovimientoRequest, TipoMovimiento } from '@/types/configuracion'
+
+interface Props {
+  inicial: CategoriaMovimiento | null
+  onGuardar: (datos: CategoriaMovimientoRequest) => void
+  onCancelar: () => void
+}
+
+export function CategoriaMovimientoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [tipo, setTipo] = useState<TipoMovimiento>(inicial?.tipo || 'Ingreso')
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || '')
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return
+    onGuardar({ nombre, tipo, descripcion: descripcion || null, orden, activo: true })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="col-span-1">
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo *</label>
+          <select value={tipo} onChange={e => setTipo(e.target.value as TipoMovimiento)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="Ingreso">Ingreso</option>
+            <option value="Egreso">Egreso</option>
+          </select>
+        </div>
+        <div className="col-span-1">
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-4">
+          <label className="text-slate-300 text-sm">Descripción</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/categoriaMovimiento/CategoriaMovimientoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { categoriaMovimientoService } from "@/services/categoriaMovimientoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { CategoriaMovimiento, CategoriaMovimientoRequest } from "@/types/configuracion"
+import { CategoriaMovimientoForm } from "./CategoriaMovimientoForm"
+import { CategoriaMovimientoTabla } from "./CategoriaMovimientoTabla"
+
+export function CategoriaMovimientoPage() {
+  const [items, setItems] = useState<CategoriaMovimiento[]>([])
+  const [editando, setEditando] = useState<CategoriaMovimiento | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await categoriaMovimientoService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await categoriaMovimientoService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: CategoriaMovimiento) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: CategoriaMovimientoRequest) => {
+    try {
+      if (editando) {
+        await categoriaMovimientoService.actualizar(editando.id_categoria, datos)
+        toast.success("Actualizado")
+      } else {
+        await categoriaMovimientoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: CategoriaMovimiento) => {
+    try {
+      if (item.activo) {
+        await categoriaMovimientoService.desactivar(item.id_categoria)
+        toast.success("Desactivado")
+      } else {
+        await categoriaMovimientoService.reactivar(item.id_categoria)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: CategoriaMovimiento) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await categoriaMovimientoService.eliminar(item.id_categoria)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Categorias de Movimiento</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva
+        </button>
+      </div>
+
+      {mostrarForm && <CategoriaMovimientoForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <CategoriaMovimientoTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/categoriaMovimiento/CategoriaMovimientoTabla.tsx ===
+================================================================================
+import type { CategoriaMovimiento } from '@/types/configuracion'
+
+interface Props {
+  items: CategoriaMovimiento[]
+  onEditar: (item: CategoriaMovimiento) => void
+  onCambiarEstado: (item: CategoriaMovimiento) => void
+  onEliminar: (item: CategoriaMovimiento) => void
+}
+
+export function CategoriaMovimientoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[600px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Tipo</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_categoria} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_categoria}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">
+                <span className={item.tipo === 'Ingreso' ? 'bg-green-900 text-green-300 px-2 py-1 rounded text-xs' : 'bg-red-900 text-red-300 px-2 py-1 rounded text-xs'}>
+                  {item.tipo}
+                </span>
+              </td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2"><span className={item.activo ? 'text-green-400' : 'text-red-400'}>{item.activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/clienteNivel/ClienteNivelForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { ClienteNivel, ClienteNivelRequest } from '@/types/configuracion'
+import { IconPicker } from "@/components/IconPicker"
+
+interface Props {
+  inicial: ClienteNivel | null
+  onGuardar: (datos: ClienteNivelRequest) => void
+  onCancelar: () => void
+}
+
+export function ClienteNivelForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [visitasMin, setVisitasMin] = useState(inicial?.visitas_min || 0)
+  const [visitasMax, setVisitasMax] = useState(inicial?.visitas_max ?? '')
+  const [descuento, setDescuento] = useState(inicial?.descuento || 0)
+  const [color, setColor] = useState(inicial?.color || '#cd7f32')
+  const [icono, setIcono] = useState(inicial?.icono || 'award')
+  const [beneficios, setBeneficios] = useState(inicial?.beneficios || '')
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return
+    onGuardar({
+      nombre,
+      visitas_min: visitasMin,
+      visitas_max: visitasMax === '' ? null : Number(visitasMax),
+      descuento,
+      color,
+      icono,
+      beneficios: beneficios || null,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Visitas mÃ­nimas</label>
+          <input type="number" value={visitasMin} onChange={e => setVisitasMin(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Visitas mÃ¡ximas (vacÃ­o = sin tope)</label>
+          <input type="number" value={visitasMax} onChange={e => setVisitasMax(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Descuento (%)</label>
+          <input type="number" value={descuento} onChange={e => setDescuento(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-full h-10 bg-slate-900 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono (lucide)</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">Beneficios</label>
+          <textarea value={beneficios} onChange={e => setBeneficios(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" rows={2} />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/clienteNivel/ClienteNivelPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { clienteNivelService } from "@/services/clienteNivelService"
+import { mensajeDeError } from "@/lib/errores"
+import type { ClienteNivel, ClienteNivelRequest } from "@/types/configuracion"
+import { ClienteNivelForm } from "./ClienteNivelForm"
+import { ClienteNivelTabla } from "./ClienteNivelTabla"
+
+export function ClienteNivelPage() {
+  const [items, setItems] = useState<ClienteNivel[]>([])
+  const [editando, setEditando] = useState<ClienteNivel | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await clienteNivelService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await clienteNivelService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: ClienteNivel) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: ClienteNivelRequest) => {
+    try {
+      if (editando) {
+        await clienteNivelService.actualizar(editando.id_nivel, datos)
+        toast.success("Actualizado")
+      } else {
+        await clienteNivelService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: ClienteNivel) => {
+    try {
+      if (item.activo) {
+        await clienteNivelService.desactivar(item.id_nivel)
+        toast.success("Desactivado")
+      } else {
+        await clienteNivelService.reactivar(item.id_nivel)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: ClienteNivel) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await clienteNivelService.eliminar(item.id_nivel)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Niveles de Cliente</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo
+        </button>
+      </div>
+
+      {mostrarForm && <ClienteNivelForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <ClienteNivelTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/clienteNivel/ClienteNivelTabla.tsx ===
+================================================================================
+import type { ClienteNivel } from '@/types/configuracion'
+import { IconoDinamico } from '@/components/IconoDinamico'
+
+interface Props {
+  items: ClienteNivel[]
+  onEditar: (item: ClienteNivel) => void
+  onCambiarEstado: (item: ClienteNivel) => void
+  onEliminar: (item: ClienteNivel) => void
+}
+
+export function ClienteNivelTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Visitas</th>
+            <th className="p-2 text-left">Descuento</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_nivel} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_nivel}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">{item.visitas_min} - {item.visitas_max ?? 'âˆž'}</td>
+              <td className="p-2">{item.descuento}%</td>
+              <td className="p-2">
+                {item.color && <span className="inline-block w-4 h-4 rounded" style={{ background: item.color }} />}
+              </td>
+              <td className="p-2">
+                <IconoDinamico
+                  nombre={item.icono}
+                  size={20}
+                  style={{ color: item.color ?? undefined }}
+                />
+              </td>
+              <td className="p-2"><span className={item.activo ? 'text-green-400' : 'text-red-400'}>{item.activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/ConfiguracionSistemaPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { configuracionSistemaService } from "@/services/configuracionSistemaService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Configuracion } from "@/types/reserva"
+import { Save } from "lucide-react"
+
+export function ConfiguracionSistemaPage() {
+  const [configs, setConfigs] = useState<Configuracion[]>([])
+  const [editando, setEditando] = useState<Record<string, string>>({})
+  const [cargando, setCargando] = useState(true)
+  const [guardando, setGuardando] = useState<string | null>(null)
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      const datos = await configuracionSistemaService.listar()
+      setConfigs(datos)
+      const edicion: Record<string, string> = {}
+      datos.forEach(c => { edicion[c.clave] = c.valor })
+      setEditando(edicion)
+    } catch {
+      toast.error("Error al cargar configuraciones")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  const guardar = async (clave: string) => {
+    setGuardando(clave)
+    try {
+      await configuracionSistemaService.actualizar(clave, editando[clave])
+      toast.success("ConfiguraciÃ³n actualizada")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    } finally {
+      setGuardando(null)
+    }
+  }
+
+  // Agrupar por grupo
+  const porGrupo = configs.reduce((acc, c) => {
+    if (!acc[c.grupo]) acc[c.grupo] = []
+    acc[c.grupo].push(c)
+    return acc
+  }, {} as Record<string, Configuracion[]>)
+
+  return (
+    <AppLayout>
+      <div className="mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">âš™ï¸ Configuraciones del Sistema</h1>
+        <p className="text-slate-400 text-sm mt-1">
+          ParÃ¡metros globales del hospedaje
+        </p>
+      </div>
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(porGrupo).map(([grupo, items]) => (
+            <div key={grupo} className="bg-slate-800 p-5 rounded-lg">
+              <h2 className="text-lg font-semibold mb-4 capitalize">{grupo}</h2>
+              <div className="space-y-3">
+                {items.map(c => (
+                  <div key={c.clave} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex-1">
+                      <label className="text-slate-300 text-sm font-mono">{c.clave}</label>
+                      {c.descripcion && (
+                        <p className="text-slate-500 text-xs mt-0.5">{c.descripcion}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={editando[c.clave] ?? ""}
+                        onChange={e => setEditando({ ...editando, [c.clave]: e.target.value })}
+                        className="bg-slate-900 text-white p-2 rounded w-40"
+                      />
+                      <button
+                        onClick={() => guardar(c.clave)}
+                        disabled={guardando === c.clave || editando[c.clave] === c.valor}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white px-3 py-2 rounded flex items-center gap-1"
+                      >
+                        <Save size={14} />
+                        {guardando === c.clave ? "..." : "Guardar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/estadoCuentaPagar/EstadoCuentaPagarForm.tsx ===
+================================================================================
+import { useState } from "react"
+import { toast } from "sonner"
+import { IconPicker } from "@/components/IconPicker"
+import type { EstadoCuentaPagar, EstadoCuentaPagarRequest } from "@/types/cuentaPagar"
+
+interface Props {
+  inicial: EstadoCuentaPagar | null
+  onGuardar: (datos: EstadoCuentaPagarRequest) => void
+  onCancelar: () => void
+}
+
+function generarSlug(nombre: string): string {
+  return nombre.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+export function EstadoCuentaPagarForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [slug, setSlug] = useState(inicial?.slug || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [color, setColor] = useState(inicial?.color || "#f59e0b")
+  const [icono, setIcono] = useState(inicial?.icono || "")
+  const [esEstadoFinal, setEsEstadoFinal] = useState(inicial?.es_estado_final ?? false)
+  const [orden, setOrden] = useState(inicial?.orden ?? 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return toast.error("El nombre es obligatorio")
+    const slugFinal = slug.trim() || generarSlug(nombre)
+
+    onGuardar({
+      nombre: nombre.trim(),
+      slug: slugFinal,
+      descripcion: descripcion || null,
+      color: color || null,
+      icono: icono || null,
+      es_estado_final: esEstadoFinal,
+      orden,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input
+            value={nombre}
+            onChange={e => {
+              setNombre(e.target.value)
+              if (!inicial) setSlug(generarSlug(e.target.value))
+            }}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug</label>
+          <input
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input
+            value={descripcion}
+            onChange={e => setDescripcion(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <div className="flex gap-2 items-center">
+            <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-12 h-10 rounded cursor-pointer" />
+            <input value={color} onChange={e => setColor(e.target.value)} className="flex-1 bg-slate-900 text-white p-2 rounded" />
+          </div>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={esEstadoFinal}
+              onChange={e => setEsEstadoFinal(e.target.checked)}
+              className="w-4 h-4"
+            />
+            Â¿Es estado final?
+          </label>
+          <p className="text-slate-500 text-xs mt-1">
+            Los estados finales no se recalculan automÃ¡ticamente
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? "Actualizar" : "Crear"}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/estadoCuentaPagar/EstadoCuentaPagarPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { estadoCuentaPagarService } from "@/services/estadoCuentaPagarService"
+import { mensajeDeError } from "@/lib/errores"
+import type { EstadoCuentaPagar, EstadoCuentaPagarRequest } from "@/types/cuentaPagar"
+import { EstadoCuentaPagarForm } from "./EstadoCuentaPagarForm"
+import { EstadoCuentaPagarTabla } from "./EstadoCuentaPagarTabla"
+
+export function EstadoCuentaPagarPage() {
+  const [items, setItems] = useState<EstadoCuentaPagar[]>([])
+  const [editando, setEditando] = useState<EstadoCuentaPagar | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      setItems(await estadoCuentaPagarService.listar())
+    } catch {
+      toast.error("Error al cargar")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => { cargar() }, [])
+
+  const guardar = async (datos: EstadoCuentaPagarRequest) => {
+    try {
+      if (editando) {
+        await estadoCuentaPagarService.actualizar(editando.id_estado_cuenta, datos)
+        toast.success("Actualizado")
+      } else {
+        await estadoCuentaPagarService.crear(datos)
+        toast.success("Creado")
+      }
+      setMostrarForm(false); setEditando(null); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: EstadoCuentaPagar) => {
+    try {
+      if (item.activo) await estadoCuentaPagarService.desactivar(item.id_estado_cuenta)
+      else await estadoCuentaPagarService.reactivar(item.id_estado_cuenta)
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: EstadoCuentaPagar) => {
+    if (!confirm(`Â¿Eliminar "${item.nombre}"?`)) return
+    try {
+      await estadoCuentaPagarService.eliminar(item.id_estado_cuenta)
+      toast.success("Eliminado"); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Estados de Cuenta por Pagar</h1>
+        <button
+          onClick={() => { setEditando(null); setMostrarForm(true) }}
+          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium"
+        >
+          + Nuevo Estado
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <EstadoCuentaPagarForm
+          inicial={editando}
+          onGuardar={guardar}
+          onCancelar={() => { setMostrarForm(false); setEditando(null) }}
+        />
+      )}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <EstadoCuentaPagarTabla
+          items={items}
+          onEditar={item => { setEditando(item); setMostrarForm(true) }}
+          onCambiarEstado={cambiarEstado}
+          onEliminar={eliminar}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/estadoCuentaPagar/EstadoCuentaPagarTabla.tsx ===
+================================================================================
+import type { EstadoCuentaPagar } from "@/types/cuentaPagar"
+import { IconoDinamico } from "@/components/IconoDinamico"
+
+interface Props {
+  items: EstadoCuentaPagar[]
+  onEditar: (item: EstadoCuentaPagar) => void
+  onCambiarEstado: (item: EstadoCuentaPagar) => void
+  onEliminar: (item: EstadoCuentaPagar) => void
+}
+
+export function EstadoCuentaPagarTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-175">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Slug</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Final</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_estado_cuenta} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_estado_cuenta}</td>
+              <td className="p-2 font-medium">{item.nombre}</td>
+              <td className="p-2 text-slate-400 text-xs">{item.slug}</td>
+              <td className="p-2">
+                {item.color && (
+                  <span className="inline-block w-6 h-6 rounded" style={{ background: item.color }} />
+                )}
+              </td>
+              <td className="p-2">
+                {item.icono && <IconoDinamico nombre={item.icono} size={20} style={{ color: item.color || "#fff" }} />}
+              </td>
+              <td className="p-2">
+                {item.es_estado_final ? (
+                  <span className="text-yellow-400 text-xs">SÃ</span>
+                ) : (
+                  <span className="text-slate-500 text-xs">No</span>
+                )}
+              </td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                    {item.activo ? "Desactivar" : "Reactivar"}
+                  </button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/habitacion/HabitacionForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { Habitacion, HabitacionRequest } from "@/types/habitacion"
+import type { Piso, TipoHabitacion } from "@/types/configuracion"
+
+interface Props {
+  inicial: Habitacion | null
+  pisos: Piso[]
+  tipos: TipoHabitacion[]
+  onGuardar: (datos: HabitacionRequest) => void
+  onCancelar: () => void
+}
+
+export function HabitacionForm({ inicial, pisos, tipos, onGuardar, onCancelar }: Props) {
+  const [numero, setNumero] = useState(inicial?.numero || "")
+  const [idPiso, setIdPiso] = useState<number>(inicial?.id_piso ?? (pisos[0]?.id_piso ?? 0))
+  const [idTipo, setIdTipo] = useState<number>(inicial?.id_tipo ?? (tipos[0]?.id_tipo ?? 0))
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+  const [activo, setActivo] = useState(inicial?.activo ?? true)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!numero.trim() || !idPiso || !idTipo) return
+    onGuardar({
+      numero,
+      id_piso: Number(idPiso),
+      id_tipo: Number(idTipo),
+      orden,
+      activo,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">NÃºmero *</label>
+          <input
+            value={numero}
+            onChange={e => setNumero(e.target.value)}
+            placeholder="101, 202, 308..."
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Piso *</label>
+          <select
+            value={idPiso}
+            onChange={e => setIdPiso(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          >
+            <option value={0}>â€” Seleccionar â€”</option>
+            {pisos.map(p => (
+              <option key={p.id_piso} value={p.id_piso}>{p.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo de HabitaciÃ³n *</label>
+          <select
+            value={idTipo}
+            onChange={e => setIdTipo(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          >
+            <option value={0}>â€” Seleccionar â€”</option>
+            {tipos.map(t => (
+              <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input
+            type="number"
+            value={orden}
+            onChange={e => setOrden(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div className="flex items-center gap-2 pt-6">
+          <input
+            type="checkbox"
+            checked={activo}
+            onChange={e => setActivo(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <label className="text-slate-300 text-sm">Activa</label>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? "Actualizar" : "Crear"}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/habitacion/HabitacionPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { habitacionService } from "@/services/habitacionService"
+import { pisoService } from "@/services/pisoService"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Habitacion, HabitacionRequest } from "@/types/habitacion"
+import type { Piso, TipoHabitacion } from "@/types/configuracion"
+import { HabitacionForm } from "./HabitacionForm"
+import { HabitacionTabla } from "./HabitacionTabla"
+
+export function HabitacionPage() {
+  const [items, setItems] = useState<Habitacion[]>([])
+  const [pisos, setPisos] = useState<Piso[]>([])
+  const [tipos, setTipos] = useState<TipoHabitacion[]>([])
+  const [editando, setEditando] = useState<Habitacion | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+  const [filtroPiso, setFiltroPiso] = useState<number | "">("")
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const [habs, ps, ts] = await Promise.all([
+          habitacionService.listar(),
+          pisoService.listarActivos(),
+          tipoHabitacionService.listarActivos(),
+        ])
+        if (!cancelado) {
+          setItems(habs)
+          setPisos(ps)
+          setTipos(ts)
+        }
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await habitacionService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: Habitacion) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: HabitacionRequest) => {
+    try {
+      if (editando) {
+        await habitacionService.actualizar(editando.id_habitacion, datos)
+        toast.success("Actualizado")
+      } else {
+        await habitacionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Habitacion) => {
+    try {
+      if (item.activo) {
+        await habitacionService.desactivar(item.id_habitacion)
+        toast.success("Desactivado")
+      } else {
+        await habitacionService.reactivar(item.id_habitacion)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Habitacion) => {
+    if (!confirm(`Eliminar habitaciÃ³n "${item.numero}"?`)) return
+    try {
+      await habitacionService.eliminar(item.id_habitacion)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const itemsFiltrados = filtroPiso === "" 
+    ? items 
+    : items.filter(h => h.id_piso === filtroPiso)
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Habitaciones</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva HabitaciÃ³n
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <HabitacionForm
+          inicial={editando}
+          pisos={pisos}
+          tipos={tipos}
+          onGuardar={guardar}
+          onCancelar={cerrar}
+        />
+      )}
+
+      {/* Filtros */}
+      <div className="bg-slate-800 p-3 rounded mb-4 flex flex-wrap gap-3 items-center">
+        <label className="text-slate-300 text-sm">Filtrar por piso:</label>
+        <select
+          value={filtroPiso}
+          onChange={e => setFiltroPiso(e.target.value ? Number(e.target.value) : "")}
+          className="bg-slate-900 text-white px-3 py-1 rounded text-sm"
+        >
+          <option value="">Todos los pisos</option>
+          {pisos.map(p => (
+            <option key={p.id_piso} value={p.id_piso}>{p.nombre}</option>
+          ))}
+        </select>
+        <span className="text-slate-400 text-xs">
+          {itemsFiltrados.length} habitacion{itemsFiltrados.length !== 1 ? "es" : ""}
+        </span>
+      </div>
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <HabitacionTabla
+          items={itemsFiltrados}
+          onEditar={abrirEditar}
+          onCambiarEstado={cambiarEstado}
+          onEliminar={eliminar}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/habitacion/HabitacionTabla.tsx ===
+================================================================================
+import type { Habitacion } from "@/types/habitacion"
+
+interface Props {
+  items: Habitacion[]
+  onEditar: (item: Habitacion) => void
+  onCambiarEstado: (item: Habitacion) => void
+  onEliminar: (item: Habitacion) => void
+}
+
+export function HabitacionTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[900px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">NÃºmero</th>
+            <th className="p-2 text-left">Piso</th>
+            <th className="p-2 text-left">Tipo</th>
+            <th className="p-2 text-left">Capacidad</th>
+            <th className="p-2 text-left">Camas</th>
+            <th className="p-2 text-left">Jacuzzi</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_habitacion} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_habitacion}</td>
+              <td className="p-2 font-mono font-semibold">{item.numero}</td>
+              <td className="p-2">{item.piso?.nombre ?? "â€”"}</td>
+              <td className="p-2">
+                {item.tipo ? (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-200">
+                    {item.tipo.nombre}
+                  </span>
+                ) : "â€”"}
+              </td>
+              <td className="p-2 text-center">{item.tipo?.capacidad ?? "â€”"}</td>
+              <td className="p-2 text-center">{item.tipo?.camas ?? "â€”"}</td>
+              <td className="p-2 text-center">
+                {item.tipo?.tiene_jacuzzi ? "âœ…" : "â€”"}
+              </td>
+              <td className="p-2 text-center">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activa" : "Inactiva"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/metodoPago/MetodoPagoForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { MetodoPago, MetodoPagoRequest } from '@/types/configuracion'
+
+import { IconPicker } from "@/components/IconPicker"
+interface Props {
+  inicial: MetodoPago | null
+  onGuardar: (datos: MetodoPagoRequest) => void
+  onCancelar: () => void
+}
+
+export function MetodoPagoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || '')
+  const [esDeCaja, setEsDeCaja] = useState(inicial?.es_de_caja ?? true)
+  const [icono, setIcono] = useState(inicial?.icono || '')
+  const [color, setColor] = useState(inicial?.color || '#16a34a')
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return
+    onGuardar({
+      nombre,
+      descripcion: descripcion || null,
+      es_de_caja: esDeCaja,
+      icono: icono || null,
+      color: color || null,
+      orden,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="col-span-1">
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono (lucide)</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-full h-10 bg-slate-900 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-2 flex items-center gap-2">
+          <input type="checkbox" checked={esDeCaja} onChange={e => setEsDeCaja(e.target.checked)} className="w-4 h-4" />
+          <label className="text-slate-300 text-sm">
+            Entra a caja (si NO estÃ¡ marcado, va a la cuenta de la dueÃ±a)
+          </label>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/metodoPago/MetodoPagoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { metodoPagoService } from "@/services/metodoPagoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { MetodoPago, MetodoPagoRequest } from "@/types/configuracion"
+import { MetodoPagoForm } from "./MetodoPagoForm"
+import { MetodoPagoTabla } from "./MetodoPagoTabla"
+
+export function MetodoPagoPage() {
+  const [items, setItems] = useState<MetodoPago[]>([])
+  const [editando, setEditando] = useState<MetodoPago | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await metodoPagoService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await metodoPagoService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: MetodoPago) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: MetodoPagoRequest) => {
+    try {
+      if (editando) {
+        await metodoPagoService.actualizar(editando.id_metodo, datos)
+        toast.success("Actualizado")
+      } else {
+        await metodoPagoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: MetodoPago) => {
+    try {
+      if (item.activo) {
+        await metodoPagoService.desactivar(item.id_metodo)
+        toast.success("Desactivado")
+      } else {
+        await metodoPagoService.reactivar(item.id_metodo)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: MetodoPago) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await metodoPagoService.eliminar(item.id_metodo)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Metodos de Pago</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo
+        </button>
+      </div>
+
+      {mostrarForm && <MetodoPagoForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <MetodoPagoTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/metodoPago/MetodoPagoTabla.tsx ===
+================================================================================
+import type { MetodoPago } from '@/types/configuracion'
+import { IconoDinamico } from "@/components/IconoDinamico"
+
+interface Props {
+  items: MetodoPago[]
+  onEditar: (item: MetodoPago) => void
+  onCambiarEstado: (item: MetodoPago) => void
+  onEliminar: (item: MetodoPago) => void
+}
+
+export function MetodoPagoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Destino</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_metodo} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_metodo}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">
+                {item.es_de_caja ? (
+                  <span className="bg-green-900 text-green-300 px-2 py-1 rounded text-xs">CAJA</span>
+                ) : (
+                  <span className="bg-yellow-900 text-yellow-300 px-2 py-1 rounded text-xs">DUENA</span>
+                )}
+              </td>
+              <td className="p-2">
+                {item.color && <span className="inline-block w-4 h-4 rounded" style={{ background: item.color }} />}
+              </td>
+              <td className="p-2">
+                <IconoDinamico
+                  nombre={item.icono}
+                  size={20}
+                  style={{ color: item.color ?? undefined }}
+                />
+              </td>
+              <td className="p-2"><span className={item.activo ? 'text-green-400' : 'text-red-400'}>{item.activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/piso/PisoForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { Piso, PisoRequest } from '@/types/configuracion'
+
+interface Props {
+  inicial: Piso | null
+  onGuardar: (datos: PisoRequest) => void
+  onCancelar: () => void
+}
+
+export function PisoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || '')
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return
+    onGuardar({ nombre, descripcion: descripcion || null, orden, activo: true })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input
+            type="number"
+            value={orden}
+            onChange={e => setOrden(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="text-slate-300 text-sm">Descripción</label>
+          <input
+            value={descripcion}
+            onChange={e => setDescripcion(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? 'Actualizar' : 'Crear'}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/piso/PisoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { pisoService } from "@/services/pisoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Piso, PisoRequest } from "@/types/configuracion"
+import { PisoForm } from "./PisoForm"
+import { PisoTabla } from "./PisoTabla"
+
+export function PisoPage() {
+  const [items, setItems] = useState<Piso[]>([])
+  const [editando, setEditando] = useState<Piso | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await pisoService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try {
+      const datos = await pisoService.listar()
+      setItems(datos)
+    } catch {
+      toast.error("Error al recargar")
+    }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: Piso) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: PisoRequest) => {
+    try {
+      if (editando) {
+        await pisoService.actualizar(editando.id_piso, datos)
+        toast.success("Actualizado")
+      } else {
+        await pisoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Piso) => {
+    try {
+      if (item.activo) {
+        await pisoService.desactivar(item.id_piso)
+        toast.success("Desactivado")
+      } else {
+        await pisoService.reactivar(item.id_piso)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Piso) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await pisoService.eliminar(item.id_piso)
+      toast.success("Eliminado")
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Pisos</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Piso
+        </button>
+      </div>
+
+      {mostrarForm && <PisoForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <PisoTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/piso/PisoTabla.tsx ===
+================================================================================
+import type { Piso } from '@/types/configuracion'
+
+interface Props {
+  items: Piso[]
+  onEditar: (item: Piso) => void
+  onCambiarEstado: (item: Piso) => void
+  onEliminar: (item: Piso) => void
+}
+
+export function PisoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[600px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Descripcion</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_piso} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_piso}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">{item.descripcion || 'â€”'}</td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? 'text-green-400' : 'text-red-400'}>
+                  {item.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                    {item.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/prioridadMantenimiento/PrioridadMantenimientoForm.tsx ===
+================================================================================
+import { useState } from "react"
+import { toast } from "sonner"
+import type { PrioridadMantenimiento, PrioridadMantenimientoRequest } from "@/types/mantenimiento"
+
+interface Props {
+  inicial: PrioridadMantenimiento | null
+  onGuardar: (datos: PrioridadMantenimientoRequest) => void
+  onCancelar: () => void
+}
+
+function generarSlug(nombre: string): string {
+  return nombre.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+export function PrioridadMantenimientoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [slug, setSlug] = useState(inicial?.slug || "")
+  const [color, setColor] = useState(inicial?.color || "#f59e0b")
+  const [orden, setOrden] = useState(inicial?.orden ?? 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return toast.error("El nombre es obligatorio")
+    const slugFinal = slug.trim() || generarSlug(nombre)
+
+    onGuardar({
+      nombre: nombre.trim(),
+      slug: slugFinal,
+      color: color || null,
+      orden,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input
+            value={nombre}
+            onChange={e => {
+              setNombre(e.target.value)
+              if (!inicial) setSlug(generarSlug(e.target.value))
+            }}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug</label>
+          <input
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <div className="flex gap-2 items-center">
+            <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-12 h-10 rounded cursor-pointer" />
+            <input value={color} onChange={e => setColor(e.target.value)} className="flex-1 bg-slate-900 text-white p-2 rounded" />
+          </div>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? "Actualizar" : "Crear"}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/prioridadMantenimiento/PrioridadMantenimientoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { prioridadMantenimientoService } from "@/services/prioridadMantenimientoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { PrioridadMantenimiento, PrioridadMantenimientoRequest } from "@/types/mantenimiento"
+import { PrioridadMantenimientoForm } from "./PrioridadMantenimientoForm"
+import { PrioridadMantenimientoTabla } from "./PrioridadMantenimientoTabla"
+
+export function PrioridadMantenimientoPage() {
+  const [items, setItems] = useState<PrioridadMantenimiento[]>([])
+  const [editando, setEditando] = useState<PrioridadMantenimiento | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      setItems(await prioridadMantenimientoService.listar())
+    } catch {
+      toast.error("Error al cargar")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => { cargar() }, [])
+
+  const guardar = async (datos: PrioridadMantenimientoRequest) => {
+    try {
+      if (editando) {
+        await prioridadMantenimientoService.actualizar(editando.id_prioridad, datos)
+        toast.success("Actualizado")
+      } else {
+        await prioridadMantenimientoService.crear(datos)
+        toast.success("Creado")
+      }
+      setMostrarForm(false); setEditando(null); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: PrioridadMantenimiento) => {
+    try {
+      if (item.activo) await prioridadMantenimientoService.desactivar(item.id_prioridad)
+      else await prioridadMantenimientoService.reactivar(item.id_prioridad)
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: PrioridadMantenimiento) => {
+    if (!confirm(`Â¿Eliminar "${item.nombre}"?`)) return
+    try {
+      await prioridadMantenimientoService.eliminar(item.id_prioridad)
+      toast.success("Eliminado"); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Prioridades de Mantenimiento</h1>
+        <button
+          onClick={() => { setEditando(null); setMostrarForm(true) }}
+          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium"
+        >
+          + Nueva Prioridad
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <PrioridadMantenimientoForm
+          inicial={editando}
+          onGuardar={guardar}
+          onCancelar={() => { setMostrarForm(false); setEditando(null) }}
+        />
+      )}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <PrioridadMantenimientoTabla
+          items={items}
+          onEditar={item => { setEditando(item); setMostrarForm(true) }}
+          onCambiarEstado={cambiarEstado}
+          onEliminar={eliminar}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/prioridadMantenimiento/PrioridadMantenimientoTabla.tsx ===
+================================================================================
+import type { PrioridadMantenimiento } from "@/types/mantenimiento"
+
+interface Props {
+  items: PrioridadMantenimiento[]
+  onEditar: (item: PrioridadMantenimiento) => void
+  onCambiarEstado: (item: PrioridadMantenimiento) => void
+  onEliminar: (item: PrioridadMantenimiento) => void
+}
+
+export function PrioridadMantenimientoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-150">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Slug</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_prioridad} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_prioridad}</td>
+              <td className="p-2 font-semibold">{item.nombre}</td>
+              <td className="p-2 text-slate-400 text-xs">{item.slug}</td>
+              <td className="p-2">
+                {item.color && (
+                  <span className="inline-block w-6 h-6 rounded" style={{ background: item.color }} />
+                )}
+              </td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                    {item.activo ? "Desactivar" : "Reactivar"}
+                  </button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tarifa/TarifaForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { Tarifa, TarifaRequest } from '@/types/tarifa'
+import type { TipoHabitacion } from '@/types/configuracion'
+
+interface Props {
+  inicial: Tarifa | null
+  tipos: TipoHabitacion[]
+  onGuardar: (datos: TarifaRequest) => void
+  onCancelar: () => void
+}
+
+export function TarifaForm({ inicial, tipos, onGuardar, onCancelar }: Props) {
+  const [idTipo, setIdTipo] = useState(inicial?.id_tipo || (tipos[0]?.id_tipo ?? 0))
+  const [horas, setHoras] = useState(inicial?.horas || 4)
+  const [monto, setMonto] = useState(inicial?.monto || 0)
+  const [precioHoraExtra, setPrecioHoraExtra] = useState(inicial?.precio_hora_extra || 0)
+  const [maxHorasExtra, setMaxHorasExtra] = useState(inicial?.max_horas_extra || 3)
+  const [precioTurnoAdicional, setPrecioTurnoAdicional] = useState(inicial?.precio_turno_adicional || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!idTipo || horas <= 0 || monto <= 0) return
+    onGuardar({
+      id_tipo: idTipo,
+      horas,
+      monto,
+      precio_hora_extra: precioHoraExtra,
+      max_horas_extra: maxHorasExtra,
+      precio_turno_adicional: precioTurnoAdicional,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Tipo de habitación *</label>
+          <select
+            value={idTipo}
+            onChange={e => setIdTipo(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          >
+            {tipos.map(t => (
+              <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Horas *</label>
+          <input
+            type="number"
+            value={horas}
+            onChange={e => setHoras(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            min={1}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Monto (S/) *</label>
+          <input
+            type="number"
+            step="0.01"
+            value={monto}
+            onChange={e => setMonto(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            min={0}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio hora extra (S/) *</label>
+          <input
+            type="number"
+            step="0.01"
+            value={precioHoraExtra}
+            onChange={e => setPrecioHoraExtra(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            min={0}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Máx. horas extra</label>
+          <input
+            type="number"
+            value={maxHorasExtra}
+            onChange={e => setMaxHorasExtra(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            min={1}
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio turno adicional (S/) *</label>
+          <input
+            type="number"
+            step="0.01"
+            value={precioTurnoAdicional}
+            onChange={e => setPrecioTurnoAdicional(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            min={0}
+            required
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? 'Actualizar' : 'Crear'}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tarifa/TarifaPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { tarifaService } from "@/services/tarifaService"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Tarifa, TarifaRequest } from "@/types/tarifa"
+import type { TipoHabitacion } from "@/types/configuracion"
+import { TarifaForm } from "./TarifaForm"
+import { TarifaTabla } from "./TarifaTabla"
+
+export function TarifaPage() {
+  const [items, setItems] = useState<Tarifa[]>([])
+  const [tipos, setTipos] = useState<TipoHabitacion[]>([])
+  const [editando, setEditando] = useState<Tarifa | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const [tarifas, tiposHab] = await Promise.all([
+          tarifaService.listar(),
+          tipoHabitacionService.listarActivos(),
+        ])
+        if (!cancelado) {
+          setItems(tarifas)
+          setTipos(tiposHab)
+        }
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try {
+      const [tarifas, tiposHab] = await Promise.all([
+        tarifaService.listar(),
+        tipoHabitacionService.listarActivos(),
+      ])
+      setItems(tarifas)
+      setTipos(tiposHab)
+    } catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: Tarifa) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: TarifaRequest) => {
+    try {
+      if (editando) {
+        await tarifaService.actualizar(editando.id_tarifa, datos)
+        toast.success("Actualizado")
+      } else {
+        await tarifaService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Tarifa) => {
+    try {
+      if (item.activo) {
+        await tarifaService.desactivar(item.id_tarifa)
+        toast.success("Desactivado")
+      } else {
+        await tarifaService.reactivar(item.id_tarifa)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Tarifa) => {
+    if (!confirm(`Eliminar tarifa?`)) return
+    try {
+      await tarifaService.eliminar(item.id_tarifa)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Tarifas</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva
+        </button>
+      </div>
+
+      {mostrarForm && <TarifaForm inicial={editando} tipos={tipos} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <TarifaTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tarifa/TarifaTabla.tsx ===
+================================================================================
+import type { Tarifa } from '@/types/tarifa'
+
+interface Props {
+  items: Tarifa[]
+  onEditar: (item: Tarifa) => void
+  onCambiarEstado: (item: Tarifa) => void
+  onEliminar: (item: Tarifa) => void
+}
+
+export function TarifaTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Tipo</th>
+            <th className="p-2 text-left">Horas</th>
+            <th className="p-2 text-left">Monto</th>
+            <th className="p-2 text-left">Hora Extra</th>
+            <th className="p-2 text-left">Max. Extra</th>
+            <th className="p-2 text-left">Turno Adic.</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_tarifa} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_tarifa}</td>
+              <td className="p-2">{item.tipo?.nombre ?? `Tipo ${item.id_tipo}`}</td>
+              <td className="p-2">{item.horas}h</td>
+              <td className="p-2">S/ {Number(item.monto).toFixed(2)}</td>
+              <td className="p-2">S/ {Number(item.precio_hora_extra).toFixed(2)}</td>
+              <td className="p-2">{item.max_horas_extra}</td>
+              <td className="p-2">S/ {Number(item.precio_turno_adicional).toFixed(2)}</td>
+              <td className="p-2">
+                <span className={item.activo ? 'text-green-400' : 'text-red-400'}>
+                  {item.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                    {item.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoDocumento/TipoDocumentoForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { TipoDocumento, TipoDocumentoRequest } from '@/types/configuracion'
+
+interface Props {
+  inicial: TipoDocumento | null
+  onGuardar: (datos: TipoDocumentoRequest) => void
+  onCancelar: () => void
+}
+
+export function TipoDocumentoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [abreviatura, setAbreviatura] = useState(inicial?.abreviatura || '')
+  const [longitud, setLongitud] = useState(inicial?.longitud || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !abreviatura.trim()) return
+    onGuardar({ nombre, abreviatura, longitud: longitud || null, activo: true })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="col-span-1">
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Abreviatura *</label>
+          <input value={abreviatura} onChange={e => setAbreviatura(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Longitud</label>
+          <input type="number" value={longitud} onChange={e => setLongitud(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoDocumento/TipoDocumentoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { tipoDocumentoService } from "@/services/tipoDocumentoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { TipoDocumento, TipoDocumentoRequest } from "@/types/configuracion"
+import { TipoDocumentoForm } from "./TipoDocumentoForm"
+import { TipoDocumentoTabla } from "./TipoDocumentoTabla"
+
+export function TipoDocumentoPage() {
+  const [items, setItems] = useState<TipoDocumento[]>([])
+  const [editando, setEditando] = useState<TipoDocumento | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await tipoDocumentoService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await tipoDocumentoService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: TipoDocumento) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: TipoDocumentoRequest) => {
+    try {
+      if (editando) {
+        await tipoDocumentoService.actualizar(editando.id_documento, datos)
+        toast.success("Actualizado")
+      } else {
+        await tipoDocumentoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: TipoDocumento) => {
+    try {
+      if (item.activo) {
+        await tipoDocumentoService.desactivar(item.id_documento)
+        toast.success("Desactivado")
+      } else {
+        await tipoDocumentoService.reactivar(item.id_documento)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: TipoDocumento) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await tipoDocumentoService.eliminar(item.id_documento)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Tipos de Documento</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo
+        </button>
+      </div>
+
+      {mostrarForm && <TipoDocumentoForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <TipoDocumentoTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoDocumento/TipoDocumentoTabla.tsx ===
+================================================================================
+import type { TipoDocumento } from '@/types/configuracion'
+
+interface Props {
+  items: TipoDocumento[]
+  onEditar: (item: TipoDocumento) => void
+  onCambiarEstado: (item: TipoDocumento) => void
+  onEliminar: (item: TipoDocumento) => void
+}
+
+export function TipoDocumentoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[600px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Abrev.</th>
+            <th className="p-2 text-left">Longitud</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_documento} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_documento}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">{item.abreviatura}</td>
+              <td className="p-2">{item.longitud || 'â€”'}</td>
+              <td className="p-2"><span className={item.activo ? 'text-green-400' : 'text-red-400'}>{item.activo ? 'Activo' : 'Inactivo'}</span></td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoHabitacion/TipoHabitacionForm.tsx ===
+================================================================================
+import { useState } from 'react'
+import type { TipoHabitacion, TipoHabitacionRequest } from '@/types/configuracion'
+
+interface Props {
+  inicial: TipoHabitacion | null
+  onGuardar: (datos: TipoHabitacionRequest) => void
+  onCancelar: () => void
+}
+
+export function TipoHabitacionForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || '')
+  const [slug, setSlug] = useState(inicial?.slug || '')
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || '')
+  const [capacidad, setCapacidad] = useState(inicial?.capacidad || 2)
+  const [camas, setCamas] = useState(inicial?.camas || 1)
+  const [tieneJacuzzi, setTieneJacuzzi] = useState(inicial?.tiene_jacuzzi || false)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !slug.trim()) return
+    onGuardar({
+      nombre, slug,
+      descripcion: descripcion || null,
+      capacidad, camas,
+      tiene_jacuzzi: tieneJacuzzi,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug *</label>
+          <input value={slug} onChange={e => setSlug(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Capacidad</label>
+          <input type="number" value={capacidad} onChange={e => setCapacidad(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Camas</label>
+          <input type="number" value={camas} onChange={e => setCamas(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-slate-300 text-sm">Descripción</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-2 flex items-center gap-2">
+          <input type="checkbox" checked={tieneJacuzzi} onChange={e => setTieneJacuzzi(e.target.checked)} className="w-4 h-4" />
+          <label className="text-slate-300 text-sm">Tiene jacuzzi</label>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? 'Actualizar' : 'Crear'}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoHabitacion/TipoHabitacionPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { tipoHabitacionService } from "@/services/tipoHabitacionService"
+import { mensajeDeError } from "@/lib/errores"
+import type { TipoHabitacion, TipoHabitacionRequest } from "@/types/configuracion"
+import { TipoHabitacionForm } from "./TipoHabitacionForm"
+import { TipoHabitacionTabla } from "./TipoHabitacionTabla"
+
+export function TipoHabitacionPage() {
+  const [items, setItems] = useState<TipoHabitacion[]>([])
+  const [editando, setEditando] = useState<TipoHabitacion | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await tipoHabitacionService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try {
+      setItems(await tipoHabitacionService.listar())
+    } catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: TipoHabitacion) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: TipoHabitacionRequest) => {
+    try {
+      if (editando) {
+        await tipoHabitacionService.actualizar(editando.id_tipo, datos)
+        toast.success("Actualizado")
+      } else {
+        await tipoHabitacionService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: TipoHabitacion) => {
+    try {
+      if (item.activo) {
+        await tipoHabitacionService.desactivar(item.id_tipo)
+        toast.success("Desactivado")
+      } else {
+        await tipoHabitacionService.reactivar(item.id_tipo)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: TipoHabitacion) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await tipoHabitacionService.eliminar(item.id_tipo)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Tipos de Habitacion</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Tipo
+        </button>
+      </div>
+
+      {mostrarForm && <TipoHabitacionForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <TipoHabitacionTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoHabitacion/TipoHabitacionTabla.tsx ===
+================================================================================
+import type { TipoHabitacion } from '@/types/configuracion'
+
+interface Props {
+  items: TipoHabitacion[]
+  onEditar: (item: TipoHabitacion) => void
+  onCambiarEstado: (item: TipoHabitacion) => void
+  onEliminar: (item: TipoHabitacion) => void
+}
+
+export function TipoHabitacionTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[700px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Cap.</th>
+            <th className="p-2 text-left">Camas</th>
+            <th className="p-2 text-left">Jacuzzi</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_tipo} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_tipo}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2">{item.capacidad}</td>
+              <td className="p-2">{item.camas}</td>
+              <td className="p-2">{item.tiene_jacuzzi ? 'Si' : 'No'}</td>
+              <td className="p-2">
+                <span className={item.activo ? 'text-green-400' : 'text-red-400'}>{item.activo ? 'Activo' : 'Inactivo'}</span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? 'Desactivar' : 'Activar'}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoMantenimiento/TipoMantenimientoForm.tsx ===
+================================================================================
+import { useState } from "react"
+import { toast } from "sonner"
+import { IconPicker } from "@/components/IconPicker"
+import type { TipoMantenimiento, TipoMantenimientoRequest } from "@/types/mantenimiento"
+
+interface Props {
+  inicial: TipoMantenimiento | null
+  onGuardar: (datos: TipoMantenimientoRequest) => void
+  onCancelar: () => void
+}
+
+function generarSlug(nombre: string): string {
+  return nombre.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+export function TipoMantenimientoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [slug, setSlug] = useState(inicial?.slug || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [icono, setIcono] = useState(inicial?.icono || "")
+  const [color, setColor] = useState(inicial?.color || "#6b7280")
+  const [orden, setOrden] = useState(inicial?.orden ?? 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim()) return toast.error("El nombre es obligatorio")
+    const slugFinal = slug.trim() || generarSlug(nombre)
+
+    onGuardar({
+      nombre: nombre.trim(),
+      slug: slugFinal,
+      descripcion: descripcion || null,
+      icono: icono || null,
+      color: color || null,
+      orden,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input
+            value={nombre}
+            onChange={e => {
+              setNombre(e.target.value)
+              if (!inicial) setSlug(generarSlug(e.target.value))
+            }}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug</label>
+          <input
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input
+            value={descripcion}
+            onChange={e => setDescripcion(e.target.value)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <div className="flex gap-2 items-center">
+            <input
+              type="color"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="w-12 h-10 rounded cursor-pointer"
+            />
+            <input
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="flex-1 bg-slate-900 text-white p-2 rounded"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input
+            type="number"
+            value={orden}
+            onChange={e => setOrden(Number(e.target.value))}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+          {inicial ? "Actualizar" : "Crear"}
+        </button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoMantenimiento/TipoMantenimientoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { tipoMantenimientoService } from "@/services/tipoMantenimientoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { TipoMantenimiento, TipoMantenimientoRequest } from "@/types/mantenimiento"
+import { TipoMantenimientoForm } from "./TipoMantenimientoForm"
+import { TipoMantenimientoTabla } from "./TipoMantenimientoTabla"
+
+export function TipoMantenimientoPage() {
+  const [items, setItems] = useState<TipoMantenimiento[]>([])
+  const [editando, setEditando] = useState<TipoMantenimiento | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      setItems(await tipoMantenimientoService.listar())
+    } catch {
+      toast.error("Error al cargar")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => { cargar() }, [])
+
+  const guardar = async (datos: TipoMantenimientoRequest) => {
+    try {
+      if (editando) {
+        await tipoMantenimientoService.actualizar(editando.id_tipo_mantenimiento, datos)
+        toast.success("Actualizado")
+      } else {
+        await tipoMantenimientoService.crear(datos)
+        toast.success("Creado")
+      }
+      setMostrarForm(false); setEditando(null); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: TipoMantenimiento) => {
+    try {
+      if (item.activo) await tipoMantenimientoService.desactivar(item.id_tipo_mantenimiento)
+      else await tipoMantenimientoService.reactivar(item.id_tipo_mantenimiento)
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: TipoMantenimiento) => {
+    if (!confirm(`Â¿Eliminar "${item.nombre}"?`)) return
+    try {
+      await tipoMantenimientoService.eliminar(item.id_tipo_mantenimiento)
+      toast.success("Eliminado"); cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Tipos de Mantenimiento</h1>
+        <button
+          onClick={() => { setEditando(null); setMostrarForm(true) }}
+          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium"
+        >
+          + Nuevo Tipo
+        </button>
+      </div>
+
+      {mostrarForm && (
+        <TipoMantenimientoForm
+          inicial={editando}
+          onGuardar={guardar}
+          onCancelar={() => { setMostrarForm(false); setEditando(null) }}
+        />
+      )}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <TipoMantenimientoTabla
+          items={items}
+          onEditar={item => { setEditando(item); setMostrarForm(true) }}
+          onCambiarEstado={cambiarEstado}
+          onEliminar={eliminar}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/configuracion/tipoMantenimiento/TipoMantenimientoTabla.tsx ===
+================================================================================
+import type { TipoMantenimiento } from "@/types/mantenimiento"
+import { IconoDinamico } from "@/components/IconoDinamico"
+
+interface Props {
+  items: TipoMantenimiento[]
+  onEditar: (item: TipoMantenimiento) => void
+  onCambiarEstado: (item: TipoMantenimiento) => void
+  onEliminar: (item: TipoMantenimiento) => void
+}
+
+export function TipoMantenimientoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-175">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Slug</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_tipo_mantenimiento} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_tipo_mantenimiento}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2 text-slate-400 text-xs">{item.slug}</td>
+              <td className="p-2">
+                {item.color && (
+                  <span className="inline-block w-6 h-6 rounded" style={{ background: item.color }} />
+                )}
+              </td>
+              <td className="p-2">
+                {item.icono && <IconoDinamico nombre={item.icono} size={20} style={{ color: item.color || "#fff" }} />}
+              </td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                    {item.activo ? "Desactivar" : "Reactivar"}
+                  </button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

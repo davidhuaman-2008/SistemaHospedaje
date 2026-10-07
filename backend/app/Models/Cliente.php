@@ -18,7 +18,6 @@ class Cliente extends Model
         'id_nivel', 'activo',
     ];
 
-
     protected $casts = [
         'activo' => 'boolean',
         'visitas' => 'integer',
@@ -38,7 +37,13 @@ class Cliente extends Model
         return $this->belongsTo(ClienteNivel::class, 'id_nivel', 'id_nivel');
     }
 
-    public function visitas(): HasMany
+    /**
+     * Historial de visitas (relacion con cliente_visitas).
+     *
+     * NOTA: se llama `historialVisitas` (no `visitas`) para no colisionar
+     * con el campo `visitas` (int) que guarda el contador de visitas.
+     */
+    public function historialVisitas(): HasMany
     {
         return $this->hasMany(ClienteVisita::class, 'id_cliente', 'id_cliente');
     }

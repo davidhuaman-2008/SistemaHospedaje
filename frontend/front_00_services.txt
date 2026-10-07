@@ -1,0 +1,1830 @@
+﻿
+
+================================================================================
+=== src/services/api.ts ===
+================================================================================
+  import axios from "axios"
+
+  const api = axios.create({
+    baseURL: "/api",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  })
+
+  // Interceptor: agrega el token a cada peticiÃ³n
+  api.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token")
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  })
+
+  // Interceptor: si el token expira (401), redirige al login
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token")
+        localStorage.removeItem("usuario")
+        window.location.href = "/login"
+      }
+      return Promise.reject(error)
+    }
+  )
+
+  export default api
+
+================================================================================
+=== src/services/authService.ts ===
+================================================================================
+import api from "./api"
+import type { LoginRequest, LoginResponse, Usuario } from "@/types"
+
+export const authService = {
+  async login(datos: LoginRequest): Promise<LoginResponse> {
+    const { data } = await api.post<LoginResponse>("/login", datos)
+    return data
+  },
+
+  async logout(): Promise<void> {
+    await api.post("/logout")
+  },
+
+  async yo(): Promise<Usuario> {
+    const { data } = await api.get<Usuario>("/yo")
+    return data
+  },
+}
+
+================================================================================
+=== src/services/categoriaMovimientoService.ts ===
+================================================================================
+import api from './api'
+import type { CategoriaMovimiento, CategoriaMovimientoRequest, TipoMovimiento } from '@/types/configuracion'
+
+export const categoriaMovimientoService = {
+  listar: async (tipo?: TipoMovimiento): Promise<CategoriaMovimiento[]> => {
+    const url = tipo ? `/categorias-movimiento?tipo=${tipo}` : '/categorias-movimiento'
+    const { data } = await api.get(url)
+    return data
+  },
+
+  listarActivos: async (): Promise<CategoriaMovimiento[]> => {
+    const { data } = await api.get('/categorias-movimiento/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<CategoriaMovimiento> => {
+    const { data } = await api.get(`/categorias-movimiento/${id}`)
+    return data
+  },
+
+  crear: async (datos: CategoriaMovimientoRequest): Promise<CategoriaMovimiento> => {
+    const { data } = await api.post('/categorias-movimiento', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<CategoriaMovimientoRequest>): Promise<CategoriaMovimiento> => {
+    const { data } = await api.put(`/categorias-movimiento/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<CategoriaMovimiento> => {
+    const { data } = await api.patch(`/categorias-movimiento/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<CategoriaMovimiento> => {
+    const { data } = await api.patch(`/categorias-movimiento/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/categorias-movimiento/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/categoriaProductoService.ts ===
+================================================================================
+import api from './api'
+import type { CategoriaProducto, CategoriaProductoRequest } from '@/types/producto'
+
+export const categoriaProductoService = {
+  listar: async (): Promise<CategoriaProducto[]> => {
+    const { data } = await api.get('/categorias-producto')
+    return data
+  },
+
+  listarActivos: async (): Promise<CategoriaProducto[]> => {
+    const { data } = await api.get('/categorias-producto/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<CategoriaProducto> => {
+    const { data } = await api.get(`/categorias-producto/${id}`)
+    return data
+  },
+
+  crear: async (datos: CategoriaProductoRequest): Promise<CategoriaProducto> => {
+    const { data } = await api.post('/categorias-producto', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<CategoriaProductoRequest>): Promise<CategoriaProducto> => {
+    const { data } = await api.put(`/categorias-producto/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<CategoriaProducto> => {
+    const { data } = await api.patch(`/categorias-producto/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<CategoriaProducto> => {
+    const { data } = await api.patch(`/categorias-producto/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/categorias-producto/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/categoriaPromocionService.ts ===
+================================================================================
+import api from './api'
+import type { CategoriaPromocion, CategoriaPromocionRequest } from '@/types/promocion'
+
+export const categoriaPromocionService = {
+  listar: async (): Promise<CategoriaPromocion[]> => {
+    const { data } = await api.get('/categorias-promocion')
+    return data
+  },
+
+  listarActivos: async (): Promise<CategoriaPromocion[]> => {
+    const { data } = await api.get('/categorias-promocion/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<CategoriaPromocion> => {
+    const { data } = await api.get(`/categorias-promocion/${id}`)
+    return data
+  },
+
+  crear: async (datos: CategoriaPromocionRequest): Promise<CategoriaPromocion> => {
+    const { data } = await api.post('/categorias-promocion', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<CategoriaPromocionRequest>): Promise<CategoriaPromocion> => {
+    const { data } = await api.put(`/categorias-promocion/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<CategoriaPromocion> => {
+    const { data } = await api.patch(`/categorias-promocion/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<CategoriaPromocion> => {
+    const { data } = await api.patch(`/categorias-promocion/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/categorias-promocion/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/clienteNivelService.ts ===
+================================================================================
+import api from './api'
+import type { ClienteNivel, ClienteNivelRequest } from '@/types/configuracion'
+
+export const clienteNivelService = {
+  listar: async (): Promise<ClienteNivel[]> => {
+    const { data } = await api.get('/clientes-niveles')
+    return data
+  },
+
+  listarActivos: async (): Promise<ClienteNivel[]> => {
+    const { data } = await api.get('/clientes-niveles/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<ClienteNivel> => {
+    const { data } = await api.get(`/clientes-niveles/${id}`)
+    return data
+  },
+
+  crear: async (datos: ClienteNivelRequest): Promise<ClienteNivel> => {
+    const { data } = await api.post('/clientes-niveles', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<ClienteNivelRequest>): Promise<ClienteNivel> => {
+    const { data } = await api.put(`/clientes-niveles/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<ClienteNivel> => {
+    const { data } = await api.patch(`/clientes-niveles/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<ClienteNivel> => {
+    const { data } = await api.patch(`/clientes-niveles/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/clientes-niveles/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/clienteObservacionService.ts ===
+================================================================================
+import api from './api'
+import type {
+  ClienteObservacion,
+  ClienteObservacionRequest,
+} from '@/types/cliente'
+
+export const clienteObservacionService = {
+  porCliente: async (idCliente: number): Promise<ClienteObservacion[]> => {
+    const { data } = await api.get(`/clientes/${idCliente}/observaciones`)
+    return data
+  },
+
+  listar: async (): Promise<ClienteObservacion[]> => {
+    const { data } = await api.get('/cliente-observaciones')
+    return data
+  },
+
+  obtener: async (id: number): Promise<ClienteObservacion> => {
+    const { data } = await api.get(`/cliente-observaciones/${id}`)
+    return data
+  },
+
+  crear: async (
+    idCliente: number,
+    datos: ClienteObservacionRequest
+  ): Promise<ClienteObservacion> => {
+    const { data } = await api.post(`/clientes/${idCliente}/observaciones`, datos)
+    return data.data
+  },
+
+  resolver: async (id: number): Promise<ClienteObservacion> => {
+    const { data } = await api.patch(`/cliente-observaciones/${id}/resolver`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/cliente-observaciones/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/clienteService.ts ===
+================================================================================
+import api from './api'
+import type { Cliente, ClienteRequest } from '@/types/cliente'
+
+export const clienteService = {
+  listar: async (): Promise<Cliente[]> => {
+    const { data } = await api.get('/clientes')
+    return data
+  },
+
+  listarActivos: async (): Promise<Cliente[]> => {
+    const { data } = await api.get('/clientes/activos')
+    return data
+  },
+
+  /**
+   * Busca un cliente por DNI.
+   * El backend devuelve: { existe: boolean, cliente: Cliente | null }
+   * Este mÃ©todo devuelve solo el cliente (o null).
+   */
+  /**
+   * Busca un cliente por DNI.
+   * Devuelve el cliente + reserva_activa (si tiene una).
+   */
+  buscarPorDni: async (dni: string): Promise<{ cliente: Cliente | null; reservaActiva: any }> => {
+    const { data } = await api.get('/clientes/buscar', { params: { dni } })
+    if (data && data.existe && data.cliente) {
+      return {
+        cliente: data.cliente,
+        reservaActiva: data.reserva_activa || null,
+      }
+    }
+    return { cliente: null, reservaActiva: null }
+  },
+
+  obtener: async (id: number): Promise<Cliente> => {
+    const { data } = await api.get(`/clientes/${id}`)
+    return data
+  },
+
+  crear: async (datos: ClienteRequest): Promise<Cliente> => {
+    const { data } = await api.post('/clientes', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<ClienteRequest>): Promise<Cliente> => {
+    const { data } = await api.put(`/clientes/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Cliente> => {
+    const { data } = await api.patch(`/clientes/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Cliente> => {
+    const { data } = await api.patch(`/clientes/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/clientes/${id}`)
+  },
+
+  listarVisitas: async (idCliente: number) => {
+    const { data } = await api.get(`/clientes/${idCliente}/visitas`)
+    return data
+  },
+
+  crearVisita: async (idCliente: number, datos: any) => {
+    const { data } = await api.post(`/clientes/${idCliente}/visitas`, datos)
+    return data.data
+  },
+}
+
+================================================================================
+=== src/services/configuracionSistemaService.ts ===
+================================================================================
+import api from './api'
+import type { Configuracion } from '@/types/reserva'
+
+export const configuracionSistemaService = {
+  listar: async (): Promise<Configuracion[]> => {
+    const { data } = await api.get('/configuraciones')
+    return data
+  },
+
+  porGrupo: async (grupo: string): Promise<Configuracion[]> => {
+    const { data } = await api.get(`/configuraciones/grupo/${grupo}`)
+    return data
+  },
+
+  actualizar: async (clave: string, valor: string): Promise<Configuracion> => {
+    const { data } = await api.put(`/configuraciones/${clave}`, { valor })
+    return data.data
+  },
+}
+
+================================================================================
+=== src/services/cuentaPagarService.ts ===
+================================================================================
+import api from './api'
+import type {
+  CuentaPagar,
+  CuentaPagarRequest,
+  RegistrarPagoProveedorRequest,
+} from '@/types/cuentaPagar'
+
+export const cuentaPagarService = {
+  listar: async (): Promise<CuentaPagar[]> => {
+    const { data } = await api.get('/cuentas-por-pagar')
+    return data
+  },
+
+  listarPendientes: async (): Promise<CuentaPagar[]> => {
+    const { data } = await api.get('/cuentas-por-pagar/pendientes')
+    return data
+  },
+
+  listarVencidas: async (): Promise<CuentaPagar[]> => {
+    const { data } = await api.get('/cuentas-por-pagar/vencidas')
+    return data
+  },
+
+  porProveedor: async (idProveedor: number): Promise<CuentaPagar[]> => {
+    const { data } = await api.get(`/cuentas-por-pagar/por-proveedor/${idProveedor}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<CuentaPagar> => {
+    const { data } = await api.get(`/cuentas-por-pagar/${id}`)
+    return data
+  },
+
+  crear: async (datos: CuentaPagarRequest): Promise<CuentaPagar> => {
+    const { data } = await api.post('/cuentas-por-pagar', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<CuentaPagarRequest>): Promise<CuentaPagar> => {
+    const { data } = await api.put(`/cuentas-por-pagar/${id}`, datos)
+    return data.data
+  },
+
+  anular: async (id: number, motivo: string): Promise<CuentaPagar> => {
+    const { data } = await api.patch(`/cuentas-por-pagar/${id}/anular`, { motivo })
+    return data.data
+  },
+
+  registrarPago: async (
+    id: number,
+    datos: RegistrarPagoProveedorRequest
+  ): Promise<CuentaPagar> => {
+    const { data } = await api.post(`/cuentas-por-pagar/${id}/pagos`, datos)
+    return data.data
+  },
+
+  anularPago: async (idCuenta: number, idPago: number, motivo: string): Promise<CuentaPagar> => {
+    const { data } = await api.delete(
+      `/cuentas-por-pagar/${idCuenta}/pagos/${idPago}`,
+      { data: { motivo } }
+    )
+    return data.data
+  },
+}
+
+================================================================================
+=== src/services/decoracionService.ts ===
+================================================================================
+import api from './api'
+import type { Decoracion, DecoracionRequest, EstadoDecoracion } from '@/types/decoracion'
+
+export const decoracionService = {
+  listar: async (): Promise<Decoracion[]> => {
+    const { data } = await api.get('/decoraciones')
+    return data
+  },
+
+  listarActivas: async (): Promise<Decoracion[]> => {
+    const { data } = await api.get('/decoraciones/activas')
+    return data
+  },
+
+  listarProximas: async (): Promise<Decoracion[]> => {
+    const { data } = await api.get('/decoraciones/proximas')
+    return data
+  },
+
+  listarPorReserva: async (idReserva: number): Promise<Decoracion[]> => {
+    const { data } = await api.get(`/decoraciones/por-reserva/${idReserva}`)
+    return data
+  },
+
+  listarPorProveedor: async (idProveedor: number): Promise<Decoracion[]> => {
+    const { data } = await api.get(`/decoraciones/por-proveedor/${idProveedor}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Decoracion> => {
+    const { data } = await api.get(`/decoraciones/${id}`)
+    return data
+  },
+
+  crear: async (datos: DecoracionRequest): Promise<Decoracion> => {
+    const { data } = await api.post('/decoraciones', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<DecoracionRequest>): Promise<Decoracion> => {
+    const { data } = await api.put(`/decoraciones/${id}`, datos)
+    return data.data
+  },
+
+  cambiarEstado: async (
+    id: number,
+    estado: EstadoDecoracion,
+    observaciones?: string
+  ): Promise<Decoracion> => {
+    const { data } = await api.patch(`/decoraciones/${id}/estado`, { estado, observaciones })
+    return data.data
+  },
+
+  registrarAdelanto: async (
+    id: number,
+    monto: number,
+    idMetodoPago: number
+  ): Promise<Decoracion> => {
+    const { data } = await api.post(`/decoraciones/${id}/adelanto`, {
+      monto,
+      id_metodo_pago: idMetodoPago,
+    })
+    return data.data
+  },
+
+  anular: async (id: number, motivo: string): Promise<Decoracion> => {
+    const { data } = await api.patch(`/decoraciones/${id}/anular`, { motivo })
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/decoraciones/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/estadoCuentaPagarService.ts ===
+================================================================================
+import api from './api'
+import type {
+  EstadoCuentaPagar,
+  EstadoCuentaPagarRequest,
+} from '@/types/cuentaPagar'
+
+export const estadoCuentaPagarService = {
+  listar: async (): Promise<EstadoCuentaPagar[]> => {
+    const { data } = await api.get('/estados-cuenta-pagar')
+    return data
+  },
+
+  listarActivos: async (): Promise<EstadoCuentaPagar[]> => {
+    const { data } = await api.get('/estados-cuenta-pagar/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<EstadoCuentaPagar> => {
+    const { data } = await api.get(`/estados-cuenta-pagar/${id}`)
+    return data
+  },
+
+  crear: async (datos: EstadoCuentaPagarRequest): Promise<EstadoCuentaPagar> => {
+    const { data } = await api.post('/estados-cuenta-pagar', datos)
+    return data.data
+  },
+
+  actualizar: async (
+    id: number,
+    datos: Partial<EstadoCuentaPagarRequest>
+  ): Promise<EstadoCuentaPagar> => {
+    const { data } = await api.put(`/estados-cuenta-pagar/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<EstadoCuentaPagar> => {
+    const { data } = await api.patch(`/estados-cuenta-pagar/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<EstadoCuentaPagar> => {
+    const { data } = await api.patch(`/estados-cuenta-pagar/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/estados-cuenta-pagar/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/gravedadObservacionService.ts ===
+================================================================================
+import api from './api'
+import type { GravedadObservacion, GravedadObservacionRequest } from '@/types/gravedadObservacion'
+
+export const gravedadObservacionService = {
+  listar: async (): Promise<GravedadObservacion[]> => {
+    const { data } = await api.get('/gravedades-observacion')
+    return data
+  },
+
+  listarActivos: async (): Promise<GravedadObservacion[]> => {
+    const { data } = await api.get('/gravedades-observacion/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<GravedadObservacion> => {
+    const { data } = await api.get(`/gravedades-observacion/${id}`)
+    return data
+  },
+
+  crear: async (datos: GravedadObservacionRequest): Promise<GravedadObservacion> => {
+    const { data } = await api.post('/gravedades-observacion', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<GravedadObservacionRequest>): Promise<GravedadObservacion> => {
+    const { data } = await api.put(`/gravedades-observacion/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<GravedadObservacion> => {
+    const { data } = await api.patch(`/gravedades-observacion/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<GravedadObservacion> => {
+    const { data } = await api.patch(`/gravedades-observacion/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/gravedades-observacion/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/habitacionService.ts ===
+================================================================================
+import api from './api'
+import type { Habitacion, HabitacionRequest } from '@/types/habitacion'
+
+export const habitacionService = {
+  listar: async (): Promise<Habitacion[]> => {
+    const { data } = await api.get('/habitaciones')
+    return data
+  },
+
+  listarActivas: async (): Promise<Habitacion[]> => {
+    const { data } = await api.get('/habitaciones/activas')
+    return data
+  },
+
+  listarPorPiso: async (idPiso: number): Promise<Habitacion[]> => {
+    const { data } = await api.get(`/habitaciones/por-piso/${idPiso}`)
+    return data
+  },
+
+  listarPorTipo: async (idTipo: number): Promise<Habitacion[]> => {
+    const { data } = await api.get(`/habitaciones/por-tipo/${idTipo}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Habitacion> => {
+    const { data } = await api.get(`/habitaciones/${id}`)
+    return data
+  },
+
+  crear: async (datos: HabitacionRequest): Promise<Habitacion> => {
+    const { data } = await api.post('/habitaciones', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<HabitacionRequest>): Promise<Habitacion> => {
+    const { data } = await api.put(`/habitaciones/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Habitacion> => {
+    const { data } = await api.patch(`/habitaciones/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Habitacion> => {
+    const { data } = await api.patch(`/habitaciones/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/habitaciones/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/limpiezaService.ts ===
+================================================================================
+import api from './api'
+import type { Limpieza, LimpiezaPendientesResponse, CrearLimpiezaRequest } from '@/types/limpieza'
+
+export const limpiezaService = {
+  /**
+   * Lista todas las limpiezas.
+   */
+  listar: async (): Promise<Limpieza[]> => {
+    const { data } = await api.get('/limpieza')
+    return data
+  },
+
+  /**
+   * Lista pendientes + en proceso + completadas hoy.
+   */
+  listarPendientes: async (): Promise<LimpiezaPendientesResponse> => {
+    const { data } = await api.get('/limpieza/pendientes')
+    return data
+  },
+
+  /**
+   * Crea una limpieza manual (ej: profunda).
+   */
+  crear: async (datos: CrearLimpiezaRequest): Promise<Limpieza> => {
+    const { data } = await api.post('/limpieza', datos)
+    return data.data
+  },
+
+  /**
+   * Inicia una limpieza (PENDIENTE â†’ EN_PROCESO).
+   */
+  iniciar: async (id: number): Promise<Limpieza> => {
+    const { data } = await api.patch(`/limpieza/${id}/iniciar`)
+    return data.data
+  },
+
+  /**
+   * Finaliza una limpieza (EN_PROCESO â†’ COMPLETADA).
+   */
+  finalizar: async (id: number, observaciones?: string): Promise<Limpieza> => {
+    const { data } = await api.patch(`/limpieza/${id}/finalizar`, {
+      observaciones,
+    })
+    return data.data
+  },
+
+  /**
+   * Finaliza TODAS las limpiezas activas de una vez (Limpieza RÃ¡pida).
+   */
+  finalizarTodas: async (observaciones?: string): Promise<{ total: number; ids: number[] }> => {
+    const { data } = await api.patch('/limpieza/finalizar-todas', {
+      observaciones,
+    })
+    return data.data
+  },
+}
+
+================================================================================
+=== src/services/mantenimientoService.ts ===
+================================================================================
+import api from './api'
+import type {
+  Mantenimiento,
+  MantenimientoRequest,
+  MantenimientoPendientesResponse,
+} from '@/types/mantenimiento'
+
+export const mantenimientoService = {
+  listar: async (): Promise<Mantenimiento[]> => {
+    const { data } = await api.get('/mantenimiento')
+    return data
+  },
+
+  listarPendientes: async (): Promise<MantenimientoPendientesResponse> => {
+    const { data } = await api.get('/mantenimiento/pendientes')
+    return data
+  },
+
+  porHabitacion: async (idHabitacion: number): Promise<Mantenimiento[]> => {
+    const { data } = await api.get(`/mantenimiento/habitacion/${idHabitacion}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Mantenimiento> => {
+    const { data } = await api.get(`/mantenimiento/${id}`)
+    return data
+  },
+
+  crear: async (datos: MantenimientoRequest): Promise<Mantenimiento> => {
+    const { data } = await api.post('/mantenimiento', datos)
+    return data.data
+  },
+
+  iniciar: async (id: number): Promise<Mantenimiento> => {
+    const { data } = await api.patch(`/mantenimiento/${id}/iniciar`)
+    return data.data
+  },
+
+  resolver: async (id: number, observaciones?: string): Promise<Mantenimiento> => {
+    const { data } = await api.patch(`/mantenimiento/${id}/resolver`, { observaciones })
+    return data.data
+  },
+
+  cancelar: async (id: number, motivo: string): Promise<Mantenimiento> => {
+    const { data } = await api.patch(`/mantenimiento/${id}/cancelar`, { motivo })
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/mantenimiento/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/metodoPagoService.ts ===
+================================================================================
+import api from './api'
+import type { MetodoPago, MetodoPagoRequest } from '@/types/configuracion'
+
+export const metodoPagoService = {
+  listar: async (): Promise<MetodoPago[]> => {
+    const { data } = await api.get('/metodos-pago')
+    return data
+  },
+
+  listarActivos: async (): Promise<MetodoPago[]> => {
+    const { data } = await api.get('/metodos-pago/activos')
+    return data
+  },
+
+  listarDeCaja: async (): Promise<MetodoPago[]> => {
+    const { data } = await api.get('/metodos-pago/de-caja')
+    return data
+  },
+
+  listarDeDuenia: async (): Promise<MetodoPago[]> => {
+    const { data } = await api.get('/metodos-pago/de-duenia')
+    return data
+  },
+
+  obtener: async (id: number): Promise<MetodoPago> => {
+    const { data } = await api.get(`/metodos-pago/${id}`)
+    return data
+  },
+
+  crear: async (datos: MetodoPagoRequest): Promise<MetodoPago> => {
+    const { data } = await api.post('/metodos-pago', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<MetodoPagoRequest>): Promise<MetodoPago> => {
+    const { data } = await api.put(`/metodos-pago/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<MetodoPago> => {
+    const { data } = await api.patch(`/metodos-pago/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<MetodoPago> => {
+    const { data } = await api.patch(`/metodos-pago/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/metodos-pago/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/paqueteDecoracionService.ts ===
+================================================================================
+import api from './api'
+import type { PaqueteDecoracion, PaqueteDecoracionRequest } from '@/types/paqueteDecoracion'
+
+export const paqueteDecoracionService = {
+  listar: async (): Promise<PaqueteDecoracion[]> => {
+    const { data } = await api.get('/paquetes-decoracion')
+    return data
+  },
+
+  listarActivos: async (): Promise<PaqueteDecoracion[]> => {
+    const { data } = await api.get('/paquetes-decoracion/activos')
+    return data
+  },
+
+  listarPorCategoria: async (categoria: string): Promise<PaqueteDecoracion[]> => {
+    const { data } = await api.get(`/paquetes-decoracion/por-categoria/${categoria}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<PaqueteDecoracion> => {
+    const { data } = await api.get(`/paquetes-decoracion/${id}`)
+    return data
+  },
+
+  crear: async (datos: PaqueteDecoracionRequest): Promise<PaqueteDecoracion> => {
+    const { data } = await api.post('/paquetes-decoracion', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<PaqueteDecoracionRequest>): Promise<PaqueteDecoracion> => {
+    const { data } = await api.put(`/paquetes-decoracion/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<PaqueteDecoracion> => {
+    const { data } = await api.patch(`/paquetes-decoracion/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<PaqueteDecoracion> => {
+    const { data } = await api.patch(`/paquetes-decoracion/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/paquetes-decoracion/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/pisoService.ts ===
+================================================================================
+import api from './api'
+import type { Piso, PisoRequest } from '@/types/configuracion'
+
+export const pisoService = {
+  listar: async (): Promise<Piso[]> => {
+    const { data } = await api.get('/pisos')
+    return data
+  },
+
+  listarActivos: async (): Promise<Piso[]> => {
+    const { data } = await api.get('/pisos/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<Piso> => {
+    const { data } = await api.get(`/pisos/${id}`)
+    return data
+  },
+
+  crear: async (datos: PisoRequest): Promise<Piso> => {
+    const { data } = await api.post('/pisos', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<PisoRequest>): Promise<Piso> => {
+    const { data } = await api.put(`/pisos/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Piso> => {
+    const { data } = await api.patch(`/pisos/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Piso> => {
+    const { data } = await api.patch(`/pisos/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/pisos/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/prioridadMantenimientoService.ts ===
+================================================================================
+import api from './api'
+import type { PrioridadMantenimiento, PrioridadMantenimientoRequest } from '@/types/mantenimiento'
+
+export const prioridadMantenimientoService = {
+  listar: async (): Promise<PrioridadMantenimiento[]> => {
+    const { data } = await api.get('/prioridades-mantenimiento')
+    return data
+  },
+  listarActivos: async (): Promise<PrioridadMantenimiento[]> => {
+    const { data } = await api.get('/prioridades-mantenimiento/activos')
+    return data
+  },
+  obtener: async (id: number): Promise<PrioridadMantenimiento> => {
+    const { data } = await api.get(`/prioridades-mantenimiento/${id}`)
+    return data
+  },
+  crear: async (datos: PrioridadMantenimientoRequest): Promise<PrioridadMantenimiento> => {
+    const { data } = await api.post('/prioridades-mantenimiento', datos)
+    return data.data
+  },
+  actualizar: async (id: number, datos: Partial<PrioridadMantenimientoRequest>): Promise<PrioridadMantenimiento> => {
+    const { data } = await api.put(`/prioridades-mantenimiento/${id}`, datos)
+    return data.data
+  },
+  desactivar: async (id: number): Promise<PrioridadMantenimiento> => {
+    const { data } = await api.patch(`/prioridades-mantenimiento/${id}/desactivar`)
+    return data.data
+  },
+  reactivar: async (id: number): Promise<PrioridadMantenimiento> => {
+    const { data } = await api.patch(`/prioridades-mantenimiento/${id}/reactivar`)
+    return data.data
+  },
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/prioridades-mantenimiento/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/productoService.ts ===
+================================================================================
+import api from './api'
+import type { Producto, ProductoRequest } from '@/types/producto'
+
+export const productoService = {
+  listar: async (): Promise<Producto[]> => {
+    const { data } = await api.get('/productos')
+    return data
+  },
+
+  listarActivos: async (): Promise<Producto[]> => {
+    const { data } = await api.get('/productos/activos')
+    return data
+  },
+
+  listarStockBajo: async (): Promise<Producto[]> => {
+    const { data } = await api.get('/productos/stock-bajo')
+    return data
+  },
+
+  listarPorCategoria: async (idCategoria: number): Promise<Producto[]> => {
+    const { data } = await api.get(`/productos/por-categoria/${idCategoria}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Producto> => {
+    const { data } = await api.get(`/productos/${id}`)
+    return data
+  },
+
+  crear: async (datos: ProductoRequest): Promise<Producto> => {
+    const { data } = await api.post('/productos', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<ProductoRequest>): Promise<Producto> => {
+    const { data } = await api.put(`/productos/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Producto> => {
+    const { data } = await api.patch(`/productos/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Producto> => {
+    const { data } = await api.patch(`/productos/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/productos/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/promocionClienteService.ts ===
+================================================================================
+import api from './api'
+import type { PromocionCliente, PromocionClienteRequest } from '@/types/promocion'
+
+export const promocionClienteService = {
+  listar: async (): Promise<PromocionCliente[]> => {
+    const { data } = await api.get('/promociones-cliente')
+    return data
+  },
+
+  listarPorCliente: async (idCliente: number): Promise<PromocionCliente[]> => {
+    const { data } = await api.get(`/clientes/${idCliente}/promociones`)
+    return data
+  },
+
+  listarPorPromocion: async (idPromocion: number): Promise<PromocionCliente[]> => {
+    const { data } = await api.get(`/promociones/${idPromocion}/clientes`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<PromocionCliente> => {
+    const { data } = await api.get(`/promociones-cliente/${id}`)
+    return data
+  },
+
+  crear: async (datos: PromocionClienteRequest): Promise<PromocionCliente> => {
+    const { data } = await api.post('/promociones-cliente', datos)
+    return data.data
+  },
+
+  marcarUsado: async (id: number): Promise<PromocionCliente> => {
+    const { data } = await api.patch(`/promociones-cliente/${id}/usar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/promociones-cliente/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/promocionService.ts ===
+================================================================================
+import api from './api'
+import type { Promocion, PromocionRequest } from '@/types/promocion'
+
+export const promocionService = {
+  listar: async (): Promise<Promocion[]> => {
+    const { data } = await api.get('/promociones')
+    return data
+  },
+
+  listarActivas: async (): Promise<Promocion[]> => {
+    const { data } = await api.get('/promociones/activas')
+    return data
+  },
+
+  listarVigentes: async (): Promise<Promocion[]> => {
+    const { data } = await api.get('/promociones/vigentes')
+    return data
+  },
+
+  listarPorCategoria: async (idCategoria: number): Promise<Promocion[]> => {
+    const { data } = await api.get(`/promociones/por-categoria/${idCategoria}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Promocion> => {
+    const { data } = await api.get(`/promociones/${id}`)
+    return data
+  },
+
+  crear: async (datos: PromocionRequest): Promise<Promocion> => {
+    const { data } = await api.post('/promociones', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<PromocionRequest>): Promise<Promocion> => {
+    const { data } = await api.put(`/promociones/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Promocion> => {
+    const { data } = await api.patch(`/promociones/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Promocion> => {
+    const { data } = await api.patch(`/promociones/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/promociones/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/proveedorService.ts ===
+================================================================================
+import api from './api'
+import type { Proveedor, ProveedorRequest } from '@/types/producto'
+
+export const proveedorService = {
+  listar: async (): Promise<Proveedor[]> => {
+    const { data } = await api.get('/proveedores')
+    return data
+  },
+
+  listarActivos: async (): Promise<Proveedor[]> => {
+    const { data } = await api.get('/proveedores/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<Proveedor> => {
+    const { data } = await api.get(`/proveedores/${id}`)
+    return data
+  },
+
+  crear: async (datos: ProveedorRequest): Promise<Proveedor> => {
+    const { data } = await api.post('/proveedores', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<ProveedorRequest>): Promise<Proveedor> => {
+    const { data } = await api.put(`/proveedores/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Proveedor> => {
+    const { data } = await api.patch(`/proveedores/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Proveedor> => {
+    const { data } = await api.patch(`/proveedores/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/proveedores/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/reservaService.ts ===
+================================================================================
+import api from './api'
+import type {
+  ReservaDisponiblesResponse, ReservaProximasResponse, ReservaHoyResponse, InfoCheckIn,
+  Reserva, ReservaRequest, WalkInRequest,
+  EstadoReserva, HabitacionMapa,
+  AgregarConsumoRequest, CambiarHabitacionRequest,
+  CalculoExtension, AgregarExtensionRequest, ExtensionReserva
+} from '@/types/reserva'
+
+export const reservaService = {
+  listar: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas')
+    return data
+  },
+
+  obtener: async (id: number): Promise<Reserva> => {
+    const { data } = await api.get(`/reservas/${id}`)
+    return data
+  },
+
+  crearWalkIn: async (datos: WalkInRequest): Promise<Reserva> => {
+    const { data } = await api.post('/reservas/walk-in', datos)
+    return data.data
+  },
+
+  crearReserva: async (datos: ReservaRequest): Promise<Reserva> => {
+    const { data } = await api.post('/reservas', datos)
+    return data.data
+  },
+
+  checkIn: async (id: number): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-in`)
+    return data.data
+  },
+
+  checkOut: async (id: number, montoFinal?: number): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-out`, {
+      monto_final: montoFinal,
+    })
+    return data.data
+  },
+
+  cancelar: async (id: number, motivo: string): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/cancelar`, { motivo })
+    return data.data
+  },
+
+  anular: async (id: number, motivo: string): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/anular`, { motivo })
+    return data.data
+  },
+
+  cambiarHabitacion: async (id: number, datos: CambiarHabitacionRequest): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/cambiar-habitacion`, datos)
+    return data.data
+  },
+
+  agregarConsumo: async (id: number, datos: AgregarConsumoRequest): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/consumos`, datos)
+    return data.reserva
+  },
+
+  agregarConsumosMultiple: async (
+    id: number,
+    datos: {
+      consumos: Array<{ id_producto: number; cantidad: number }>
+      pagos?: Array<{ id_metodo_pago: number; monto: number }>
+      cargar_a_cuenta: boolean
+      observaciones?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/consumos-multiple`, datos)
+    return data.data
+  },
+
+  eliminarConsumo: async (idReserva: number, idConsumo: number): Promise<void> => {
+    await api.delete(`/reservas/${idReserva}/consumos/${idConsumo}`)
+  },
+
+  calculoExtension: async (id: number): Promise<CalculoExtension> => {
+    const { data } = await api.get(`/reservas/${id}/calculo-extension`)
+    return data
+  },
+
+  agregarExtension: async (id: number, datos: AgregarExtensionRequest): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/extensiones`, datos)
+    return data.data
+  },
+
+  listarExtensiones: async (id: number): Promise<ExtensionReserva[]> => {
+    const { data } = await api.get(`/reservas/${id}/extensiones`)
+    return data
+  },
+
+  agregarPago: async (id: number, datos: { id_metodo_pago: number; monto: number; observaciones?: string }): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/pagos`, datos)
+    return data.data
+  },
+
+  anularPago: async (idReserva: number, idPago: number, motivo: string): Promise<Reserva> => {
+    const { data } = await api.delete(`/reservas/${idReserva}/pagos/${idPago}`, {
+      data: { motivo },
+    })
+    return data.data
+  },
+
+  entregarVuelto: async (
+    id: number,
+    datos: { monto: number; id_metodo_pago: number }
+  ): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/entregar-vuelto`, datos)
+    return data.data
+  },
+
+  checkOutConVuelto: async (
+    id: number,
+    datos: {
+      monto_final?: number
+      decision_tipo: "ENTREGADO" | "NO_RECLAMADO" | "OTRO"
+      id_metodo_pago?: number | null
+      observaciones?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-out-con-vuelto`, datos)
+    return data.data
+  },
+
+  checkOutConDeuda: async (
+    id: number,
+    datos: {
+      monto_final?: number
+      decision_tipo: "PAGO" | "NO_PAGO"
+      monto_pago?: number
+      id_metodo_pago?: number | null
+      id_gravedad?: number | null
+      motivo?: string | null
+    }
+  ): Promise<Reserva> => {
+    const { data } = await api.patch(`/reservas/${id}/check-out-con-deuda`, datos)
+    return data.data
+  },
+
+  // ========================================================================
+  // MODULO 09B â€” RESERVAS FUTURAS
+  // ========================================================================
+
+  listarDisponiblesEnRango: async (fecha: string, horas: number, conDecoracion = false): Promise<ReservaDisponiblesResponse> => {
+    const { data } = await api.get('/reservas/disponibles', {
+      params: { fecha, horas, con_decoracion: conDecoracion ? 1 : 0 },
+    })
+    return data
+  },
+
+  listarProximas: async (): Promise<ReservaProximasResponse> => {
+    const { data } = await api.get('/reservas/proximas')
+    return data
+  },
+
+  listarHoy: async (): Promise<ReservaHoyResponse> => {
+    const { data } = await api.get('/reservas/hoy')
+    return data
+  },
+
+  listarProximasCheckIn: async (): Promise<ReservaHoyResponse> => {
+    const { data } = await api.get('/reservas/proximas-check-in')
+    return data
+  },
+
+  // ========================================================================
+  // FILTRADO â€” Reservas (RES-) vs Estadias (WK-)
+  // ========================================================================
+
+  listarSoloReservas: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-reservas')
+    return data
+  },
+
+  listarSoloDecoraciones: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-decoraciones')
+    return data
+  },
+
+  listarSoloWalkIns: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-walk-ins')
+    return data
+  },
+
+  listarHistorial: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/historial')
+    return data
+  },
+
+  // ========================================================================
+  // CHECK-IN DE RESERVA FUTURA
+  // ========================================================================
+
+  infoCheckIn: async (id: number): Promise<InfoCheckIn> => {
+    const { data } = await api.get(`/reservas/${id}/info-check-in`)
+    return data
+  },
+
+  checkInValidado: async (id: number): Promise<Reserva> => {
+    const { data } = await api.post(`/reservas/${id}/check-in-validado`)
+    return data.data
+  },
+}
+
+export const estadoReservaService = {
+  listar: async (): Promise<EstadoReserva[]> => {
+    const { data } = await api.get('/estados-reserva')
+    return data
+  },
+  listarActivos: async (): Promise<EstadoReserva[]> => {
+    const { data } = await api.get('/estados-reserva/activos')
+    return data
+  },
+}
+
+export const habitacionMapaService = {
+  listar: async (): Promise<HabitacionMapa[]> => {
+    const { data } = await api.get('/habitaciones-mapa')
+    return data
+  },
+  obtener: async (id: number) => {
+    const { data } = await api.get(`/habitaciones-mapa/${id}`)
+    return data
+  },
+}
+
+================================================================================
+=== src/services/rolService.ts ===
+================================================================================
+import api from "@/services/api"
+import type { Rol } from "@/types"
+
+export interface RolRequest {
+  nombre: string
+  descripcion: string
+  activo?: boolean
+}
+
+export const rolService = {
+  async listar(): Promise<Rol[]> {
+    const { data } = await api.get<Rol[]>("/roles")
+    return data
+  },
+
+  async listarActivos(): Promise<Rol[]> {
+    const { data } = await api.get<Rol[]>("/roles/activos")
+    return data
+  },
+
+  async obtener(id: number): Promise<Rol> {
+    const { data } = await api.get<Rol>(`/roles/${id}`)
+    return data
+  },
+
+  async crear(datos: RolRequest): Promise<Rol> {
+    const { data } = await api.post("/roles", datos)
+    return data.data
+  },
+
+  async actualizar(id: number, datos: Partial<RolRequest>): Promise<Rol> {
+    const { data } = await api.put(`/roles/${id}`, datos)
+    return data.data
+  },
+
+  async desactivar(id: number): Promise<Rol> {
+    const { data } = await api.patch(`/roles/${id}/desactivar`)
+    return data.data
+  },
+
+  async reactivar(id: number): Promise<Rol> {
+    const { data } = await api.patch(`/roles/${id}/reactivar`)
+    return data.data
+  },
+
+  async eliminar(id: number): Promise<void> {
+    await api.delete(`/roles/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/tarifaService.ts ===
+================================================================================
+import api from './api'
+import type { Tarifa, TarifaRequest } from '@/types/tarifa'
+
+export const tarifaService = {
+  listar: async (): Promise<Tarifa[]> => {
+    const { data } = await api.get('/tarifas')
+    return data
+  },
+
+  listarActivos: async (): Promise<Tarifa[]> => {
+    const { data } = await api.get('/tarifas/activos')
+    return data
+  },
+
+  listarPorTipo: async (idTipo: number): Promise<Tarifa[]> => {
+    const { data } = await api.get(`/tarifas/por-tipo/${idTipo}`)
+    return data
+  },
+
+  obtener: async (id: number): Promise<Tarifa> => {
+    const { data } = await api.get(`/tarifas/${id}`)
+    return data
+  },
+
+  crear: async (datos: TarifaRequest): Promise<Tarifa> => {
+    const { data } = await api.post('/tarifas', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<TarifaRequest>): Promise<Tarifa> => {
+    const { data } = await api.put(`/tarifas/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Tarifa> => {
+    const { data } = await api.patch(`/tarifas/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Tarifa> => {
+    const { data } = await api.patch(`/tarifas/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/tarifas/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/tipoDocumentoService.ts ===
+================================================================================
+import api from './api'
+import type { TipoDocumento, TipoDocumentoRequest } from '@/types/configuracion'
+
+export const tipoDocumentoService = {
+  listar: async (): Promise<TipoDocumento[]> => {
+    const { data } = await api.get('/tipos-documento')
+    return data
+  },
+
+  listarActivos: async (): Promise<TipoDocumento[]> => {
+    const { data } = await api.get('/tipos-documento/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<TipoDocumento> => {
+    const { data } = await api.get(`/tipos-documento/${id}`)
+    return data
+  },
+
+  crear: async (datos: TipoDocumentoRequest): Promise<TipoDocumento> => {
+    const { data } = await api.post('/tipos-documento', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<TipoDocumentoRequest>): Promise<TipoDocumento> => {
+    const { data } = await api.put(`/tipos-documento/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<TipoDocumento> => {
+    const { data } = await api.patch(`/tipos-documento/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<TipoDocumento> => {
+    const { data } = await api.patch(`/tipos-documento/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/tipos-documento/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/tipoHabitacionService.ts ===
+================================================================================
+import api from './api'
+import type { TipoHabitacion, TipoHabitacionRequest } from '@/types/configuracion'
+
+export const tipoHabitacionService = {
+  listar: async (): Promise<TipoHabitacion[]> => {
+    const { data } = await api.get('/tipos-habitacion')
+    return data
+  },
+
+  listarActivos: async (): Promise<TipoHabitacion[]> => {
+    const { data } = await api.get('/tipos-habitacion/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<TipoHabitacion> => {
+    const { data } = await api.get(`/tipos-habitacion/${id}`)
+    return data
+  },
+
+  crear: async (datos: TipoHabitacionRequest): Promise<TipoHabitacion> => {
+    const { data } = await api.post('/tipos-habitacion', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<TipoHabitacionRequest>): Promise<TipoHabitacion> => {
+    const { data } = await api.put(`/tipos-habitacion/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<TipoHabitacion> => {
+    const { data } = await api.patch(`/tipos-habitacion/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<TipoHabitacion> => {
+    const { data } = await api.patch(`/tipos-habitacion/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/tipos-habitacion/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/tipoMantenimientoService.ts ===
+================================================================================
+import api from './api'
+import type { TipoMantenimiento, TipoMantenimientoRequest } from '@/types/mantenimiento'
+
+export const tipoMantenimientoService = {
+  listar: async (): Promise<TipoMantenimiento[]> => {
+    const { data } = await api.get('/tipos-mantenimiento')
+    return data
+  },
+  listarActivos: async (): Promise<TipoMantenimiento[]> => {
+    const { data } = await api.get('/tipos-mantenimiento/activos')
+    return data
+  },
+  obtener: async (id: number): Promise<TipoMantenimiento> => {
+    const { data } = await api.get(`/tipos-mantenimiento/${id}`)
+    return data
+  },
+  crear: async (datos: TipoMantenimientoRequest): Promise<TipoMantenimiento> => {
+    const { data } = await api.post('/tipos-mantenimiento', datos)
+    return data.data
+  },
+  actualizar: async (id: number, datos: Partial<TipoMantenimientoRequest>): Promise<TipoMantenimiento> => {
+    const { data } = await api.put(`/tipos-mantenimiento/${id}`, datos)
+    return data.data
+  },
+  desactivar: async (id: number): Promise<TipoMantenimiento> => {
+    const { data } = await api.patch(`/tipos-mantenimiento/${id}/desactivar`)
+    return data.data
+  },
+  reactivar: async (id: number): Promise<TipoMantenimiento> => {
+    const { data } = await api.patch(`/tipos-mantenimiento/${id}/reactivar`)
+    return data.data
+  },
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/tipos-mantenimiento/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/tipoObservacionService.ts ===
+================================================================================
+import api from './api'
+import type { TipoObservacion, TipoObservacionRequest } from '@/types/tipoObservacion'
+
+export const tipoObservacionService = {
+  listar: async (): Promise<TipoObservacion[]> => {
+    const { data } = await api.get('/tipos-observacion')
+    return data
+  },
+
+  listarActivos: async (): Promise<TipoObservacion[]> => {
+    const { data } = await api.get('/tipos-observacion/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<TipoObservacion> => {
+    const { data } = await api.get(`/tipos-observacion/${id}`)
+    return data
+  },
+
+  crear: async (datos: TipoObservacionRequest): Promise<TipoObservacion> => {
+    const { data } = await api.post('/tipos-observacion', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<TipoObservacionRequest>): Promise<TipoObservacion> => {
+    const { data } = await api.put(`/tipos-observacion/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<TipoObservacion> => {
+    const { data } = await api.patch(`/tipos-observacion/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<TipoObservacion> => {
+    const { data } = await api.patch(`/tipos-observacion/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/tipos-observacion/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/turnoService.ts ===
+================================================================================
+import api from "@/services/api"
+import type { Turno } from "@/types"
+
+export interface TurnoRequest {
+  nombre: string
+  hora_inicio: string
+  hora_fin: string
+  descripcion?: string
+  activo?: boolean
+}
+
+export const turnoService = {
+  async listar(): Promise<Turno[]> {
+    const { data } = await api.get<Turno[]>("/turnos")
+    return data
+  },
+
+  async listarActivos(): Promise<Turno[]> {
+    const { data } = await api.get<Turno[]>("/turnos/activos")
+    return data
+  },
+
+  async obtener(id: number): Promise<Turno> {
+    const { data } = await api.get<Turno>(`/turnos/${id}`)
+    return data
+  },
+
+  async crear(datos: TurnoRequest): Promise<Turno> {
+    const { data } = await api.post("/turnos", datos)
+    return data.data
+  },
+
+  async actualizar(id: number, datos: Partial<TurnoRequest>): Promise<Turno> {
+    const { data } = await api.put(`/turnos/${id}`, datos)
+    return data.data
+  },
+
+  async desactivar(id: number): Promise<Turno> {
+    const { data } = await api.patch(`/turnos/${id}/desactivar`)
+    return data.data
+  },
+
+  async reactivar(id: number): Promise<Turno> {
+    const { data } = await api.patch(`/turnos/${id}/reactivar`)
+    return data.data
+  },
+
+  async eliminar(id: number): Promise<void> {
+    await api.delete(`/turnos/${id}`)
+  },
+}
+
+================================================================================
+=== src/services/usuarioService.ts ===
+================================================================================
+import api from './api'
+import type { Usuario, CrearUsuarioRequest } from '@/types'
+
+export const usuarioService = {
+  listar: async (): Promise<Usuario[]> => {
+    const { data } = await api.get('/usuarios')
+    return data
+  },
+
+  listarActivos: async (): Promise<Usuario[]> => {
+    const { data } = await api.get('/usuarios/activos')
+    return data
+  },
+
+  obtener: async (id: number): Promise<Usuario> => {
+    const { data } = await api.get(`/usuarios/${id}`)
+    return data
+  },
+
+  crear: async (datos: CrearUsuarioRequest): Promise<Usuario> => {
+    const { data } = await api.post('/usuarios', datos)
+    return data.data
+  },
+
+  actualizar: async (id: number, datos: Partial<CrearUsuarioRequest>): Promise<Usuario> => {
+    const { data } = await api.put(`/usuarios/${id}`, datos)
+    return data.data
+  },
+
+  desactivar: async (id: number): Promise<Usuario> => {
+    const { data } = await api.patch(`/usuarios/${id}/desactivar`)
+    return data.data
+  },
+
+  reactivar: async (id: number): Promise<Usuario> => {
+    const { data } = await api.patch(`/usuarios/${id}/reactivar`)
+    return data.data
+  },
+
+  eliminar: async (id: number): Promise<void> => {
+    await api.delete(`/usuarios/${id}`)
+  },
+}

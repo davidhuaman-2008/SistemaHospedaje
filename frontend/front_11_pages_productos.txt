@@ -1,0 +1,821 @@
+﻿
+
+================================================================================
+=== src/pages/productos/categoriaProducto/CategoriaProductoForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { CategoriaProducto, CategoriaProductoRequest } from "@/types/producto"
+
+import { IconPicker } from "@/components/IconPicker"
+interface Props {
+  inicial: CategoriaProducto | null
+  onGuardar: (datos: CategoriaProductoRequest) => void
+  onCancelar: () => void
+}
+
+export function CategoriaProductoForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [slug, setSlug] = useState(inicial?.slug || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [icono, setIcono] = useState(inicial?.icono || "")
+  const [color, setColor] = useState(inicial?.color || "#0ea5e9")
+  const [orden, setOrden] = useState(inicial?.orden || 0)
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !slug.trim()) return
+    onGuardar({ nombre, slug, descripcion: descripcion || null, icono: icono || null, color, orden, activo: true })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Slug *</label>
+          <input value={slug} onChange={e => setSlug(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Ãcono (lucide)</label>
+          <IconPicker valor={icono} onChange={setIcono} />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Color</label>
+          <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-full h-10 bg-slate-900 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Orden</label>
+          <input type="number" value={orden} onChange={e => setOrden(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/productos/categoriaProducto/CategoriaProductoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { categoriaProductoService } from "@/services/categoriaProductoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { CategoriaProducto, CategoriaProductoRequest } from "@/types/producto"
+import { CategoriaProductoForm } from "./CategoriaProductoForm"
+import { CategoriaProductoTabla } from "./CategoriaProductoTabla"
+
+export function CategoriaProductoPage() {
+  const [items, setItems] = useState<CategoriaProducto[]>([])
+  const [editando, setEditando] = useState<CategoriaProducto | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await categoriaProductoService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await categoriaProductoService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: CategoriaProducto) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: CategoriaProductoRequest) => {
+    try {
+      if (editando) {
+        await categoriaProductoService.actualizar(editando.id_categoria_producto, datos)
+        toast.success("Actualizado")
+      } else {
+        await categoriaProductoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: CategoriaProducto) => {
+    try {
+      if (item.activo) {
+        await categoriaProductoService.desactivar(item.id_categoria_producto)
+        toast.success("Desactivado")
+      } else {
+        await categoriaProductoService.reactivar(item.id_categoria_producto)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: CategoriaProducto) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await categoriaProductoService.eliminar(item.id_categoria_producto)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">CategorÃ­as de Producto</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nueva
+        </button>
+      </div>
+      {mostrarForm && <CategoriaProductoForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <CategoriaProductoTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/productos/categoriaProducto/CategoriaProductoTabla.tsx ===
+================================================================================
+import type { CategoriaProducto } from "@/types/producto"
+import { IconoDinamico } from "@/components/IconoDinamico"
+
+interface Props {
+  items: CategoriaProducto[]
+  onEditar: (item: CategoriaProducto) => void
+  onCambiarEstado: (item: CategoriaProducto) => void
+  onEliminar: (item: CategoriaProducto) => void
+}
+
+export function CategoriaProductoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[800px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">Slug</th>
+            <th className="p-2 text-left">Color</th>
+            <th className="p-2 text-left">Ãcono</th>
+            <th className="p-2 text-left">Orden</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_categoria_producto} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_categoria_producto}</td>
+              <td className="p-2">{item.nombre}</td>
+              <td className="p-2 font-mono text-xs">{item.slug}</td>
+              <td className="p-2">
+                {item.color && <span className="inline-block w-4 h-4 rounded" style={{ background: item.color }} />}
+              </td>
+              <td className="p-2">
+                <IconoDinamico
+                  nombre={item.icono}
+                  size={20}
+                  style={{ color: item.color ?? undefined }}
+                />
+              </td>
+              <td className="p-2">{item.orden}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/productos/producto/ProductoForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { Producto, ProductoRequest, CategoriaProducto, Proveedor } from "@/types/producto"
+
+interface Props {
+  inicial: Producto | null
+  categorias: CategoriaProducto[]
+  proveedores: Proveedor[]
+  onGuardar: (datos: ProductoRequest) => void
+  onCancelar: () => void
+}
+
+export function ProductoForm({ inicial, categorias, proveedores, onGuardar, onCancelar }: Props) {
+  const [nombre, setNombre] = useState(inicial?.nombre || "")
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion || "")
+  const [idCategoria, setIdCategoria] = useState<number | null>(inicial?.id_categoria_producto ?? null)
+  const [idProveedor, setIdProveedor] = useState<number | null>(inicial?.id_proveedor ?? null)
+  const [codigoBarra, setCodigoBarra] = useState(inicial?.codigo_barra || "")
+  const [precioCompra, setPrecioCompra] = useState(inicial?.precio_compra || 0)
+  const [precioVenta, setPrecioVenta] = useState(inicial?.precio_venta || 0)
+  const [stockActual, setStockActual] = useState(inicial?.stock_actual || 0)
+  const [stockMinimo, setStockMinimo] = useState(inicial?.stock_minimo || 10)
+  const [unidadMedida, setUnidadMedida] = useState(inicial?.unidad_medida || "unidad")
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || precioVenta <= 0) return
+    onGuardar({
+      nombre,
+      descripcion: descripcion || null,
+      id_categoria_producto: idCategoria,
+      id_proveedor: idProveedor,
+      codigo_barra: codigoBarra || null,
+      precio_compra: precioCompra,
+      precio_venta: precioVenta,
+      stock_actual: stockActual,
+      stock_minimo: stockMinimo,
+      unidad_medida: unidadMedida,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">Nombre *</label>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">CategorÃ­a</label>
+          <select
+            value={idCategoria ?? ""}
+            onChange={e => setIdCategoria(e.target.value ? Number(e.target.value) : null)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          >
+            <option value="">â€” Sin categorÃ­a â€”</option>
+            {categorias.map(c => (
+              <option key={c.id_categoria_producto} value={c.id_categoria_producto}>{c.nombre}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Proveedor</label>
+          <select
+            value={idProveedor ?? ""}
+            onChange={e => setIdProveedor(e.target.value ? Number(e.target.value) : null)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          >
+            <option value="">â€” Sin proveedor â€”</option>
+            {proveedores.map(p => (
+              <option key={p.id_proveedor} value={p.id_proveedor}>{p.razon_social}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">CÃ³digo de barras</label>
+          <input value={codigoBarra} onChange={e => setCodigoBarra(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio compra (S/)</label>
+          <input type="number" step="0.01" min={0} value={precioCompra} onChange={e => setPrecioCompra(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio venta (S/) *</label>
+          <input type="number" step="0.01" min={0} value={precioVenta} onChange={e => setPrecioVenta(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Stock actual</label>
+          <input type="number" min={0} value={stockActual} onChange={e => setStockActual(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Stock mÃ­nimo</label>
+          <input type="number" min={0} value={stockMinimo} onChange={e => setStockMinimo(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Unidad de medida</label>
+          <input value={unidadMedida} onChange={e => setUnidadMedida(e.target.value)} placeholder="unidad, botella, pack..." className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">DescripciÃ³n</label>
+          <input value={descripcion} onChange={e => setDescripcion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/productos/producto/ProductoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { productoService } from "@/services/productoService"
+import { categoriaProductoService } from "@/services/categoriaProductoService"
+import { proveedorService } from "@/services/proveedorService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Producto, ProductoRequest, CategoriaProducto, Proveedor } from "@/types/producto"
+import { ProductoForm } from "./ProductoForm"
+import { ProductoTabla } from "./ProductoTabla"
+
+export function ProductoPage() {
+  const [items, setItems] = useState<Producto[]>([])
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([])
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [editando, setEditando] = useState<Producto | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+  const [busqueda, setBusqueda] = useState("")
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const [prods, cats, provs] = await Promise.all([
+          productoService.listar(),
+          categoriaProductoService.listarActivos(),
+          proveedorService.listarActivos(),
+        ])
+        if (!cancelado) {
+          setItems(prods)
+          setCategorias(cats)
+          setProveedores(provs)
+        }
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try {
+      const [prods, cats, provs] = await Promise.all([
+        productoService.listar(),
+        categoriaProductoService.listarActivos(),
+        proveedorService.listarActivos(),
+      ])
+      setItems(prods)
+      setCategorias(cats)
+      setProveedores(provs)
+    } catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: Producto) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: ProductoRequest) => {
+    try {
+      if (editando) {
+        await productoService.actualizar(editando.id_producto, datos)
+        toast.success("Actualizado")
+      } else {
+        await productoService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Producto) => {
+    try {
+      if (item.activo) {
+        await productoService.desactivar(item.id_producto)
+        toast.success("Desactivado")
+      } else {
+        await productoService.reactivar(item.id_producto)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Producto) => {
+    if (!confirm(`Eliminar "${item.nombre}"?`)) return
+    try {
+      await productoService.eliminar(item.id_producto)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const filtrados = items.filter(p => {
+    if (!busqueda) return true
+    const q = busqueda.toLowerCase()
+    return (
+      p.nombre.toLowerCase().includes(q) ||
+      (p.codigo_barra ?? "").includes(busqueda)
+    )
+  })
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Productos</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Producto
+        </button>
+      </div>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por nombre o cÃ³digo de barras..."
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          className="w-full bg-slate-800 text-white p-2 rounded border border-slate-700"
+        />
+      </div>
+
+      {mostrarForm && (
+        <ProductoForm
+          inicial={editando}
+          categorias={categorias}
+          proveedores={proveedores}
+          onGuardar={guardar}
+          onCancelar={cerrar}
+        />
+      )}
+
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <ProductoTabla items={filtrados} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/productos/producto/ProductoTabla.tsx ===
+================================================================================
+import type { Producto } from "@/types/producto"
+
+interface Props {
+  items: Producto[]
+  onEditar: (item: Producto) => void
+  onCambiarEstado: (item: Producto) => void
+  onEliminar: (item: Producto) => void
+}
+
+export function ProductoTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[1000px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Nombre</th>
+            <th className="p-2 text-left">CategorÃ­a</th>
+            <th className="p-2 text-left">P. Compra</th>
+            <th className="p-2 text-left">P. Venta</th>
+            <th className="p-2 text-left">Stock</th>
+            <th className="p-2 text-left">MÃ­n.</th>
+            <th className="p-2 text-left">Unidad</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => {
+            const stockBajo = item.stock_actual <= item.stock_minimo
+            return (
+              <tr key={item.id_producto} className="border-t border-slate-700 text-slate-200">
+                <td className="p-2">{item.id_producto}</td>
+                <td className="p-2">{item.nombre}</td>
+                <td className="p-2">
+                  {item.categoria ? (
+                    <span className="px-2 py-1 rounded text-xs" style={{ background: item.categoria.color ?? "#333", color: "#fff" }}>
+                      {item.categoria.nombre}
+                    </span>
+                  ) : "â€”"}
+                </td>
+                <td className="p-2">S/ {Number(item.precio_compra).toFixed(2)}</td>
+                <td className="p-2">S/ {Number(item.precio_venta).toFixed(2)}</td>
+                <td className={`p-2 font-semibold ${stockBajo ? "text-red-400" : "text-green-400"}`}>
+                  {item.stock_actual}
+                </td>
+                <td className="p-2">{item.stock_minimo}</td>
+                <td className="p-2">{item.unidad_medida ?? "â€”"}</td>
+                <td className="p-2">
+                  <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                    {item.activo ? "Activo" : "Inactivo"}
+                  </span>
+                </td>
+                <td className="p-2">
+                  <div className="flex flex-wrap gap-1">
+                    <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                    <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                    <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/productos/proveedor/ProveedorForm.tsx ===
+================================================================================
+import { useState } from "react"
+import type { Proveedor, ProveedorRequest } from "@/types/producto"
+
+interface Props {
+  inicial: Proveedor | null
+  onGuardar: (datos: ProveedorRequest) => void
+  onCancelar: () => void
+}
+
+export function ProveedorForm({ inicial, onGuardar, onCancelar }: Props) {
+  const [razonSocial, setRazonSocial] = useState(inicial?.razon_social || "")
+  const [nombreComercial, setNombreComercial] = useState(inicial?.nombre_comercial || "")
+  const [ruc, setRuc] = useState(inicial?.ruc || "")
+  const [telefono, setTelefono] = useState(inicial?.telefono || "")
+  const [email, setEmail] = useState(inicial?.email || "")
+  const [direccion, setDireccion] = useState(inicial?.direccion || "")
+  const [contacto, setContacto] = useState(inicial?.contacto || "")
+  const [tipo, setTipo] = useState(inicial?.tipo || "Productos")
+  const [notas, setNotas] = useState(inicial?.notas || "")
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!razonSocial.trim()) return
+    onGuardar({
+      razon_social: razonSocial,
+      nombre_comercial: nombreComercial || null,
+      ruc: ruc || null,
+      telefono: telefono || null,
+      email: email || null,
+      direccion: direccion || null,
+      contacto: contacto || null,
+      tipo: tipo || null,
+      notas: notas || null,
+      activo: true,
+    })
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-slate-800 p-4 rounded mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div>
+          <label className="text-slate-300 text-sm">RazÃ³n Social *</label>
+          <input value={razonSocial} onChange={e => setRazonSocial(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Nombre Comercial</label>
+          <input value={nombreComercial} onChange={e => setNombreComercial(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">RUC</label>
+          <input value={ruc} onChange={e => setRuc(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">TelÃ©fono</label>
+          <input value={telefono} onChange={e => setTelefono(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Contacto</label>
+          <input value={contacto} onChange={e => setContacto(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Tipo</label>
+          <select value={tipo} onChange={e => setTipo(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded">
+            <option value="Productos">Productos</option>
+            <option value="Servicios">Servicios</option>
+            <option value="DecoraciÃ³n">DecoraciÃ³n</option>
+          </select>
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-2">
+          <label className="text-slate-300 text-sm">DirecciÃ³n</label>
+          <input value={direccion} onChange={e => setDireccion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+          <label className="text-slate-300 text-sm">Notas</label>
+          <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} className="w-full bg-slate-900 text-white p-2 rounded" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">{inicial ? "Actualizar" : "Crear"}</button>
+        <button type="button" onClick={onCancelar} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+================================================================================
+=== src/pages/productos/proveedor/ProveedorPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import AppLayout from "@/components/layout/AppLayout"
+import { proveedorService } from "@/services/proveedorService"
+import { mensajeDeError } from "@/lib/errores"
+import type { Proveedor, ProveedorRequest } from "@/types/producto"
+import { ProveedorForm } from "./ProveedorForm"
+import { ProveedorTabla } from "./ProveedorTabla"
+
+export function ProveedorPage() {
+  const [items, setItems] = useState<Proveedor[]>([])
+  const [editando, setEditando] = useState<Proveedor | null>(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const datos = await proveedorService.listar()
+        if (!cancelado) setItems(datos)
+      } catch {
+        if (!cancelado) toast.error("Error al cargar")
+      } finally {
+        if (!cancelado) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { cancelado = true }
+  }, [])
+
+  const recargar = async () => {
+    try { setItems(await proveedorService.listar()) }
+    catch { toast.error("Error al recargar") }
+  }
+
+  const abrirCrear = () => { setEditando(null); setMostrarForm(true) }
+  const abrirEditar = (item: Proveedor) => { setEditando(item); setMostrarForm(true) }
+  const cerrar = () => { setMostrarForm(false); setEditando(null) }
+
+  const guardar = async (datos: ProveedorRequest) => {
+    try {
+      if (editando) {
+        await proveedorService.actualizar(editando.id_proveedor, datos)
+        toast.success("Actualizado")
+      } else {
+        await proveedorService.crear(datos)
+        toast.success("Creado")
+      }
+      cerrar(); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cambiarEstado = async (item: Proveedor) => {
+    try {
+      if (item.activo) {
+        await proveedorService.desactivar(item.id_proveedor)
+        toast.success("Desactivado")
+      } else {
+        await proveedorService.reactivar(item.id_proveedor)
+        toast.success("Reactivado")
+      }
+      recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const eliminar = async (item: Proveedor) => {
+    if (!confirm(`Eliminar "${item.razon_social}"?`)) return
+    try {
+      await proveedorService.eliminar(item.id_proveedor)
+      toast.success("Eliminado"); recargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold">Proveedores</h1>
+        <button onClick={abrirCrear} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium">
+          + Nuevo Proveedor
+        </button>
+      </div>
+      {mostrarForm && <ProveedorForm inicial={editando} onGuardar={guardar} onCancelar={cerrar} />}
+      {cargando ? (
+        <p className="text-slate-400">Cargando...</p>
+      ) : (
+        <ProveedorTabla items={items} onEditar={abrirEditar} onCambiarEstado={cambiarEstado} onEliminar={eliminar} />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/productos/proveedor/ProveedorTabla.tsx ===
+================================================================================
+import type { Proveedor } from "@/types/producto"
+
+interface Props {
+  items: Proveedor[]
+  onEditar: (item: Proveedor) => void
+  onCambiarEstado: (item: Proveedor) => void
+  onEliminar: (item: Proveedor) => void
+}
+
+export function ProveedorTabla({ items, onEditar, onCambiarEstado, onEliminar }: Props) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full bg-slate-800 rounded min-w-[900px]">
+        <thead className="bg-slate-700 text-slate-300">
+          <tr>
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">RazÃ³n Social</th>
+            <th className="p-2 text-left">RUC</th>
+            <th className="p-2 text-left">Contacto</th>
+            <th className="p-2 text-left">TelÃ©fono</th>
+            <th className="p-2 text-left">Tipo</th>
+            <th className="p-2 text-left">Estado</th>
+            <th className="p-2 text-left">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(item => (
+            <tr key={item.id_proveedor} className="border-t border-slate-700 text-slate-200">
+              <td className="p-2">{item.id_proveedor}</td>
+              <td className="p-2">{item.razon_social}</td>
+              <td className="p-2">{item.ruc ?? "â€”"}</td>
+              <td className="p-2">{item.contacto ?? "â€”"}</td>
+              <td className="p-2">{item.telefono ?? "â€”"}</td>
+              <td className="p-2">{item.tipo ?? "â€”"}</td>
+              <td className="p-2">
+                <span className={item.activo ? "text-green-400" : "text-red-400"}>
+                  {item.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => onEditar(item)} className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs">Editar</button>
+                  <button onClick={() => onCambiarEstado(item)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">{item.activo ? "Desactivar" : "Activar"}</button>
+                  <button onClick={() => onEliminar(item)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

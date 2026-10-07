@@ -1,7 +1,7 @@
 ﻿
 
 ================================================================================
-=== 0001_01_01_000001_create_cache_table.php ===
+=== database/migrations/0001_01_01_000001_create_cache_table.php ===
 ================================================================================
 <?php
 
@@ -41,7 +41,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 0001_01_01_000002_create_jobs_table.php ===
+=== database/migrations/0001_01_01_000002_create_jobs_table.php ===
 ================================================================================
 <?php
 
@@ -103,7 +103,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 2026_10_01_130753_create_personal_access_tokens_table.php ===
+=== database/migrations/2026_10_01_130753_create_personal_access_tokens_table.php ===
 ================================================================================
 <?php
 
@@ -141,7 +141,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 2026_10_01_130952_create_roles_table.php ===
+=== database/migrations/2026_10_01_130952_create_roles_table.php ===
 ================================================================================
 <?php
 
@@ -169,7 +169,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 2026_10_01_130953_create_turnos_table.php ===
+=== database/migrations/2026_10_01_130953_create_turnos_table.php ===
 ================================================================================
 <?php
 
@@ -200,7 +200,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 2026_10_01_130953_create_usuarios_table.php ===
+=== database/migrations/2026_10_01_130953_create_usuarios_table.php ===
 ================================================================================
 <?php
 
@@ -235,7 +235,7 @@ return new class extends Migration
 
 
 ================================================================================
-=== 2026_10_02_200001_create_pisos_table.php ===
+=== database/migrations/2026_10_02_200001_create_pisos_table.php ===
 ================================================================================
 <?php
 
@@ -264,7 +264,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_200002_create_tipos_habitacion_table.php ===
+=== database/migrations/2026_10_02_200002_create_tipos_habitacion_table.php ===
 ================================================================================
 <?php
 
@@ -296,7 +296,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_200003_create_tipos_documento_table.php ===
+=== database/migrations/2026_10_02_200003_create_tipos_documento_table.php ===
 ================================================================================
 <?php
 
@@ -325,7 +325,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_200004_create_metodos_pago_table.php ===
+=== database/migrations/2026_10_02_200004_create_metodos_pago_table.php ===
 ================================================================================
 <?php
 
@@ -357,7 +357,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_200005_create_categorias_movimiento_table.php ===
+=== database/migrations/2026_10_02_200005_create_categorias_movimiento_table.php ===
 ================================================================================
 <?php
 
@@ -390,7 +390,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_200006_create_clientes_niveles_table.php ===
+=== database/migrations/2026_10_02_200006_create_clientes_niveles_table.php ===
 ================================================================================
 <?php
 
@@ -423,7 +423,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_300001_create_tarifas_table.php ===
+=== database/migrations/2026_10_02_300001_create_tarifas_table.php ===
 ================================================================================
 <?php
 
@@ -459,7 +459,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_400001_create_tipos_observacion_table.php ===
+=== database/migrations/2026_10_02_400001_create_tipos_observacion_table.php ===
 ================================================================================
 <?php
 
@@ -491,7 +491,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_400002_create_gravedades_observacion_table.php ===
+=== database/migrations/2026_10_02_400002_create_gravedades_observacion_table.php ===
 ================================================================================
 <?php
 
@@ -521,7 +521,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_400003_create_clientes_table.php ===
+=== database/migrations/2026_10_02_400003_create_clientes_table.php ===
 ================================================================================
 <?php
 
@@ -569,7 +569,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_400004_create_cliente_visitas_table.php ===
+=== database/migrations/2026_10_02_400004_create_cliente_visitas_table.php ===
 ================================================================================
 <?php
 
@@ -604,7 +604,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_400005_create_cliente_observaciones_table.php ===
+=== database/migrations/2026_10_02_400005_create_cliente_observaciones_table.php ===
 ================================================================================
 <?php
 
@@ -648,7 +648,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_500001_create_categorias_producto_table.php ===
+=== database/migrations/2026_10_02_500001_create_categorias_producto_table.php ===
 ================================================================================
 <?php
 
@@ -680,7 +680,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_500002_create_proveedores_table.php ===
+=== database/migrations/2026_10_02_500002_create_proveedores_table.php ===
 ================================================================================
 <?php
 
@@ -715,7 +715,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_02_500003_create_productos_table.php ===
+=== database/migrations/2026_10_02_500003_create_productos_table.php ===
 ================================================================================
 <?php
 
@@ -762,7 +762,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_091302_add_activo_to_roles_and_turnos_table.php ===
+=== database/migrations/2026_10_03_091302_add_activo_to_roles_and_turnos_table.php ===
 ================================================================================
 <?php
 
@@ -802,7 +802,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_600001_create_categorias_promocion_table.php ===
+=== database/migrations/2026_10_03_600001_create_categorias_promocion_table.php ===
 ================================================================================
 <?php
 
@@ -834,7 +834,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_600002_create_promociones_table.php ===
+=== database/migrations/2026_10_03_600002_create_promociones_table.php ===
 ================================================================================
 <?php
 
@@ -896,7 +896,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_600003_create_promociones_cliente_table.php ===
+=== database/migrations/2026_10_03_600003_create_promociones_cliente_table.php ===
 ================================================================================
 <?php
 
@@ -938,7 +938,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_700001_create_paquetes_decoracion_table.php ===
+=== database/migrations/2026_10_03_700001_create_paquetes_decoracion_table.php ===
 ================================================================================
 <?php
 
@@ -995,7 +995,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_700002_migrate_categoria_servicio_to_fk.php ===
+=== database/migrations/2026_10_03_700002_migrate_categoria_servicio_to_fk.php ===
 ================================================================================
 <?php
 
@@ -1062,7 +1062,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_700003_refactor_paquetes_decoracion.php ===
+=== database/migrations/2026_10_03_700003_refactor_paquetes_decoracion.php ===
 ================================================================================
 <?php
 
@@ -1137,7 +1137,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_800001_create_habitaciones_table.php ===
+=== database/migrations/2026_10_03_800001_create_habitaciones_table.php ===
 ================================================================================
 <?php
 
@@ -1179,7 +1179,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900001_create_estados_reserva_table.php ===
+=== database/migrations/2026_10_03_900001_create_estados_reserva_table.php ===
 ================================================================================
 <?php
 
@@ -1210,7 +1210,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900002_create_reservas_table.php ===
+=== database/migrations/2026_10_03_900002_create_reservas_table.php ===
 ================================================================================
 <?php
 
@@ -1295,7 +1295,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900003_create_ocupacion_habitacion_table.php ===
+=== database/migrations/2026_10_03_900003_create_ocupacion_habitacion_table.php ===
 ================================================================================
 <?php
 
@@ -1338,7 +1338,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900004_create_registros_estadia_table.php ===
+=== database/migrations/2026_10_03_900004_create_registros_estadia_table.php ===
 ================================================================================
 <?php
 
@@ -1387,7 +1387,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900005_create_pagos_reserva_table.php ===
+=== database/migrations/2026_10_03_900005_create_pagos_reserva_table.php ===
 ================================================================================
 <?php
 
@@ -1443,7 +1443,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900006_add_vuelto_to_reservas_table.php ===
+=== database/migrations/2026_10_03_900006_add_vuelto_to_reservas_table.php ===
 ================================================================================
 <?php
 
@@ -1469,7 +1469,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900007_create_limpieza_table.php ===
+=== database/migrations/2026_10_03_900007_create_limpieza_table.php ===
 ================================================================================
 <?php
 
@@ -1520,7 +1520,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900008_expand_reservas_money_fields.php ===
+=== database/migrations/2026_10_03_900008_expand_reservas_money_fields.php ===
 ================================================================================
 <?php
 
@@ -1572,7 +1572,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900009_create_reserva_consumos_table.php ===
+=== database/migrations/2026_10_03_900009_create_reserva_consumos_table.php ===
 ================================================================================
 <?php
 
@@ -1627,7 +1627,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_03_900010_create_reserva_ajustes_table.php ===
+=== database/migrations/2026_10_03_900010_create_reserva_ajustes_table.php ===
 ================================================================================
 <?php
 
@@ -1671,7 +1671,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_04_900011_create_configuraciones_table.php ===
+=== database/migrations/2026_10_04_900011_create_configuraciones_table.php ===
 ================================================================================
 <?php
 
@@ -1701,7 +1701,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_04_900012_create_extensiones_reserva_table.php ===
+=== database/migrations/2026_10_04_900012_create_extensiones_reserva_table.php ===
 ================================================================================
 <?php
 
@@ -1758,7 +1758,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_150001_create_tipos_mantenimiento_table.php ===
+=== database/migrations/2026_10_05_150001_create_tipos_mantenimiento_table.php ===
 ================================================================================
 <?php
 
@@ -1790,7 +1790,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_150002_create_prioridades_mantenimiento_table.php ===
+=== database/migrations/2026_10_05_150002_create_prioridades_mantenimiento_table.php ===
 ================================================================================
 <?php
 
@@ -1820,7 +1820,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_150003_create_mantenimiento_table.php ===
+=== database/migrations/2026_10_05_150003_create_mantenimiento_table.php ===
 ================================================================================
 <?php
 
@@ -1870,7 +1870,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_155220_add_unique_index_to_ocupacion_habitacion_table.php ===
+=== database/migrations/2026_10_05_155220_add_unique_index_to_ocupacion_habitacion_table.php ===
 ================================================================================
 <?php
 
@@ -1899,7 +1899,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_160001_create_estados_cuenta_pagar_table.php ===
+=== database/migrations/2026_10_05_160001_create_estados_cuenta_pagar_table.php ===
 ================================================================================
 <?php
 
@@ -1932,7 +1932,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_160002_create_cuentas_por_pagar_table.php ===
+=== database/migrations/2026_10_05_160002_create_cuentas_por_pagar_table.php ===
 ================================================================================
 <?php
 
@@ -1996,7 +1996,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_05_160003_create_pagos_proveedor_table.php ===
+=== database/migrations/2026_10_05_160003_create_pagos_proveedor_table.php ===
 ================================================================================
 <?php
 
@@ -2052,7 +2052,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_06_200001_create_decoraciones_table.php ===
+=== database/migrations/2026_10_06_200001_create_decoraciones_table.php ===
 ================================================================================
 <?php
 
@@ -2117,7 +2117,7 @@ return new class extends Migration
 };
 
 ================================================================================
-=== 2026_10_07_122531_add_precio_hora_adicional_to_paquetes_decoracion.php ===
+=== database/migrations/2026_10_07_122531_add_precio_hora_adicional_to_paquetes_decoracion.php ===
 ================================================================================
 <?php
 
