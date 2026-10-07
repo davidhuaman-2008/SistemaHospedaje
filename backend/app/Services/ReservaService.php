@@ -55,7 +55,7 @@ class ReservaService
             $entrada = Carbon::parse($datos['fecha_entrada'] ?? now());
             $salida = $entrada->copy()->addHours($tarifa->horas);
 
-            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida)) {
+            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida, null, 0, true)) {
                 throw new \InvalidArgumentException('La habitación no está disponible en ese horario.');
             }
 
@@ -215,7 +215,7 @@ class ReservaService
             $entrada = Carbon::parse($datos['fecha_entrada']);
             $salida = $entrada->copy()->addHours($tarifa->horas);
 
-            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida)) {
+            if (!$this->disponibilidad->estaDisponible($datos['id_habitacion'], $entrada, $salida, null, 0, true)) {
                 throw new \InvalidArgumentException('La habitación no está disponible en ese horario.');
             }
 
@@ -235,7 +235,7 @@ class ReservaService
             $pagado = (float) ($datos['adelanto'] ?? 0);
 
             $estadoConfirmada = EstadoReserva::where('slug', 'confirmada')->firstOrFail();
-            $codigo = 'RES-' . strtoupper(Str::random(6));
+            $codigo = $this->generarCodigoReserva($datos);
 
             $reserva = Reserva::create([
                 'codigo_reserva' => $codigo,
@@ -1347,9 +1347,9 @@ class ReservaService
     /**
      * Lista habitaciones libres en el rango SOLO si su tipo tiene tarifa de $horas.
      */
-    public function listarDisponiblesEnRango(Carbon $inicio, Carbon $fin, int $horas): \Illuminate\Support\Collection
+    public function listarDisponiblesEnRango(Carbon $inicio, Carbon $fin, int $horas, int $horasAntesDecoracion = 0): \Illuminate\Support\Collection
     {
-        $libres = $this->disponibilidad->habitacionesLibresConInfo($inicio, $fin);
+        $libres = $this->disponibilidad->habitacionesLibresConInfo($inicio, $fin, $horasAntesDecoracion);
 
         // Filtrar: solo habitaciones cuyo tipo tenga tarifa activa con esas horas exactas
         return $libres->filter(function ($h) use ($horas) {
@@ -1360,9 +1360,9 @@ class ReservaService
         })->values();
     }
 
-    public function listarConConflictoEnRango(Carbon $inicio, Carbon $fin): \Illuminate\Support\Collection
+    public function listarConConflictoEnRango(Carbon $inicio, Carbon $fin, int $horasAntesDecoracion = 0): \Illuminate\Support\Collection
     {
-        return $this->disponibilidad->habitacionesConConflicto($inicio, $fin);
+        return $this->disponibilidad->habitacionesConConflicto($inicio, $fin, $horasAntesDecoracion);
     }
     // ========================================================================
     // FILTRADO — Reservas (RES-) vs Estadias (WK-)
@@ -1379,7 +1379,8 @@ class ReservaService
         ])
             ->where('codigo_reserva', 'LIKE', 'RES-%')
             ->orderByDesc('fecha_entrada')
-            ->get();
+            ->get()
+            ->values();
     }
 
     /**
@@ -1394,7 +1395,8 @@ class ReservaService
         ])
             ->where('codigo_reserva', 'LIKE', 'WK-%')
             ->orderByDesc('fecha_entrada')
-            ->get();
+            ->get()
+            ->values();
     }
 
     /**
@@ -1446,7 +1448,9 @@ class ReservaService
             $reserva->id_habitacion,
             $ahora,
             $ahora->copy()->addHours((int) $reserva->horas_base),
-            $reserva->id_reserva // excluir esta reserva
+            $reserva->id_reserva, // excluir esta reserva
+            0,                    // horasAntesDecoracion
+            true                  // esWalkIn = true (no validar anticipacion, el cliente esta aca)
         );
 
         // ¿Que la esta ocupando? (si no esta disponible)
@@ -1582,4 +1586,33 @@ class ReservaService
                 'cliente', 'habitacion.tipo', 'habitacion.piso', 'tarifa', 'estado'
             ]);
         });
+    }
+    /**
+     * Genera el codigo de reserva segun el tipo:
+     * - RES-XXXXXX -> Reserva normal
+     * - DEC-XXXXXX -> Reserva con decoracion
+     */
+    private function generarCodigoReserva(array $datos): string
+    {
+        $prefijo = !empty($datos['con_decoracion']) ? 'DEC-' : 'RES-';
+
+        do {
+            $codigo = $prefijo . strtoupper(Str::random(6));
+        } while (Reserva::where('codigo_reserva', $codigo)->exists());
+
+        return $codigo;
+    }
+    /**
+     * Lista SOLO reservas con decoracion (codigo DEC-).
+     * Ordenadas por fecha de entrada descendente.
+     */
+    public function listarSoloDecoraciones(): \Illuminate\Support\Collection
+    {
+        return Reserva::with([
+            'cliente', 'habitacion.piso', 'habitacion.tipo', 'tarifa', 'estado', 'usuarioCreacion'
+        ])
+            ->where('codigo_reserva', 'LIKE', 'DEC-%')
+            ->orderByDesc('fecha_entrada')
+            ->get()
+            ->values();
     }}

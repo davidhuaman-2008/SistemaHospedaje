@@ -16,6 +16,7 @@ export function PaqueteDecoracionForm({ inicial, proveedores, tiposHabitacion, o
    const [precioTotal, setPrecioTotal] = useState(inicial?.precio_total || 0)
   const [gananciaLocal, setGananciaLocal] = useState(inicial?.ganancia_local || 0)
   const [gananciaProveedor, setGananciaProveedor] = useState(inicial?.ganancia_proveedor || 0)
+  const [precioHoraAdicional, setPrecioHoraAdicional] = useState(inicial?.precio_hora_adicional || 0)
   const [idProveedor, setIdProveedor] = useState<number | null>(inicial?.id_proveedor ?? null)
   const [idTipoHabitacion, setIdTipoHabitacion] = useState<number | null>(inicial?.id_tipo_habitacion ?? null)
   const [horasIncluidas, setHorasIncluidas] = useState(inicial?.horas_incluidas || 8)
@@ -37,6 +38,7 @@ export function PaqueteDecoracionForm({ inicial, proveedores, tiposHabitacion, o
       precio_total: Number(precioTotal),
       ganancia_local: Number(gananciaLocal),
       ganancia_proveedor: Number(gananciaProveedor),
+      precio_hora_adicional: Number(precioHoraAdicional),
       id_proveedor: idProveedor,
       id_tipo_habitacion: idTipoHabitacion,
       horas_incluidas: Number(horasIncluidas),
@@ -89,6 +91,11 @@ export function PaqueteDecoracionForm({ inicial, proveedores, tiposHabitacion, o
         <div>
           <label className="text-slate-300 text-sm">Ganancia proveedor (S/) *</label>
           <input type="number" step="0.01" value={gananciaProveedor} onChange={e => setGananciaProveedor(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" required />
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">Precio hora adicional (S/)</label>
+          <input type="number" step="0.01" value={precioHoraAdicional} onChange={e => setPrecioHoraAdicional(Number(e.target.value))} className="w-full bg-slate-900 text-white p-2 rounded" />
+          <p className="text-slate-500 text-xs mt-1">Cuanto se cobra por cada hora extra</p>
         </div>
         <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <label className="text-slate-300 text-sm">Descripción</label>

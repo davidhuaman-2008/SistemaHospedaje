@@ -3025,3 +3025,744 @@ Proyecto privado — Sistema de Hospedaje.
 
 **Última actualización:** 05/10/2026
 **Módulos completados:** ~16 de 21 (09A, 09C, OBS, PAGOS, CONS, 14, 15 + 01-08)
+¡Perfecto! 🎯 Te armo el bloque con **TODO lo del frontend** de esta sesión para agregar al README.
+
+---
+
+## 🚀 BLOQUE — Actualizar README frontend
+
+**Pegá esto en la terminal del frontend:**
+
+```powershell
+# ============================================================================
+# FRONTEND — Actualizar README con TODO el avance de la sesión
+# ============================================================================
+
+cd C:\Users\David\Desktop\hospedaje\frontend
+
+$ErrorActionPreference = "Stop"
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Content)
+    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+Write-Host "`nAgregando seccion al README del frontend..." -ForegroundColor Yellow
+
+$path = "README.md"
+$contenido = Get-Content $path -Raw -Encoding UTF8
+
+# Quitar el cierre viejo si ya estaba
+$contenido = $contenido -replace '(?s)\r?\n---\r?\n\r?\n\*\*Última actualización:.*$', ''
+
+$seccionNueva = @'
+
+
+---
+
+## 🆕 MÓDULO 09B — RESERVAS FUTURAS (FRONTEND CERRADO)
+
+### Visión general
+
+Sistema completo de reservas futuras. Incluye listado filtrado, formulario de creación con flujo guiado, detalle, check-in con validaciones, y separación visual de reservas vs estadías.
+
+### Estructura de páginas
+
+```
+src/pages/
+├── reservas/                          ← NUEVA CARPETA
+│   ├── ReservasPage.tsx               ← Listado solo RES- (filtros + búsqueda)
+│   ├── ReservasTabla.tsx              ← Tabla
+│   ├── NuevaReservaPage.tsx           ← Formulario con flujo guiado
+│   ├── DetalleReservaPage.tsx         ← Detalle + check-in + cancelar + anular
+│   ├── ModalCancelarReserva.tsx       ← Modal cancelar
+│   └── ModalAnularReserva.tsx         ← Modal anular
+│
+├── estadias/                          ← NUEVA CARPETA
+│   ├── EstadiasPage.tsx               ← Listado solo WK-
+│   └── EstadiasTabla.tsx              ← Tabla con horas reales
+│
+└── recepcion/
+    ├── CheckInReservaPage.tsx         ← NUEVA (check-in pre-cargado)
+    └── ModalAnularReservaCheckIn.tsx  ← NUEVO (modal anular)
+```
+
+### Componentes nuevos
+
+| Componente | Ubicación | Función |
+|------------|-----------|---------|
+| `SelectorFechaHora` | `src/components/` | Selector visual de fecha + hora con modo visual y manual |
+| `SelectorDisponibilidad` | `src/components/` | Grilla de habitaciones libres + con conflicto |
+| `ModalAnularReservaCheckIn` | `src/pages/recepcion/` | Modal de anulación con motivos rápidos |
+| `CheckInReservaPage` | `src/pages/recepcion/` | Pantalla de check-in pre-cargada |
+
+### Rutas nuevas
+
+| Ruta | Componente | Función |
+|------|-----------|---------|
+| `/reservas` | `ReservasPage` | Listado SOLO RES- |
+| `/reservas/nueva` | `NuevaReservaPage` | Formulario |
+| `/reservas/:id` | `DetalleReservaPage` | Detalle |
+| `/estadias` | `EstadiasPage` | Listado SOLO WK- |
+| `/recepcion/checkin/:idReserva` | `CheckInReservaPage` | Check-in pre-cargado |
+
+### Sidebar actualizado
+
+```
+Recepción ▾
+├── Mapa              → /recepcion
+├── Reservas          → /reservas     ← NUEVO (solo RES-)
+└── Estadías          → /estadias     ← NUEVO (solo WK-)
+```
+
+### Flujo completo: Crear Reserva Futura
+
+**`NuevaReservaPage.tsx`** — Orden de pasos (CORREGIDO):
+
+```
+1. Cliente (buscar DNI o crear inline)
+2. Fecha + hora de entrada (SelectorFechaHora visual)
+3. Duración (4h / 6h / 8h / 12h)  ← NUEVO
+4. Habitación disponible (filtrada por duración)
+5. Tarifa (auto-seleccionada si solo hay 1)
+6. Adelanto (opcional, único o mixto)
+```
+
+**Ventaja del orden:** la duración se elige **antes** que la habitación, así solo aparecen habitaciones **compatibles** con esa duración.
+
+### `SelectorFechaHora.tsx` — Componente clave
+
+**Modo Visual (default):**
+- Chips rápidos: **Hoy, Mañana, Pasado, +3d, +7d**
+- **Calendario mini** (compacto, ~30% del tamaño original)
+- Chips de hora: **08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00**
+- **Input `Otra:` para hora libre** (ej: 08:30, 13:45)
+- Si la hora no coincide con un chip → se pone **morado** (custom)
+- **Preview en vivo** con la fecha formateada
+
+**Modo Manual (toggle):**
+- Input `datetime-local` clásico
+
+**Ventajas:**
+- No ocupa pantalla completa (compacto)
+- Días pasados deshabilitados (no se puede elegir fecha pasada)
+- Preview en vivo del formato largo ("Viernes 9 Oct, 14:00")
+
+### `SelectorDisponibilidad.tsx` — Grilla filtrada
+
+**Muestra:**
+- **Disponibles** (verde) → clickables
+- **No disponibles** (con motivo + colores):
+  - `Habitacion inactiva` → gris
+  - `En mantenimiento` → naranja
+  - `En limpieza` → cyan
+  - `Reservada por otro cliente` → morado
+  - `Ocupada por cliente actual` → rojo
+- Muestra **cliente** y **fechas** del conflicto
+
+**Crashes resueltos:**
+- `h.ocupacion?.cliente` con optional chaining (porque `ocupacion` puede ser null)
+
+### `CheckInReservaPage.tsx` — Check-in pre-cargado
+
+**Ruta:** `/recepcion/checkin/:idReserva`
+
+**Flujo:**
+1. Muestra toda la info de la reserva (cliente, habitación, tarifa, adelanto)
+2. **Banner amarillo** si el cliente llega tarde:
+   ```
+   ⏰ Cliente llegó 33m tarde
+   La reserva fue para las 13:57.
+   El tiempo se cuenta desde la reserva original.
+
+   Hora de salida: 19:57
+   Tiempo restante: 5h 27m
+   ```
+3. **Banner rojo** si NO se puede hacer check-in (hab. ocupada por otra reserva)
+4. **Banner de observaciones** si el cliente las tiene
+5. **Sección de cobro** del saldo pendiente:
+   - Modo único (efectivo, yape, etc)
+   - Modo varios (pago mixto)
+   - Muestra "Cobrando ahora" y "Queda como deuda"
+6. **Botón "Confirmar Check-In"**
+7. **Botón "Anular Reserva"** (si el cliente no llegó)
+
+**Validaciones visuales:**
+- Si `!puede_check_in` → botón deshabilitado + banner rojo
+- Si `saldo > 0` y no hay método → toast de error
+- Al confirmar → toast con hora de salida correcta
+
+**Toast al confirmar:**
+```
+✅ Check-in realizado. Sale a las 19:57 (5h 27m restantes).
+```
+
+### `ModalAnularReservaCheckIn.tsx`
+
+**Motivos rápidos:**
+- Cliente no llegó
+- Cliente canceló por teléfono
+- Cliente canceló por WhatsApp
+- Error de recepción
+- Otro motivo
+
+**Comportamiento:**
+- Al confirmar → `reservaService.anular(id, motivo)`
+- La habitación queda libre inmediatamente
+- Redirige al mapa
+
+### `ReservasPage.tsx` — Listado SOLO RES-
+
+**Filtros:**
+- Todas
+- Pendientes
+- Confirmadas
+- Llegan hoy
+- Canceladas/Anuladas
+
+**Búsqueda:** por código, cliente, DNI
+
+**Endpoint:** `GET /reservas/solo-reservas`
+
+### `EstadiasPage.tsx` — Listado SOLO WK-
+
+**Filtros:**
+- Todas
+- En curso
+- Finalizadas
+- Canceladas/Anuladas
+
+**Auto-refresh:** cada 30s
+
+**Endpoint:** `GET /reservas/solo-walk-ins`
+
+**Muestra:** horas reales desde `registro_estadia.horas_reales`
+
+### `DetalleReservaPage.tsx`
+
+**Botones:**
+- ✅ Hacer Check-in (cliente llegó)
+- ❌ Cancelar Reserva (cliente canceló)
+- ⚠️ Anular Reserva (error)
+
+**Info:**
+- Cliente (con DNI, teléfono)
+- Habitación
+- Fechas (entrada / salida prevista)
+- Dinero (total, pagado, saldo)
+
+### `RecepcionPage.tsx` — Navegación actualizada
+
+**Nuevo `handleClickHabitacion()`:**
+```tsx
+if (h.estado === "Reservada" || h.estado === "Reservada-Urgente") {
+  if (h.id_reserva) {
+    navigate(`/recepcion/checkin/${h.id_reserva}`)
+  }
+}
+```
+
+**Antes:** click en Reservada → toast informativo (no hacía nada)
+**Ahora:** click en Reservada → navega al check-in
+
+**Filtro nuevo:** `Reservada-Urgente` con emoji 🚨 y animación pulse
+
+### `CheckoutPage.tsx` — Validación de check-in
+
+**Antes:** permitía hacer check-out sin check-in → error 422
+**Ahora:**
+- Detecta `sinCheckIn = !reserva.registro_estadia && !esCerrada`
+- Muestra banner amarillo "Esta reserva NO tiene check-in hecho"
+- **Bloquea** los botones de check-out
+
+### `ReservaService` (frontend) — Métodos nuevos
+
+```typescript
+// Módulo 09B
+listarDisponiblesEnRango(fecha, horas): ReservaDisponiblesResponse
+listarProximas(): ReservaProximasResponse
+listarHoy(): ReservaHoyResponse
+listarProximasCheckIn(): ReservaHoyResponse
+listarSoloReservas(): Reserva[]
+listarSoloWalkIns(): Reserva[]
+listarHistorial(): Reserva[]
+
+// Check-in
+infoCheckIn(id): InfoCheckIn
+checkInValidado(id): Reserva
+```
+
+### Tipos nuevos (`types/reserva.ts`)
+
+```typescript
+HabitacionLibre
+HabitacionConConflicto
+ReservaDisponiblesResponse
+ReservaProxima
+ReservaProximasResponse
+ReservaHoyResponse
+ReservaFuturaEnMapa
+InfoCheckIn
+```
+
+### `App.tsx` — Rutas agregadas
+
+```tsx
+<Route path="/reservas" element={<ProtectedRoute><ReservasPage /></ProtectedRoute>} />
+<Route path="/reservas/nueva" element={<ProtectedRoute><NuevaReservaPage /></ProtectedRoute>} />
+<Route path="/reservas/:id" element={<ProtectedRoute><DetalleReservaPage /></ProtectedRoute>} />
+<Route path="/estadias" element={<ProtectedRoute><EstadiasPage /></ProtectedRoute>} />
+<Route path="/recepcion/checkin/:idReserva" element={<ProtectedRoute><CheckInReservaPage /></ProtectedRoute>} />
+```
+
+### `Sidebar.tsx` — Dropdown Recepción actualizado
+
+```tsx
+<Link to="/recepcion" className={subItemClass("/recepcion")}>
+  <Hotel size={16} /> Mapa
+</Link>
+<Link to="/reservas" className={subItemClass("/reservas")}>
+  <CalendarDays size={16} /> Reservas
+</Link>
+<Link to="/estadias" className={subItemClass("/estadias")}>
+  <BedDouble size={16} /> Estadías
+</Link>
+```
+
+### Bugs resueltos en esta sesión
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | `ClienteForm.tsx` con error TS por `buscarPorDni` | Destructurar `{ cliente }` del response |
+| 2 | `SelectorDisponibilidad` crasheaba con `ocupacion: null` | Optional chaining `h.ocupacion?.cliente` |
+| 3 | `RecepcionPage` con encoding roto (`ðŸ`, `Â·`) | Reescrito sin BOM |
+| 4 | Click en Reservada no hacía nada | Navega a `/recepcion/checkin/:idReserva` |
+| 5 | El filtro de duración no funcionaba en `NuevaReservaPage` | Se elige duración ANTES de habitación |
+| 6 | El calendario ocupaba toda la pantalla | Rediseñado compacto (toggle visual/manual) |
+| 7 | Hora solo permitía chips fijos | Agregado input `Otra:` para hora libre |
+| 8 | Cliente nuevo no se podía crear | Form inline en `NuevaReservaPage` |
+| 9 | Checkout sin check-in daba 422 | Detecta `sinCheckIn` y bloquea botón |
+| 10 | Sin opción de anular reserva desde check-in | Modal `ModalAnularReservaCheckIn` con motivos rápidos |
+
+### Archivos nuevos en esta sesión
+
+**Componentes:**
+- `src/components/SelectorFechaHora.tsx`
+- `src/components/SelectorDisponibilidad.tsx`
+
+**Páginas de reservas:**
+- `src/pages/reservas/ReservasPage.tsx`
+- `src/pages/reservas/ReservasTabla.tsx`
+- `src/pages/reservas/NuevaReservaPage.tsx`
+- `src/pages/reservas/DetalleReservaPage.tsx`
+- `src/pages/reservas/ModalCancelarReserva.tsx`
+- `src/pages/reservas/ModalAnularReserva.tsx`
+
+**Páginas de estadías:**
+- `src/pages/estadias/EstadiasPage.tsx`
+- `src/pages/estadias/EstadiasTabla.tsx`
+
+**Páginas de check-in:**
+- `src/pages/recepcion/CheckInReservaPage.tsx`
+- `src/pages/recepcion/ModalAnularReservaCheckIn.tsx`
+
+### Archivos modificados
+
+- `src/services/reservaService.ts` (+7 métodos)
+- `src/types/reserva.ts` (+8 tipos)
+- `src/pages/recepcion/RecepcionPage.tsx` (reescrito, encoding + navegación)
+- `src/pages/recepcion/CheckoutPage.tsx` (validación check-in)
+- `src/App.tsx` (+5 rutas)
+- `src/components/layout/Sidebar.tsx` (+2 items)
+
+### Paleta de colores actualizada
+
+| Estado | Color | Hex |
+|--------|-------|-----|
+| Disponible | 🟢 Verde | `#10b981` |
+| Ocupada | 🔴 Rojo | `#ef4444` |
+| Por vencer | 🟡 Amarillo | `#f59e0b` |
+| Vencida | 🔴 Rojo oscuro | `#dc2626` |
+| Limpieza | 🔵 Celeste | `#06b6d4` |
+| Mantenimiento | 🟠 Naranja | `#f97316` |
+| Reservada | 🟣 Morado | `#7c3aed` |
+| **Reservada-Urgente** | 🔴 Rojo + pulse | `#dc2626` |
+| Inactiva | ⚫ Gris | `#475569` |
+
+### Decisiones técnicas nuevas
+
+| # | Decisión | Razón |
+|---|----------|-------|
+| D30 | Orden del formulario: Cliente → Fecha → **Duración** → Habitación → Tarifa | Evita que aparezcan habitaciones sin tarifa de esa duración |
+| D31 | `SelectorFechaHora` con toggle visual/manual | Flexibilidad para el recepcionista |
+| D32 | Input de hora libre (`<input type="time">`) | Permitir 08:30, 13:45, etc |
+| D33 | `SelectorDisponibilidad` con colores por motivo | UX clara del por qué no está disponible |
+| D34 | `CheckInReservaPage` con cobro del saldo inline | Todo en 1 pantalla, menos clicks |
+| D35 | Botón "Anular Reserva" con motivos rápidos | Prevenir typos |
+| D36 | `RecepcionPage` navega a check-in al click en morado | Flujo natural |
+| D37 | `CheckoutPage` bloquea si no hay check-in | Evita errores 422 |
+| D38 | Panel "Estadías" separado de "Reservas" | Igual que el sistema antiguo (Hoteles) |
+
+### Cómo probar el flujo completo
+
+#### Test 1: Crear reserva futura
+1. Ir a `/reservas` → click "+ Nueva Reserva"
+2. Buscar un DNI que no exista → form inline
+3. Elegir fecha + hora (visual)
+4. Elegir duración: 6h
+5. Click en una habitación disponible
+6. Tarifa se auto-selecciona
+7. Adelanto opcional
+8. Click "Crear Reserva"
+9. Ver código `RES-XXXXXX` en `/reservas`
+
+#### Test 2: Reserva morada + check-in
+1. Crear reserva para HOY dentro de 5 min
+2. Esperar los 5 min
+3. Ir a `/recepcion` → la hab. debe estar **morada**
+4. Click en la morada → abre `CheckInReservaPage`
+5. Confirmar check-in → hab. pasa a ROJA
+6. Verificar hora de salida (debe ser desde la reserva original)
+
+#### Test 3: Cliente llega tarde
+1. Crear reserva para HOY 3 min antes
+2. Esperar 10 min
+3. La hab. sigue **MORADA** (no cambia a rojo automáticamente)
+4. Click en morada → banner amarillo "Cliente llegó 7m tarde"
+5. La hora de salida debe ser la **original**, no la actual + 6h
+
+#### Test 4: Anular reserva
+1. Click en hab. morada
+2. Click "❌ Anular Reserva"
+3. Elegir motivo "Cliente no llegó"
+4. Confirmar → habitación vuelve a verde
+
+#### Test 5: Checkout bloqueado sin check-in
+1. Ir a `/recepcion/checkout/44` (una reserva sin check-in)
+2. Debe mostrar banner amarillo "NO tiene check-in hecho"
+3. Los botones de checkout deben estar bloqueados
+
+### Estado del roadmap frontend
+
+| # | Módulo | Backend | Frontend | Estado |
+|---|--------|:---:|:---:|:---:|
+| 09A | Recepción / Walk-in | ✅ | ✅ | CERRADO |
+| **09B** | **Reservas Futuras** | ✅ | ✅ | **CERRADO** |
+| 09C | Extensiones de Tiempo | ✅ | ✅ | CERRADO |
+| OBS | Observaciones Cliente | ✅ | ✅ | CERRADO |
+| PAGOS | Pagos Mixtos + Vuelto | ✅ | ✅ | CERRADO |
+| CONS | Consumos Múltiples | ✅ | ✅ | CERRADO |
+| 14 | Limpieza | ✅ | ✅ | CERRADO |
+| 15 | Mantenimiento | ✅ | ✅ | CERRADO |
+
+### Pendiente de mejorar
+
+- ⏳ **Banner "Reservas en riesgo"** en `RecepcionPage` (si hay reservas próximas con hab. ocupada)
+- ⏳ **Notificaciones push** al recepcionista
+- ⏳ **Autorefresh** de las reservas próximas
+- ⏳ **Sonido** al haber conflicto
+- ⏳ **Mostrar countdown** en la tarjeta de habitación morada ("vence en X")
+- ⏳ **Modal de cambio de habitación** desde check-in
+
+---
+
+**Última actualización:** 06/10/2026
+**Módulos completados:** 17 de 21 (09A, 09B, 09C, OBS, PAGOS, CONS, 14, 15 + 01-08)
+'@
+
+$contenido = $contenido.TrimEnd() + $seccionNueva
+
+Write-Utf8NoBom $path $contenido
+Write-Host "  OK README.md (frontend) actualizado" -ForegroundColor Green
+Write-Host ""
+Write-Host "Contenido agregado:" -ForegroundColor Yellow
+Write-Host "  - Modulo 09B frontend completo" -ForegroundColor White
+Write-Host "  - 4 secciones de paginas nuevas" -ForegroundColor White
+Write-Host "  - Componentes: SelectorFechaHora + SelectorDisponibilidad" -ForegroundColor White
+Write-Host "  - CheckInReservaPage + ModalAnularReservaCheckIn" -ForegroundColor White
+Write-Host "  - 5 rutas nuevas" -ForegroundColor White
+Write-Host "  - Bugs resueltos (10 bugs)" -ForegroundColor White
+Write-Host "  - Decisiones tecnicas D30-D38" -ForegroundColor White
+Write-Host "  - Como probar el flujo completo" -ForegroundColor White
+Write-Host ""
+Write-Host "Los READMEs estan actualizados. Ahora podes hacer commit:" -ForegroundColor Yellow
+Write-Host "  cd C:\Users\David\Desktop\hospedaje" -ForegroundColor White
+Write-Host "  git add ." -ForegroundColor White
+Write-Host "  git commit -m 'docs: README backend + frontend modulo 09B completo'" -ForegroundColor White
+Write-Host "  git push" -ForegroundColor White
+Write-Host ""
+```
+
+---
+
+## 📸 Después de pegar:
+
+**Pegame:**
+1. **Output** (debería decir "README.md (frontend) actualizado")
+
+---
+
+## 🎯 Ahora tenés:
+
+✅ **Backend README** con módulo 09B completo + 11 bugs
+✅ **Frontend README** con módulo 09B completo + 10 bugs
+
+**Total documentado:**
+- 2 sesiones de trabajo
+- ~30 archivos modificados/creados
+- ~21 bugs resueltos
+- 13 endpoints nuevos
+- 10 decisiones técnicas (D30-D38)
+
+---
+
+## 🎯 Ahora sí, decime:
+
+1. **¿Hacemos commit de los 2 READMEs?**
+2. **¿Movemos la 501 al Piso 5?**
+3. **¿Arreglamos el `HabitacionForm.tsx`?** (pegame el archivo)
+4. **¿Seguimos con el siguiente módulo?** (10, 11, 12, 13, 16...)
+
+**¿Dale?** 🚀
+
+text
+
+---
+
+## 🚀 BLOQUE 2 — Actualizar README frontend
+
+**Pegá esto en la terminal del frontend:**
+
+```powershell
+# ============================================================================
+# FRONTEND — Actualizar README con TODO el avance del 07/10/2026
+# ============================================================================
+
+cd C:\Users\David\Desktop\hospedaje\frontend
+
+$ErrorActionPreference = "Stop"
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Content)
+    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+Write-Host "`nActualizando README frontend..." -ForegroundColor Yellow
+
+$path = "README.md"
+$contenido = Get-Content $path -Raw -Encoding UTF8
+
+# Quitar el cierre viejo si ya estaba
+$contenido = $contenido -replace '(?s)\r?\n---\r?\n\r?\n\*\*Última actualización:.*$', ''
+
+$seccionNueva = @'
+
+
+---
+
+## 🆕 MÓDULO 10 — DECORACIONES APLICADAS (FRONTEND)
+
+### Visión general
+
+Frontend completo para gestionar decoraciones. Incluye:
+- Toggle "Solo Reserva" / "Reserva + Decoración" en el form de reservas
+- Selector de paquetes filtrado por tipo de habitación
+- Cálculo automático de horas extra
+- Nueva página `/reservas-decoradas` (solo códigos DEC-)
+- Color rosa para habitaciones con decoración en el mapa
+- Filtro "Con Decoración" en el mapa
+
+### Flujo para crear reserva con decoración
+Cliente (DNI) → buscar o crear
+
+TIPO DE SERVICIO:
+[📅 Solo Reserva] [🎨 Reserva + Decoración]
+
+Fecha + Hora
+
+Duración (4h / 6h / 8h / 12h)
+
+Habitación (filtra con 24h de anticipación si es con decoración)
+
+Tarifa
+
+PAQUETE DE DECORACIÓN (solo si es con decoración)
+
+Filtra por tipo de habitación
+
+Muestra: Paquete + Precio + Ganancia local + Ganancia proveedor
+
+Frase personalizada + Música (opcional)
+
+Adelanto
+
+Crear → Código DEC-XXXXXX
+
+text
+
+### Rutas nuevas
+
+| Ruta | Componente | Función |
+|------|-----------|---------|
+| `/reservas-decoradas` | `ReservasDecoradasPage` | Listado SOLO DEC- |
+
+### Sidebar actualizado
+Recepción ▾
+├── Mapa
+├── Reservas
+├── Reservas Decoradas ← NUEVO
+└── Estadías
+
+Decoraciones ▾
+├── Paquetes
+└── Reservas Decoradas ← NUEVO
+
+text
+
+### Componentes modificados
+
+- `NuevaReservaPage.tsx` → toggle + selector de paquete + cálculo de horas extra
+- `SelectorDisponibilidad.tsx` → prop `conDecoracion`
+- `RecepcionPage.tsx` → click en habitación ROSA abre Check-In + chip filtro
+- `TarjetaHabitacion.tsx` → color rosa automático (viene del backend)
+- `CheckInReservaPage.tsx` → texto "Al cobrar S/ X, el saldo quedará en S/ 0"
+- `App.tsx` → +1 ruta
+- `Sidebar.tsx` → +2 items
+
+### Archivos nuevos
+
+- `src/pages/decoraciones/reservasDecoradas/ReservasDecoradasPage.tsx`
+
+### Tipos nuevos
+
+En `types/paquetes_decoracion`:
+```typescript
+export interface PaqueteDecoracion {
+  // ...
+  precio_hora_adicional: number  // NUEVO
+}
+En types/reserva.ts:
+
+typescript
+estado: "Disponible" | "Ocupada" | "Reservada" | "Con-Decoracion" 
+      | "Reservada-Urgente" | "Por vencer" | "Vencida" 
+      | "Limpieza" | "Mantenimiento" | "Inactiva"
+Filtros del mapa (actualizado)
+text
+[📋 Todos] [🟢 Disponibles] [🔴 Ocupadas] [🟡 Por Vencer] 
+[⏰ Vencidas] [🔵 Limpieza] [🔧 Mantenimiento] 
+[🟣 Reservadas] [🎨 Con Decoración] [🚨 Reservas en riesgo] [⚫ Inactivas]
+Colores del mapa (actualizado)
+Estado	Color	Cuándo
+Disponible	🟢 #10b981	Libre
+Ocupada	🔴 #ef4444	Walk-in o reserva con check-in
+Por vencer	🟡 #f59e0b	30 min restantes
+Vencida	🔴 #dc2626	Tiempo excedido
+Limpieza	🔵 #06b6d4	Limpieza pendiente
+Mantenimiento	🟠 #f97316	Reporte activo
+Reservada	🟣 #7c3aed	Reserva normal sin check-in
+Con-Decoracion	🎨 Rosa #ec4899	Reserva con decoración
+Reservada-Urgente	🚨 #dc2626 parpadeante	Conflicto
+Inactiva	⚫ #475569	Desactivada
+Bugs resueltos (07/10/2026)
+#	Bug	Fix
+1	Click en habitación ROSA no hacía nada	Agregado caso "Con-Decoracion" en handleClickHabitacion
+2	Faltaba filtro "Con Decoración"	Nuevo chip en el mapa
+3	RecepcionPage no tenía caso para ROSA	Agregado al type y al handler
+4	PaqueteDecoracionForm no tenía campo precio_hora_adicional	Agregado input
+5	Texto "Saldo cubierto" era ambiguo	Cambiado a "Al cobrar S/ X, el saldo quedará en S/ 0"
+Decisiones técnicas
+#	Decisión	Razón
+D40	Toggle "Solo Reserva / Reserva + Decoración" al inicio del form	Claridad mental
+D41	El selector de paquete se carga DESPUÉS de elegir habitación	Filtra por tipo
+D42	Prefijo DEC- para reservas decoradas	Distinguir en listados
+D43	Listado separado /reservas-decoradas	No mezclar con reservas normales
+D44	Color rosa #ec4899 para Con-Decoracion	No confundir con morado
+D45	El texto del cobro en check-in es explícito	Evitar confusión con "ya pagado"
+Estado del roadmap
+#	Módulo	Backend	Frontend
+01-09A	Auth, Config, Tarifas, Clientes, Productos, Promos, Paquetes, Habitaciones, Recepción	✅	✅
+09B	Reservas Futuras	✅	✅
+09C	Extensiones	✅	✅
+OBS	Observaciones	✅	✅
+PAGOS	Pagos Mixtos	✅	✅
+CONS	Consumos Múltiples	✅	✅
+13	Cuentas por Pagar	✅	✅
+10	Decoraciones Aplicadas	✅	✅ CERRADO
+14	Limpieza	✅	✅
+15	Mantenimiento	✅	✅
+Pendientes para el futuro
+⏳ Ticket imprimible (PDF con dompdf) - diseño ya analizado
+
+⏳ Módulo 11 Caja
+
+⏳ Módulo 12 Kardex
+
+⏳ Módulo 16 SUNAT
+
+Última actualización: 07/10/2026
+Módulos completados: ~18 de 21
+'@
+
+c
+o
+n
+t
+e
+n
+i
+d
+o
+=
+contenido=contenido.TrimEnd() + $seccionNueva
+
+Write-Utf8NoBom 
+p
+a
+t
+h
+pathcontenido
+
+Write-Host " OK README frontend actualizado" -ForegroundColor Green
+Write-Host ""
+Write-Host "Contenido agregado:" -ForegroundColor Yellow
+Write-Host " - Modulo 10 completo" -ForegroundColor White
+Write-Host " - Flujo de creacion" -ForegroundColor White
+Write-Host " - Colores actualizados" -ForegroundColor White
+Write-Host " - 5 bugs resueltos" -ForegroundColor White
+Write-Host " - Decisiones tecnicas D40-D45" -ForegroundColor White
+Write-Host ""
+Write-Host "AHORA PODES HACER COMMIT:" -ForegroundColor Yellow
+Write-Host " cd C:\Users\David\Desktop\hospedaje" -ForegroundColor White
+Write-Host " git add ." -ForegroundColor White
+Write-Host " git commit -m 'docs: READMEs actualizados con modulo 10 completo'" -ForegroundColor White
+Write-Host " git push" -ForegroundColor White
+Write-Host ""
+
+text
+
+---
+
+## 📸 Después de pegar:
+
+**Pegame:**
+1. **El output del backend**
+2. **El output del frontend**
+
+Y después, si querés, hacés el commit:
+```bash
+cd C:\Users\David\Desktop\hospedaje
+git add .
+git commit -m "docs: READMEs actualizados con modulo 10 completo"
+git push
+🎯 Cuando confirmes, seguimos con:
+⏳ Pendientes
+Ticket imprimible (PDF) → ya analizamos el diseño
+
+Módulo 11 Caja
+
+Migrar reservas viejas a DEC-
+
+¿Dale? Pegá los 2 bloques y contame. 🚀

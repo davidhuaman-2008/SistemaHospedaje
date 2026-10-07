@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Configuracion;
+use App\Models\Decoracion;
 use App\Models\Habitacion;
 use App\Models\Limpieza;
 use App\Models\Mantenimiento;
@@ -11,12 +12,24 @@ use Carbon\Carbon;
 
 class EstadoHabitacionService
 {
+    /**
+     * Calcula el estado en vivo de una habitacion.
+     * Orden de prioridad:
+     *  1. Inactiva
+     *  2. Mantenimiento activo
+     *  3. Ocupacion activa CON check-in (cliente adentro) -> Ocupada/Por vencer/Vencida
+     *  4. Reserva sin check-in -> Reservada (morado) o Con-Decoracion (rosa)
+     *  5. Limpieza pendiente
+     *  6. Disponible
+     */
     public function calcular(Habitacion $habitacion): array
     {
+        // 1. Inactiva
         if (!$habitacion->activo) {
             return $this->respuesta('Inactiva', '#475569');
         }
 
+        // 2. Mantenimiento activo
         $mantenimiento = Mantenimiento::with(['tipo', 'prioridad', 'usuarioAsignado'])
             ->where('id_habitacion', $habitacion->id_habitacion)
             ->whereIn('estado', ['REPORTADO', 'EN_PROCESO'])
@@ -35,21 +48,28 @@ class EstadoHabitacionService
             ]);
         }
 
-        $limpieza = Limpieza::where('id_habitacion', $habitacion->id_habitacion)
-            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
-            ->first();
-
-        if ($limpieza) {
-            return $this->respuesta('Limpieza', '#06b6d4');
-        }
-
         $ahora = Carbon::now();
 
         // =====================================================================
-        // PRIORIDAD 1: Reserva CONFIRMADA/PENDIENTE sin check-in
-        //             (incluye futuras Y vencidas)
-        //             Si hay una reserva sin check-in, DEBE mostrarse como Reservada
-        //             aunque la hora ya haya pasado.
+        // 3. OCUPACION ACTIVA CON CHECK-IN (cliente adentro)
+        // =====================================================================
+        $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente'])
+            ->where('id_habitacion', $habitacion->id_habitacion)
+            ->where('estado', 'ACTIVA')
+            ->where('fecha_inicio', '<=', $ahora)
+            ->where('fecha_fin', '>=', $ahora)
+            ->whereHas('reserva.estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
+            ->first();
+
+        if ($ocupacionActual && $ocupacionActual->reserva) {
+            return $this->ocupadaConTiempo($ocupacionActual, $ahora);
+        }
+
+        // =====================================================================
+        // 4. RESERVA SIN CHECK-IN (futura O vencida)
+        //    Incluye las que tienen decoracion (color rosa)
         // =====================================================================
         $reservaSinCheckIn = OcupacionHabitacion::with(['reserva.cliente', 'reserva.estado', 'reserva.registroEstadia'])
             ->where('id_habitacion', $habitacion->id_habitacion)
@@ -68,18 +88,26 @@ class EstadoHabitacionService
             $limiteBloqueo = $ahora->copy()->addHours($horasAntes);
             $minutosParaEntrada = (int) round($ahora->diffInMinutes($reservaSinCheckIn->fecha_inicio, false));
 
+            // ¿Tiene decoracion activa?
+            $decoracion = Decoracion::where('id_reserva', $reservaSinCheckIn->reserva->id_reserva)
+                ->whereIn('estado', ['programada', 'en-proceso'])
+                ->first();
+
             // Verificar si hay OTRA ocupacion activa (walk-in real) que choca
             $otraOcupacion = OcupacionHabitacion::with(['reserva.cliente'])
                 ->where('id_habitacion', $habitacion->id_habitacion)
                 ->where('estado', 'ACTIVA')
                 ->where('id_reserva', '!=', $reservaSinCheckIn->id_reserva)
-                ->whereHas('reserva.registroEstadia') // Solo walk-ins CON check-in
+                ->whereHas('reserva.estado', function ($q) {
+                    $q->where('slug', 'activa');
+                })
                 ->where(function ($q) use ($ahora) {
                     $q->where('fecha_inicio', '<=', $ahora)
                       ->where('fecha_fin', '>=', $ahora);
                 })
                 ->first();
 
+            // Si hay conflicto -> Reservada-Urgente (rojo)
             if ($otraOcupacion && $otraOcupacion->reserva) {
                 return $this->respuesta('Reservada-Urgente', '#dc2626', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
                     'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
@@ -88,20 +116,53 @@ class EstadoHabitacionService
                     'alerta_reserva_ocupada' => true,
                     'cliente_actual' => $otraOcupacion->reserva->cliente?->nombre,
                     'id_reserva_actual' => $otraOcupacion->reserva->id_reserva,
+                    'tiene_decoracion' => $decoracion !== null,
                 ]);
             }
 
-            // Si esta dentro de la ventana de bloqueo O YA PASO la hora -> Reservada
+            // Si esta dentro de la ventana O YA PASO -> mostrar Reservada o Con-Decoracion
             if ($reservaSinCheckIn->fecha_inicio <= $limiteBloqueo) {
+                // CON decoracion -> color rosa
+                if ($decoracion) {
+                    return $this->respuesta('Con-Decoracion', '#ec4899', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                        'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                        'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                        'minutos_para_entrada' => $minutosParaEntrada,
+                        'alerta_reserva_ocupada' => false,
+                        'tiene_decoracion' => true,
+                        'id_decoracion' => $decoracion->id_decoracion,
+                        'decoracion_estado' => $decoracion->estado,
+                        'decoracion_frase' => $decoracion->frase_personalizada,
+                        'decoracion_musica' => $decoracion->musica,
+                    ]);
+                }
+
+                // SIN decoracion -> morado
                 return $this->respuesta('Reservada', '#7c3aed', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
                     'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
                     'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
                     'minutos_para_entrada' => $minutosParaEntrada,
                     'alerta_reserva_ocupada' => false,
+                    'tiene_decoracion' => false,
                 ]);
             }
 
-            // Fuera de la ventana -> Disponible con info de reserva futura
+            // Si tiene decoracion -> mostrar ROSA desde su creacion
+            if ($decoracion) {
+                return $this->respuesta('Con-Decoracion', '#ec4899', $reservaSinCheckIn->reserva->cliente?->nombre, $reservaSinCheckIn->reserva->id_reserva, [
+                    'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
+                    'fecha_salida_prevista' => $reservaSinCheckIn->fecha_fin->toIso8601String(),
+                    'minutos_para_entrada' => $minutosParaEntrada,
+                    'alerta_reserva_ocupada' => false,
+                    'tiene_decoracion' => true,
+                    'id_decoracion' => $decoracion->id_decoracion,
+                    'decoracion_estado' => $decoracion->estado,
+                    'decoracion_frase' => $decoracion->frase_personalizada,
+                    'decoracion_musica' => $decoracion->musica,
+                ]);
+            }
+
+            // Fuera de la ventana y SIN decoracion -> Disponible con info de reserva futura
             return $this->respuesta('Disponible', '#10b981', null, null, [
                 'reserva_futura' => [
                     'id_reserva' => $reservaSinCheckIn->reserva->id_reserva,
@@ -110,34 +171,33 @@ class EstadoHabitacionService
                     'fecha_entrada' => $reservaSinCheckIn->fecha_inicio->toIso8601String(),
                     'minutos_para_entrada' => $minutosParaEntrada,
                     'horas_antes_bloqueo' => $horasAntes,
+                    'tiene_decoracion' => false,
                 ],
             ]);
         }
 
         // =====================================================================
-        // PRIORIDAD 2: Ocupacion activa AHORA con check-in hecho
+        // 5. LIMPIEZA PENDIENTE
         // =====================================================================
-        $ocupacion = OcupacionHabitacion::with(['reserva.cliente', 'reserva.registroEstadia'])
-            ->where('id_habitacion', $habitacion->id_habitacion)
-            ->where('estado', 'ACTIVA')
-            ->where('fecha_inicio', '<=', $ahora)
-            ->where('fecha_fin', '>=', $ahora)
-            ->whereHas('reserva.registroEstadia') // Solo CON check-in
+        $limpieza = Limpieza::where('id_habitacion', $habitacion->id_habitacion)
+            ->whereIn('estado', ['PENDIENTE', 'EN_PROCESO'])
             ->first();
 
-        if ($ocupacion && $ocupacion->reserva) {
-            return $this->ocupadaConTiempo($ocupacion, $ahora);
+        if ($limpieza) {
+            return $this->respuesta('Limpieza', '#06b6d4');
         }
 
         // =====================================================================
-        // PRIORIDAD 3: Ocupacion vencida CON check-in hecho
+        // 6. VENCIDA (walk-in vencido sin check-out)
         // =====================================================================
         $vencida = OcupacionHabitacion::with(['reserva.cliente'])
             ->where('id_habitacion', $habitacion->id_habitacion)
             ->where('estado', 'ACTIVA')
             ->where('fecha_inicio', '<=', $ahora)
             ->where('fecha_fin', '<', $ahora)
-            ->whereHas('reserva.registroEstadia')
+            ->whereHas('reserva.estado', function ($q) {
+                $q->where('slug', 'activa');
+            })
             ->orderByDesc('fecha_fin')
             ->first();
 
@@ -145,6 +205,9 @@ class EstadoHabitacionService
             return $this->ocupadaConTiempo($vencida, $ahora);
         }
 
+        // =====================================================================
+        // 7. DISPONIBLE
+        // =====================================================================
         return $this->respuesta('Disponible', '#10b981');
     }
 
@@ -204,6 +267,11 @@ class EstadoHabitacionService
             'cliente_actual' => null,
             'id_reserva_actual' => null,
             'reserva_futura' => null,
+            'tiene_decoracion' => false,
+            'id_decoracion' => null,
+            'decoracion_estado' => null,
+            'decoracion_frase' => null,
+            'decoracion_musica' => null,
             'id_mantenimiento' => null,
             'mantenimiento_tipo' => null,
             'mantenimiento_descripcion' => null,

@@ -21,6 +21,7 @@ import {
   Package,
   Tag,
   Percent,
+  Palette,
   Sparkles,
   Gift,
   Truck,
@@ -235,6 +236,10 @@ export default function Sidebar() {
                   <CalendarDays size={16} />
                   Reservas
                 </Link>
+                <Link to="/reservas-decoradas" className={subItemClass("/reservas-decoradas")} onClick={cerrarMobile}>
+                  <Sparkles size={16} />
+                  Reservas Decoradas
+                </Link>
                 <Link to="/estadias" className={subItemClass("/estadias")} onClick={cerrarMobile}>
                   <BedDouble size={16} />
                   Estadías
@@ -430,6 +435,10 @@ export default function Sidebar() {
                 <Link to="/decoraciones/paquetes" className={subItemClass("/decoraciones/paquetes")} onClick={cerrarMobile}>
                   <Gift size={16} />
                   Paquetes
+                </Link>
+                <Link to="/reservas-decoradas" className={subItemClass("/reservas-decoradas")} onClick={cerrarMobile}>
+                  <Sparkles size={16} />
+                  Reservas Decoradas
                 </Link>
               </div>
             )}

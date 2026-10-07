@@ -8,32 +8,42 @@ use Illuminate\Http\JsonResponse;
 
 class TarifaController extends Controller
 {
+    // Inyecta el Service que maneja las tarifas (precios por tipo y horas).
     public function __construct(
         private TarifaService $service
     ) {}
 
+    // GET /tarifas → lista TODAS (activas e inactivas).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /tarifas/activos → solo las activas.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /tarifas/por-tipo/{idTipo} → tarifas de un tipo de habitación.
     public function porTipo(int $idTipo): JsonResponse
     {
+        // Ej: /tarifas/por-tipo/7 → devuelve las tarifas de "Jacuzzi VIP" (8h, 12h).
+        // Es el endpoint que usa el frontend al crear reservas.
         return response()->json($this->service->listarPorTipo($idTipo));
     }
 
+    // GET /tarifas/{id} → una por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /tarifas → crea una tarifa nueva.
     public function store(Request $request): JsonResponse
     {
+        // Valida. `id_tipo`, `horas`, `monto`, `precio_hora_extra`
+        // y `precio_turno_adicional` son obligatorios.
         $datos = $request->validate([
             'id_tipo' => 'required|exists:tipos_habitacion,id_tipo',
             'horas' => 'required|integer|min:1',
@@ -51,6 +61,7 @@ class TarifaController extends Controller
         ], 201);
     }
 
+    // PUT /tarifas/{id} → actualiza una tarifa existente.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -70,6 +81,7 @@ class TarifaController extends Controller
         ]);
     }
 
+    // PATCH /tarifas/{id}/desactivar → soft delete (activo = false).
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -78,6 +90,7 @@ class TarifaController extends Controller
         ]);
     }
 
+    // PATCH /tarifas/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -86,8 +99,10 @@ class TarifaController extends Controller
         ]);
     }
 
+    // DELETE /tarifas/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
+        // El Service puede proteger la eliminación si la tarifa está en uso.
         $this->service->eliminar($id);
         return response()->json(['mensaje' => 'Tarifa eliminada']);
     }

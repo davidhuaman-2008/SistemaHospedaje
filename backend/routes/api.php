@@ -295,6 +295,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('paquetes-decoracion/{id}', [PaqueteDecoracionController::class, 'destroy']);
 });
 
+
+// ============================================================================
+// DECORACIONES APLICADAS (Modulo 10 simplificado)
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('decoraciones', [\App\Http\Controllers\DecoracionController::class, 'index']);
+    Route::get('decoraciones/activas', [\App\Http\Controllers\DecoracionController::class, 'activas']);
+    Route::get('decoraciones/proximas', [\App\Http\Controllers\DecoracionController::class, 'proximas']);
+    Route::get('decoraciones/por-reserva/{idReserva}', [\App\Http\Controllers\DecoracionController::class, 'porReserva']);
+    Route::get('decoraciones/por-proveedor/{idProveedor}', [\App\Http\Controllers\DecoracionController::class, 'porProveedor']);
+    Route::get('decoraciones/{id}', [\App\Http\Controllers\DecoracionController::class, 'show']);
+    Route::post('decoraciones', [\App\Http\Controllers\DecoracionController::class, 'store']);
+    Route::put('decoraciones/{id}', [\App\Http\Controllers\DecoracionController::class, 'update']);
+    Route::patch('decoraciones/{id}/estado', [\App\Http\Controllers\DecoracionController::class, 'cambiarEstado']);
+    Route::post('decoraciones/{id}/adelanto', [\App\Http\Controllers\DecoracionController::class, 'registrarAdelanto']);
+    Route::patch('decoraciones/{id}/anular', [\App\Http\Controllers\DecoracionController::class, 'anular']);
+    Route::delete('decoraciones/{id}', [\App\Http\Controllers\DecoracionController::class, 'destroy']);
+});
+
 // ============================================================================
 // HABITACIONES
 // ============================================================================
@@ -335,6 +355,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Filtrado (RES- vs WK-) ---
     Route::get('reservas/solo-reservas', [ReservaController::class, 'soloReservas']);
+    Route::get('reservas/solo-decoraciones', [ReservaController::class, 'soloDecoraciones']);
     Route::get('reservas/solo-walk-ins', [ReservaController::class, 'soloWalkIns']);
     Route::get('reservas/historial', [ReservaController::class, 'historial']);
 

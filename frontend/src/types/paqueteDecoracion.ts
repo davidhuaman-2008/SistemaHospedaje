@@ -8,6 +8,7 @@ export interface PaqueteDecoracion {
   precio_total: number
   ganancia_local: number
   ganancia_proveedor: number
+  precio_hora_adicional: number
   id_proveedor: number | null
   id_tipo_habitacion: number | null
   imagen: string | null
@@ -34,6 +35,7 @@ export interface PaqueteDecoracionRequest {
   precio_total: number
   ganancia_local: number
   ganancia_proveedor: number
+  precio_hora_adicional: number
   id_proveedor?: number | null
   id_tipo_habitacion?: number | null
   imagen?: string | null

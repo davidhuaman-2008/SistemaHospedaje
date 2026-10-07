@@ -8,27 +8,33 @@ use Illuminate\Http\JsonResponse;
 
 class PisoController extends Controller
 {
+    // Inyecta el Service que maneja los pisos del hospedaje.
     public function __construct(
         private PisoService $service
     ) {}
 
+    // GET /pisos → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /pisos/activos → solo los activos.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /pisos/{id} → uno por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /pisos → crea un piso nuevo.
     public function store(Request $request): JsonResponse
     {
+        // `nombre` único. `orden` para ordenarlo en el frontend.
         $datos = $request->validate([
             'nombre' => 'required|string|max:50|unique:pisos,nombre',
             'descripcion' => 'nullable|string|max:255',
@@ -43,6 +49,7 @@ class PisoController extends Controller
         ], 201);
     }
 
+    // PUT /pisos/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -59,6 +66,7 @@ class PisoController extends Controller
         ]);
     }
 
+    // PATCH /pisos/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -67,6 +75,7 @@ class PisoController extends Controller
         ]);
     }
 
+    // PATCH /pisos/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -75,6 +84,7 @@ class PisoController extends Controller
         ]);
     }
 
+    // DELETE /pisos/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

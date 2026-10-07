@@ -8,27 +8,33 @@ use Illuminate\Http\JsonResponse;
 
 class TipoHabitacionController extends Controller
 {
+    // Inyecta el Service que maneja los tipos de habitación.
     public function __construct(
         private TipoHabitacionService $service
     ) {}
 
+    // GET /tipos-habitacion → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /tipos-habitacion/activos → solo los activos.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /tipos-habitacion/{id} → uno por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /tipos-habitacion → crea un tipo nuevo.
     public function store(Request $request): JsonResponse
     {
+        // `nombre` y `slug` únicos. `capacidad` y `camas` opcionales.
         $datos = $request->validate([
             'nombre' => 'required|string|max:50|unique:tipos_habitacion,nombre',
             'slug' => 'required|string|max:50|unique:tipos_habitacion,slug',
@@ -46,6 +52,7 @@ class TipoHabitacionController extends Controller
         ], 201);
     }
 
+    // PUT /tipos-habitacion/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -65,6 +72,7 @@ class TipoHabitacionController extends Controller
         ]);
     }
 
+    // PATCH /tipos-habitacion/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -73,6 +81,7 @@ class TipoHabitacionController extends Controller
         ]);
     }
 
+    // PATCH /tipos-habitacion/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -81,8 +90,10 @@ class TipoHabitacionController extends Controller
         ]);
     }
 
+    // DELETE /tipos-habitacion/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
+        // El Service puede proteger la eliminación si hay habitaciones o tarifas asociadas.
         $this->service->eliminar($id);
         return response()->json(['mensaje' => 'Tipo de habitación eliminado']);
     }

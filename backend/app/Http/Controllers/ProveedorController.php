@@ -8,25 +8,31 @@ use Illuminate\Http\JsonResponse;
 
 class ProveedorController extends Controller
 {
+    // Inyecta el Service que maneja los proveedores.
     public function __construct(private ProveedorService $service) {}
 
+    // GET /proveedores → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /proveedores/activos → solo los activos.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /proveedores/{id} → uno por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /proveedores → crea un proveedor nuevo.
     public function store(Request $request): JsonResponse
     {
+        // Solo `razon_social` es obligatoria. El resto es opcional.
         $datos = $request->validate([
             'razon_social' => 'required|string|max:100',
             'nombre_comercial' => 'nullable|string|max:100',
@@ -46,6 +52,7 @@ class ProveedorController extends Controller
         ], 201);
     }
 
+    // PUT /proveedores/{id} → actualiza.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -67,6 +74,7 @@ class ProveedorController extends Controller
         ]);
     }
 
+    // PATCH /proveedores/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -75,6 +83,7 @@ class ProveedorController extends Controller
         ]);
     }
 
+    // PATCH /proveedores/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -83,6 +92,7 @@ class ProveedorController extends Controller
         ]);
     }
 
+    // DELETE /proveedores/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

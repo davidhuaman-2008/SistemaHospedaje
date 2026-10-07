@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
-import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban, Calendar, Clock, Timer } from "lucide-react"
+import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban, Calendar, Clock, Timer, Sparkles } from "lucide-react"
 import AppLayout from "@/components/layout/AppLayout"
 import { clienteService } from "@/services/clienteService"
 import { clienteObservacionService } from "@/services/clienteObservacionService"
 import { tarifaService } from "@/services/tarifaService"
 import { metodoPagoService } from "@/services/metodoPagoService"
 import { reservaService } from "@/services/reservaService"
+import { decoracionService } from "@/services/decoracionService"
+import { paqueteDecoracionService } from "@/services/paqueteDecoracionService"
 import { mensajeDeError } from "@/lib/errores"
 import { SelectorDisponibilidad } from "@/components/SelectorDisponibilidad"
 import { SelectorFechaHora } from "@/components/SelectorFechaHora"
@@ -15,6 +17,7 @@ import type { Cliente, ClienteObservacion } from "@/types/cliente"
 import type { Tarifa } from "@/types/tarifa"
 import type { MetodoPago } from "@/types/configuracion"
 import type { HabitacionLibre } from "@/types/reserva"
+import type { PaqueteDecoracion } from "@/types/paqueteDecoracion"
 import { AlertaClienteObservaciones } from "@/pages/clientes/cliente/AlertaClienteObservaciones"
 
 interface PagoItem {
@@ -24,6 +27,7 @@ interface PagoItem {
 }
 
 type ModoCobro = "unico" | "varios"
+type TipoServicio = "solo-reserva" | "con-decoracion"
 
 const DURACIONES = [4, 6, 8, 12]
 
@@ -31,6 +35,9 @@ export function NuevaReservaPage() {
   const navigate = useNavigate()
 
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
+
+  // Tipo de servicio
+  const [tipoServicio, setTipoServicio] = useState<TipoServicio>("solo-reserva")
 
   // Búsqueda de cliente
   const [dni, setDni] = useState("")
@@ -59,6 +66,12 @@ export function NuevaReservaPage() {
   const [habitacion, setHabitacion] = useState<HabitacionLibre | null>(null)
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [idTarifa, setIdTarifa] = useState<number | null>(null)
+
+  // Decoración (solo si tipoServicio === "con-decoracion")
+  const [paquetes, setPaquetes] = useState<PaqueteDecoracion[]>([])
+  const [idPaquete, setIdPaquete] = useState<number | null>(null)
+  const [frasePersonalizada, setFrasePersonalizada] = useState("")
+  const [musica, setMusica] = useState("")
 
   // Adelanto
   const [modoCobro, setModoCobro] = useState<ModoCobro>("unico")
@@ -145,11 +158,12 @@ export function NuevaReservaPage() {
     }
   }
 
-  // Al seleccionar habitación, cargar SUS tarifas filtradas por la duración elegida
   const seleccionarHabitacion = async (h: HabitacionLibre) => {
     setHabitacion(h)
     setTarifas([])
     setIdTarifa(null)
+    setPaquetes([])
+    setIdPaquete(null)
 
     try {
       const todasTarifas = await tarifaService.listarPorTipo(h.id_tipo)
@@ -159,30 +173,59 @@ export function NuevaReservaPage() {
       if (filtradas.length === 0) {
         toast.error(`${h.numero} no tiene tarifa de ${horas}h. Elegí otra duración u otra habitación.`)
       } else if (filtradas.length === 1) {
-        // Auto-seleccionar si solo hay una
         setIdTarifa(filtradas[0].id_tarifa)
+      }
+
+      // Si es con decoracion, cargar paquetes del tipo de habitacion
+      if (tipoServicio === "con-decoracion") {
+        const todos = await paqueteDecoracionService.listarActivos()
+        const filtrados = todos.filter(
+          p => !p.id_tipo_habitacion || p.id_tipo_habitacion === h.id_tipo
+        )
+        setPaquetes(filtrados)
+        if (filtrados.length === 0) {
+          toast.warning(`${h.numero} no tiene paquetes de decoración. Elegí otra habitación.`)
+        }
       }
     } catch (e: unknown) {
       toast.error(mensajeDeError(e))
     }
   }
 
-  // Cambiar duración → limpiar habitación y tarifa
   const cambiarDuracion = (h: number) => {
     setHoras(h)
     setHabitacion(null)
     setTarifas([])
     setIdTarifa(null)
+    setPaquetes([])
+    setIdPaquete(null)
+  }
+
+  // Al cambiar tipo de servicio, limpiar
+  const cambiarTipoServicio = (tipo: TipoServicio) => {
+    setTipoServicio(tipo)
+    setHabitacion(null)
+    setTarifas([])
+    setIdTarifa(null)
+    setPaquetes([])
+    setIdPaquete(null)
+    setFrasePersonalizada("")
+    setMusica("")
   }
 
   const tarifaSeleccionada = tarifas.find((t) => t.id_tarifa === idTarifa)
   const totalHabitacion = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
 
+  const paqueteSeleccionado = paquetes.find((p) => p.id_paquete === idPaquete)
+  const totalDecoracion = paqueteSeleccionado ? Number(paqueteSeleccionado.precio_total) : 0
+
+  const totalReserva = totalHabitacion + (tipoServicio === "con-decoracion" ? totalDecoracion : 0)
+
   const clientePaga = modoCobro === "unico"
     ? montoUnico
     : pagosMixtos.reduce((acc, p) => acc + (p.monto || 0), 0)
 
-  const saldoPendiente = Math.max(0, totalHabitacion - clientePaga)
+  const saldoPendiente = Math.max(0, totalReserva - clientePaga)
 
   const cambiarModo = (nuevoModo: ModoCobro) => {
     if (nuevoModo === modoCobro) return
@@ -225,6 +268,19 @@ export function NuevaReservaPage() {
       toast.error("Debe registrar un cliente")
       return
     }
+
+    // VALIDACION: si el DNI no fue buscado pero ya existe en BD, rechazar
+    if (!cliente && dni.trim()) {
+      try {
+        const verificacion = await clienteService.buscarPorDni(dni)
+        if (verificacion.cliente) {
+          toast.error("Este DNI ya esta registrado. Presione la lupa para cargar los datos.")
+          return
+        }
+      } catch {
+        // Si falla, seguimos igual
+      }
+    }
     if (!fechaEntrada) {
       toast.error("Seleccione fecha y hora de entrada")
       return
@@ -239,6 +295,10 @@ export function NuevaReservaPage() {
     }
     if (!idTarifa) {
       toast.error("Seleccione una tarifa")
+      return
+    }
+    if (tipoServicio === "con-decoracion" && !idPaquete) {
+      toast.error("Seleccione un paquete de decoración")
       return
     }
 
@@ -280,6 +340,7 @@ export function NuevaReservaPage() {
         id_tarifa: idTarifa,
         cantidad_personas: cantidadPersonas,
         fecha_entrada: fechaEntrada,
+        con_decoracion: tipoServicio === "con-decoracion",
         telefono: telefono || undefined,
         notas: notas || undefined,
       }
@@ -300,8 +361,27 @@ export function NuevaReservaPage() {
         }
       }
 
+      // 1. Crear la reserva
       const reserva = await reservaService.crearReserva(payload)
-      toast.success(`¡Reserva creada! Código: ${reserva.codigo_reserva}`)
+
+      // 2. Si es con decoracion, crear la decoracion
+      if (tipoServicio === "con-decoracion" && idPaquete) {
+        try {
+          await decoracionService.crear({
+            id_reserva: reserva.id_reserva,
+            id_paquete: idPaquete,
+            frase_personalizada: frasePersonalizada || null,
+            musica: musica || null,
+          })
+          toast.success(`¡Reserva ${reserva.codigo_reserva} con decoración creada!`)
+        } catch (err: unknown) {
+          // La reserva se creó pero la decoración falló
+          toast.warning(`Reserva creada pero la decoración falló: ${mensajeDeError(err)}`)
+        }
+      } else {
+        toast.success(`¡Reserva creada! Código: ${reserva.codigo_reserva}`)
+      }
+
       navigate(`/reservas/${reserva.id_reserva}`)
     } catch (e: unknown) {
       toast.error(mensajeDeError(e))
@@ -341,7 +421,16 @@ export function NuevaReservaPage() {
                 <div className="flex gap-2">
                   <input
                     value={dni}
-                    onChange={e => setDni(e.target.value)}
+                    onChange={e => {
+                      const valor = e.target.value
+                      setDni(valor)
+                      if (valor.trim().length >= 8) {
+                        clearTimeout((window as any).__dniTimerNueva)
+                        ;(window as any).__dniTimerNueva = setTimeout(() => {
+                          buscarCliente()
+                        }, 600)
+                      }
+                    }}
                     onKeyDown={e => e.key === "Enter" && buscarCliente()}
                     placeholder="Ingrese documento"
                     className="flex-1 bg-slate-900 text-white p-2 rounded"
@@ -485,10 +574,56 @@ export function NuevaReservaPage() {
             </div>
           </div>
 
-          {/* 2. FECHA Y HORA */}
+          {/* 2. TIPO DE SERVICIO */}
           <div className="bg-slate-800 p-5 rounded-lg">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Calendar size={18} /> 2. Fecha y hora de entrada
+              <Sparkles size={18} /> 2. Tipo de servicio
+            </h2>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => cambiarTipoServicio("solo-reserva")}
+                className={`p-4 rounded-lg border-2 text-left transition ${
+                  tipoServicio === "solo-reserva"
+                    ? "bg-blue-600 border-blue-400 text-white"
+                    : "bg-slate-900 border-slate-700 text-slate-300 hover:border-blue-500"
+                }`}
+              >
+                <p className="font-bold text-base mb-1">📅 Solo Reserva</p>
+                <p className={`text-xs ${tipoServicio === "solo-reserva" ? "text-blue-100" : "text-slate-500"}`}>
+                  Habitación sin decoración
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => cambiarTipoServicio("con-decoracion")}
+                className={`p-4 rounded-lg border-2 text-left transition ${
+                  tipoServicio === "con-decoracion"
+                    ? "bg-purple-600 border-purple-400 text-white"
+                    : "bg-slate-900 border-slate-700 text-slate-300 hover:border-purple-500"
+                }`}
+              >
+                <p className="font-bold text-base mb-1">🎨 Reserva + Decoración</p>
+                <p className={`text-xs ${tipoServicio === "con-decoracion" ? "text-purple-100" : "text-slate-500"}`}>
+                  Bloquea 24h antes
+                </p>
+              </button>
+            </div>
+
+            {tipoServicio === "con-decoracion" && (
+              <div className="mt-3 bg-purple-950/40 border border-purple-700 p-3 rounded text-purple-200 text-xs">
+                💡 <strong>Anticipación:</strong> Con decoración, la habitación se bloquea 24h antes
+                de la hora de entrada para que el proveedor pueda decorarla.
+              </div>
+            )}
+          </div>
+
+          {/* 3. FECHA Y HORA */}
+          <div className="bg-slate-800 p-5 rounded-lg">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Calendar size={18} /> 3. Fecha y hora de entrada
             </h2>
 
             <SelectorFechaHora
@@ -499,10 +634,10 @@ export function NuevaReservaPage() {
             />
           </div>
 
-          {/* 3. DURACIÓN */}
+          {/* 4. DURACIÓN */}
           <div className="bg-slate-800 p-5 rounded-lg">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Timer size={18} /> 3. Duración
+              <Timer size={18} /> 4. Duración
             </h2>
 
             <div className="grid grid-cols-4 gap-2">
@@ -531,24 +666,25 @@ export function NuevaReservaPage() {
         {/* COLUMNA DERECHA */}
         <div className="space-y-4">
 
-          {/* 4. HABITACIÓN DISPONIBLE */}
+          {/* 5. HABITACIÓN DISPONIBLE */}
           <div className="bg-slate-800 p-5 rounded-lg">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Clock size={18} /> 4. Habitación disponible
+              <Clock size={18} /> 5. Habitación disponible
             </h2>
 
             <SelectorDisponibilidad
               fecha={fechaEntrada}
               horas={horas}
+              conDecoracion={tipoServicio === "con-decoracion"}
               idHabitacionSeleccionada={habitacion?.id_habitacion ?? null}
               onSeleccionar={seleccionarHabitacion}
             />
           </div>
 
-          {/* 5. TARIFA */}
+          {/* 6. TARIFA */}
           {habitacion && (
             <div className="bg-slate-800 p-5 rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">5. Tarifa</h2>
+              <h2 className="text-lg font-semibold mb-4">6. Tarifa</h2>
 
               {tarifas.length === 0 ? (
                 <div className="bg-red-950/40 border border-red-800 p-3 rounded text-red-300 text-sm">
@@ -583,11 +719,78 @@ export function NuevaReservaPage() {
             </div>
           )}
 
-          {/* 6. ADELANTO */}
+          {/* 7. DECORACIÓN */}
+          {tipoServicio === "con-decoracion" && habitacion && (
+            <div className="bg-slate-800 p-5 rounded-lg">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Sparkles size={18} className="text-purple-400" /> 7. Paquete de decoración
+              </h2>
+
+              {paquetes.length === 0 ? (
+                <div className="bg-yellow-950/40 border border-yellow-700 p-3 rounded text-yellow-200 text-sm">
+                  No hay paquetes de decoración para este tipo de habitación.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {paquetes.map(p => (
+                    <button
+                      key={p.id_paquete}
+                      type="button"
+                      onClick={() => setIdPaquete(p.id_paquete)}
+                      className={`w-full p-3 rounded border-2 text-left transition ${
+                        idPaquete === p.id_paquete
+                          ? "bg-purple-600 border-purple-400"
+                          : "bg-slate-900 border-slate-700 hover:border-purple-500"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className={`font-semibold ${idPaquete === p.id_paquete ? "text-white" : "text-slate-200"}`}>
+                            {p.nombre}
+                          </p>
+                          <p className={`text-xs mt-1 ${idPaquete === p.id_paquete ? "text-purple-100" : "text-slate-500"}`}>
+                            {p.horas_incluidas}h · {p.proveedor?.razon_social || "Sin proveedor"}
+                          </p>
+                        </div>
+                        <span className={`font-bold ml-3 ${idPaquete === p.id_paquete ? "text-white" : "text-purple-400"}`}>
+                          S/ {Number(p.precio_total).toFixed(2)}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {paqueteSeleccionado && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Frase personalizada (opcional)</label>
+                    <input
+                      value={frasePersonalizada}
+                      onChange={e => setFrasePersonalizada(e.target.value)}
+                      placeholder="Ej: Feliz Aniversario mi amor"
+                      className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-300 text-sm block mb-1">Música (opcional)</label>
+                    <input
+                      value={musica}
+                      onChange={e => setMusica(e.target.value)}
+                      placeholder="Ej: Playlist romántica"
+                      className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 8. ADELANTO */}
           {tarifaSeleccionada && (
             <div className="bg-slate-800 p-5 rounded-lg space-y-3">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <DollarSign size={18} /> 6. Adelanto <span className="text-slate-500 text-sm font-normal">(opcional)</span>
+                <DollarSign size={18} /> 8. Adelanto <span className="text-slate-500 text-sm font-normal">(opcional)</span>
               </h2>
 
               <div className="flex gap-2">
@@ -693,8 +896,18 @@ export function NuevaReservaPage() {
 
               <div className="border-t border-slate-700 pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Total reserva:</span>
+                  <span className="text-slate-400">Habitación:</span>
                   <span className="text-white font-semibold">S/ {totalHabitacion.toFixed(2)}</span>
+                </div>
+                {tipoServicio === "con-decoracion" && paqueteSeleccionado && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-purple-300">Decoración:</span>
+                    <span className="text-purple-300 font-semibold">S/ {totalDecoracion.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm border-t border-slate-700 pt-2">
+                  <span className="text-white font-bold">TOTAL:</span>
+                  <span className="text-white font-bold text-lg">S/ {totalReserva.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Adelanto:</span>
@@ -715,7 +928,7 @@ export function NuevaReservaPage() {
                   onChange={e => setNotas(e.target.value)}
                   rows={2}
                   className="w-full bg-slate-900 text-white p-2 rounded"
-                  placeholder="Ej: Cliente llamó por teléfono, pidió decoración"
+                  placeholder="Ej: Cliente llamó por teléfono"
                 />
               </div>
             </div>
@@ -732,11 +945,20 @@ export function NuevaReservaPage() {
                 !idTarifa ||
                 (!cliente && !clienteNuevo.nombre.trim()) ||
                 !!reservaActiva ||
-                (observacionesPendientes.length > 0 && !alertaAceptada)
+                (observacionesPendientes.length > 0 && !alertaAceptada) ||
+                (tipoServicio === "con-decoracion" && !idPaquete)
               }
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-bold"
+              className={`flex-1 disabled:bg-slate-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-bold ${
+                tipoServicio === "con-decoracion"
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
             >
-              {enviando ? "Creando..." : "📅 Crear Reserva"}
+              {enviando
+                ? "Creando..."
+                : tipoServicio === "con-decoracion"
+                ? "🎨 Crear Reserva + Decoración"
+                : "📅 Crear Reserva"}
             </button>
             <button
               onClick={() => navigate("/reservas")}

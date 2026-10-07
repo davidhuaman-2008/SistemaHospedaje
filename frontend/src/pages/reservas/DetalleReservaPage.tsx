@@ -8,6 +8,8 @@ import { mensajeDeError } from "@/lib/errores"
 import type { Reserva } from "@/types/reserva"
 import { ModalCancelarReserva } from "./ModalCancelarReserva"
 import { ModalAnularReserva } from "./ModalAnularReserva"
+import { AgregarDecoracionModal } from "./AgregarDecoracionModal"
+import { Sparkles } from "lucide-react"
 
 function formatearFecha(fecha: string | null): string {
   if (!fecha) return "—"
@@ -27,6 +29,7 @@ export function DetalleReservaPage() {
   const [cargando, setCargando] = useState(true)
   const [mostrarCancelar, setMostrarCancelar] = useState(false)
   const [mostrarAnular, setMostrarAnular] = useState(false)
+  const [mostrarDecoracion, setMostrarDecoracion] = useState(false)
   const [procesando, setProcesando] = useState(false)
 
   const cargar = async () => {
@@ -96,6 +99,20 @@ export function DetalleReservaPage() {
         onClose={() => setMostrarAnular(false)}
         onSuccess={() => {
           setMostrarAnular(false)
+          cargar()
+        }}
+      />
+    )
+  }
+
+  if (mostrarDecoracion) {
+    return (
+      <AgregarDecoracionModal
+        idReserva={reserva.id_reserva}
+        idTipoHabitacion={reserva.habitacion?.id_tipo ?? 0}
+        onClose={() => setMostrarDecoracion(false)}
+        onSuccess={() => {
+          setMostrarDecoracion(false)
           cargar()
         }}
       />
@@ -198,6 +215,14 @@ export function DetalleReservaPage() {
               >
                 <CheckCircle2 size={18} />
                 Hacer Check-in (cliente llegó)
+              </button>
+
+              <button
+                onClick={() => setMostrarDecoracion(true)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium flex items-center justify-center gap-2"
+              >
+                <Sparkles size={18} />
+                Agregar Decoración
               </button>
 
               <button

@@ -8,25 +8,31 @@ use Illuminate\Http\JsonResponse;
 
 class GravedadObservacionController extends Controller
 {
+    // Inyecta el Service que maneja las gravedades de observaciones.
     public function __construct(private GravedadObservacionService $service) {}
 
+    // GET /gravedades-observacion → lista TODAS (activas e inactivas).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /gravedades-observacion/activos → solo las activas.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /gravedades-observacion/{id} → una por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /gravedades-observacion → crea una gravedad nueva.
     public function store(Request $request): JsonResponse
     {
+        // `nombre` y `slug` únicos. `prioridad` es un entero ≥ 1.
         $datos = $request->validate([
             'nombre' => 'required|string|max:30|unique:gravedades_observacion,nombre',
             'slug' => 'required|string|max:30|unique:gravedades_observacion,slug',
@@ -41,6 +47,7 @@ class GravedadObservacionController extends Controller
         ], 201);
     }
 
+    // PUT /gravedades-observacion/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -57,6 +64,7 @@ class GravedadObservacionController extends Controller
         ]);
     }
 
+    // PATCH /gravedades-observacion/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -65,6 +73,7 @@ class GravedadObservacionController extends Controller
         ]);
     }
 
+    // PATCH /gravedades-observacion/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -73,6 +82,7 @@ class GravedadObservacionController extends Controller
         ]);
     }
 
+    // DELETE /gravedades-observacion/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

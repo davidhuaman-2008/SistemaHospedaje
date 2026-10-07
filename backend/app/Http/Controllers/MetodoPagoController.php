@@ -8,37 +8,45 @@ use Illuminate\Http\JsonResponse;
 
 class MetodoPagoController extends Controller
 {
+    // Inyecta el Service que maneja los métodos de pago.
     public function __construct(
         private MetodoPagoService $service
     ) {}
 
+    // GET /metodos-pago → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /metodos-pago/activos → solo los activos.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /metodos-pago/de-caja → solo los que entran a caja (R39).
     public function deCaja(): JsonResponse
     {
         return response()->json($this->service->listarDeCaja());
     }
 
+    // GET /metodos-pago/de-duenia → solo los que van a la cuenta de la dueña.
     public function deDuenia(): JsonResponse
     {
         return response()->json($this->service->listarDeDuenia());
     }
 
+    // GET /metodos-pago/{id} → uno por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /metodos-pago → crea un método nuevo.
     public function store(Request $request): JsonResponse
     {
+        // `nombre` único. `es_de_caja` OBLIGATORIO (define R39).
         $datos = $request->validate([
             'nombre' => 'required|string|max:50|unique:metodos_pago,nombre',
             'descripcion' => 'nullable|string|max:255',
@@ -56,6 +64,7 @@ class MetodoPagoController extends Controller
         ], 201);
     }
 
+    // PUT /metodos-pago/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -75,6 +84,7 @@ class MetodoPagoController extends Controller
         ]);
     }
 
+    // PATCH /metodos-pago/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -83,6 +93,7 @@ class MetodoPagoController extends Controller
         ]);
     }
 
+    // PATCH /metodos-pago/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -91,6 +102,7 @@ class MetodoPagoController extends Controller
         ]);
     }
 
+    // DELETE /metodos-pago/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

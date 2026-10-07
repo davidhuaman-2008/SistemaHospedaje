@@ -25,6 +25,7 @@ import { RecepcionPage } from "@/pages/recepcion/RecepcionPage"
 import { ReservasPage } from "@/pages/reservas/ReservasPage"
 import { NuevaReservaPage } from "@/pages/reservas/NuevaReservaPage"
 import { DetalleReservaPage } from "@/pages/reservas/DetalleReservaPage"
+import { ReservasDecoradasPage } from "@/pages/decoraciones/reservasDecoradas/ReservasDecoradasPage"
 import { EstadiasPage } from "@/pages/estadias/EstadiasPage"
 import { LimpiezaPage } from "@/pages/limpieza/LimpiezaPage"
 import { MantenimientoPage } from "@/pages/mantenimiento/MantenimientoPage"
@@ -215,6 +216,7 @@ function App() {
         <Route path="/reservas" element={<ProtectedRoute><ReservasPage /></ProtectedRoute>} />
         <Route path="/reservas/nueva" element={<ProtectedRoute><NuevaReservaPage /></ProtectedRoute>} />
         <Route path="/reservas/:id" element={<ProtectedRoute><DetalleReservaPage /></ProtectedRoute>} />
+        <Route path="/reservas-decoradas" element={<ProtectedRoute><ReservasDecoradasPage /></ProtectedRoute>} />
         <Route path="/estadias" element={<ProtectedRoute><EstadiasPage /></ProtectedRoute>} />
         <Route path="/limpieza" element={<ProtectedRoute><LimpiezaPage /></ProtectedRoute>} />
         <Route path="/mantenimiento" element={<ProtectedRoute><MantenimientoPage /></ProtectedRoute>} />

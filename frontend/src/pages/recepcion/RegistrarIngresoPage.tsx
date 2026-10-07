@@ -230,6 +230,19 @@ export function RegistrarIngresoPage() {
       toast.error("Debe registrar un cliente")
       return
     }
+
+    // VALIDACION: si el DNI no fue buscado pero ya existe en BD, rechazar
+    if (!cliente && dni.trim()) {
+      try {
+        const verificacion = await clienteService.buscarPorDni(dni)
+        if (verificacion.cliente) {
+          toast.error("Este DNI ya esta registrado. Presione la lupa para cargar los datos.")
+          return
+        }
+      } catch {
+        // Si falla, seguimos igual
+      }
+    }
     if (!idTarifa) {
       toast.error("Seleccione una tarifa")
       return
@@ -364,7 +377,17 @@ export function RegistrarIngresoPage() {
               <div className="flex gap-2">
                 <input
                   value={dni}
-                  onChange={e => setDni(e.target.value)}
+                  onChange={e => {
+                    const valor = e.target.value
+                    setDni(valor)
+                    // Auto-buscar si ya tiene 8+ caracteres
+                    if (valor.trim().length >= 8) {
+                      clearTimeout((window as any).__dniTimer)
+                      ;(window as any).__dniTimer = setTimeout(() => {
+                        buscarCliente()
+                      }, 600)
+                    }
+                  }}
                   onKeyDown={e => e.key === "Enter" && buscarCliente()}
                   placeholder="Ingrese documento"
                   className="flex-1 bg-slate-900 text-white p-2 rounded"

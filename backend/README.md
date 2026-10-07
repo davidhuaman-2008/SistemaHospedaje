@@ -2062,3 +2062,632 @@ Los métodos con `es_de_caja = false` NO se registran en `movimientos_caja`.
 
 **Última actualización:** 05/10/2026
 **Módulos completados:** ~16 de 21 (09A, 09B back, 09C, OBS, PAGOS, CONS, 14, 15)
+¡Perfecto! 🎯 Te armo el bloque con **TODO lo que hicimos en esta sesión** para agregar al README del backend. Voy a ser **exhaustivo** para que quede documentado.
+
+---
+
+## 🚀 BLOQUE — Actualizar README backend
+
+**Pegá esto en la terminal del backend:**
+
+```powershell
+# ============================================================================
+# BACKEND — Actualizar README con TODO el avance de la sesión
+# ============================================================================
+
+cd C:\Users\David\Desktop\hospedaje\backend
+
+$ErrorActionPreference = "Stop"
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Content)
+    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+Write-Host "`nAgregando seccion al README..." -ForegroundColor Yellow
+
+$path = "README.md"
+$contenido = Get-Content $path -Raw -Encoding UTF8
+
+# Quitar el cierre viejo si ya estaba
+$contenido = $contenido -replace '(?s)\r?\n---\r?\n\r?\n\*\*Última actualización:.*$', ''
+
+$seccionNueva = @'
+
+
+---
+
+## 🆕 MÓDULO 09B — RESERVAS FUTURAS (BACKEND CERRADO)
+
+### Visión general
+
+Sistema que permite crear reservas para fechas/horas futuras. La reserva **bloquea** el rango de tiempo en `ocupacion_habitacion` desde que se crea. Se muestra morada en el mapa 4 horas antes (configurable). El check-in se hace **manualmente** desde el mapa.
+
+**Reglas de oro:**
+- Una reserva confirmada **bloquea el rango** desde su creación
+- La habitación **NO se puede alquilar** a walk-in mientras haya reserva
+- El check-in **NO es automático**: el recepcionista lo hace cuando el cliente llega
+- Si el cliente llega tarde, **el tiempo cuenta desde la reserva original** (política del negocio)
+
+### Tablas reutilizadas
+- `reservas` (con `codigo_reserva` = `RES-XXXXXX`)
+- `ocupacion_habitacion` (bloqueo real)
+- `configuraciones` (parámetros: `horas_antes_bloqueo_reserva = 4`)
+
+### Cambios clave
+
+#### 1. `ConfiguracionSistemaSeeder`
+Se agregó la config:
+- `horas_antes_bloqueo_reserva = 4` (INT, grupo `reservas`)
+
+#### 2. `DisponibilidadService`
+**Nuevos métodos:**
+- `habitacionesLibresConInfo(Carbon $inicio, Carbon $fin)` → devuelve habitaciones libres con relaciones (piso, tipo)
+- `habitacionesConConflicto(Carbon $inicio, Carbon $fin)` → devuelve habitaciones con conflicto + motivo
+- `obtenerConflicto(int $idHabitacion, Carbon $inicio, Carbon $fin, ?int $excluirReserva)` → devuelve el motivo del conflicto
+- `bloquearHabitacion(int $idHabitacion)` → `lockForUpdate()` para race conditions
+
+**Lógica de `estaDisponible()` actualizada (4 filtros):**
+1. **Habitación activa** → si `activo = false` → NO disponible
+2. **Sin mantenimiento** → si hay `Mantenimiento` en `REPORTADO` o `EN_PROCESO` → NO disponible
+3. **Sin limpieza pendiente** → si hay `Limpieza` `PENDIENTE`/`EN_PROCESO` Y la reserva empieza en menos de X minutos (buffer) → NO disponible
+4. **Sin ocupación que se cruce** → verifica el rango `[inicio - buffer, fin + buffer]`
+
+**Motivos de bloqueo en orden de prioridad:**
+1. `Habitacion inactiva`
+2. `En mantenimiento ({tipo})`
+3. `En limpieza (Pendiente)` o `En limpieza (En_proceso)`
+4. `Ocupada por cliente actual` (walk-in con check-in)
+5. `Reservada por otro cliente`
+6. `Reserva pendiente de confirmar`
+
+#### 3. `EstadoHabitacionService`
+**Lógica de prioridades actualizada:**
+
+```
+1. Inactiva
+2. Mantenimiento (REPORTADO / EN_PROCESO)
+3. Limpieza (PENDIENTE / EN_PROCESO)
+4. ✅ NUEVO: Reserva CONFIRMADA/PENDIENTE sin check-in
+   ├── Con otra ocupación activa → Reservada-Urgente 🔴
+   ├── Dentro de ventana de 4h → Reservada 🟣
+   └── Fuera de ventana → Disponible 🟢 (con info de reserva_futura)
+5. Ocupación activa CON check-in hecho → Ocupada / Por vencer / Vencida
+6. Ocupación vencida CON check-in → Vencida
+7. Disponible
+```
+
+**Campos nuevos en el JSON del mapa:**
+- `minutos_para_entrada` (int)
+- `alerta_reserva_ocupada` (bool)
+- `cliente_actual` (string|null)
+- `id_reserva_actual` (int|null)
+- `reserva_futura` (objeto con id_reserva, codigo, cliente, fecha_entrada, minutos_para_entrada, horas_antes_bloqueo)
+
+**CRÍTICO:** La reserva **SIN check-in** se muestra como `Reservada` (morado) **aunque ya haya pasado la hora de la reserva**. Esto es para que el recepcionista decida qué hacer (check-in o anular).
+
+#### 4. `ReservaService`
+**Nuevos métodos:**
+- `listarProximasConAlerta()` → reservas dentro de la ventana de bloqueo (4h) + info de conflicto si la hab. está ocupada
+- `listarHoy()` → reservas con fecha de entrada HOY
+- `listarProximasCheckIn()` → reservas dentro de la tolerancia No-Show
+- `procesarNoShow()` → marca como No-Show las reservas que pasaron la tolerancia
+- `listarDisponiblesEnRango(Carbon $inicio, Carbon $fin, int $horas)` → SOLO habitaciones cuyo tipo tiene tarifa de esas horas exactas
+- `listarConConflictoEnRango(Carbon $inicio, Carbon $fin)` → habitaciones con conflicto
+- `listarSoloReservas()` → filtro `codigo LIKE 'RES-%'`
+- `listarSoloWalkIns()` → filtro `codigo LIKE 'WK-%'`
+- `listarHistorialCompleto()` → todas
+- `obtenerInfoCheckIn(int $idReserva)` → info completa para la pantalla de check-in
+- `checkInValidado(int $idReserva, int $idUsuario)` → check-in con validaciones
+
+**`checkInValidado()` — Lógica completa:**
+1. Valida que el estado sea `confirmada` o `pendiente`
+2. Valida que NO tenga `registro_estadia` ya
+3. Valida que la habitación NO esté ocupada por OTRA reserva activa
+4. **NO cambia `fecha_entrada`** (mantiene la original de la reserva)
+5. **NO cambia `fecha_salida_prevista`** (mantiene la original)
+6. Cambia estado a `activa`
+7. Crea `registro_estadia` con la **fecha original** (no la de llegada)
+8. Registra la visita del cliente (ClienteVisitaService::registrar)
+
+**`crearReserva()` — Mejoras:**
+- Validación de cliente sin reserva activa
+- Validación de pagos mixtos
+- `lockForUpdate()` en la habitación
+
+#### 5. `ReservaController`
+**Nuevos endpoints:**
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/reservas/disponibles?fecha=X&horas=Y` | Habitaciones libres + con conflicto en un rango |
+| GET | `/api/reservas/proximas` | Reservas dentro de la ventana de bloqueo |
+| GET | `/api/reservas/hoy` | Reservas que llegan hoy |
+| GET | `/api/reservas/proximas-check-in` | Reservas listas para check-in |
+| GET | `/api/reservas/solo-reservas` | Solo códigos `RES-` |
+| GET | `/api/reservas/solo-walk-ins` | Solo códigos `WK-` |
+| GET | `/api/reservas/historial` | Historial completo |
+| GET | `/api/reservas/{id}/info-check-in` | Info completa para check-in |
+| POST | `/api/reservas/{id}/check-in-validado` | Check-in con validaciones |
+
+#### 6. Command `ProcesarNoShowReservas`
+**Nuevo archivo:** `app/Console/Commands/ProcesarNoShowReservas.php`
+- Comando: `php artisan reservas:procesar-no-show`
+- Registrado en `routes/console.php` como `Schedule::command('reservas:procesar-no-show')->everyMinute()`
+- Marca como No-Show las reservas confirmadas que pasaron la tolerancia sin check-in
+
+#### 7. Migración
+**Nuevo:** `YYYY_MM_DD_HHmmss_add_unique_index_to_ocupacion_habitacion_table.php`
+- Índice UNIQUE en `(id_habitacion, fecha_inicio, fecha_fin, estado)`
+- Previene solapamientos exactos a nivel BD
+
+### Reglas de negocio (Módulo 09B)
+
+#### Al crear reserva
+- **09B-1:** Validar disponibilidad (4 filtros)
+- **09B-2:** Aplicar buffer de 30 min (configurable)
+- **09B-3:** Bloqueo pesimista con `lockForUpdate()`
+- **09B-4:** Estado inicial: `Confirmada` (o `Pendiente` si no pagó)
+- **09B-5:** Cliente existente o nuevo (crear en 2 pasos)
+- **09B-6:** 1 cliente = 1 reserva activa
+- **09B-7:** Código único `RES-XXXXXX`
+
+#### Estado visual en el mapa
+- **09B-8:** La reserva es **morada** desde `fecha_entrada - 4h`
+- **09B-9:** Si ya pasó la hora y NO hay check-in → **sigue morada**
+- **09B-10:** Si la hab. está ocupada por otra reserva → **Reservada-Urgente** (rojo)
+- **09B-11:** Fuera de la ventana → Disponible (con info `reserva_futura`)
+
+#### Al hacer check-in
+- **09B-12:** Manual (el recepcionista lo hace)
+- **09B-13:** Solo si estado = `confirmada` / `pendiente`
+- **09B-14:** Solo si NO está ocupada por OTRA reserva
+- **09B-15:** **Mantiene la `fecha_entrada` ORIGINAL** (política del negocio)
+- **09B-16:** **Mantiene la `fecha_salida_prevista` ORIGINAL**
+- **09B-17:** Crea `registro_estadia` con fecha original
+- **09B-18:** Registra la visita al cliente
+- **09B-19:** Estado → `activa`, hab. → ROJA
+
+#### Al anular
+- **09B-20:** Si el cliente no llegó → se **anula** (no se cancela)
+- **09B-21:** Cambia `ocupacion_habitacion.estado` a `CANCELADA`
+- **09B-22:** Anula los pagos (no devuelve)
+
+#### Al cancelar
+- **09B-23:** Si el cliente canceló → `cancelada`
+- **09B-24:** Libera ocupación
+- **09B-25:** Guarda motivo
+
+### Bugs resueltos en esta sesión (Módulo 09B)
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | Reserva sin check-in se mostraba como **Ocupada** cuando pasaba la hora | `EstadoHabitacionService` ahora prioriza "reserva sin check-in" sobre "ocupación activa" |
+| 2 | El check-in cambiaba `fecha_entrada` a la hora de llegada | `checkInValidado()` mantiene la fecha original |
+| 3 | Habitaciones en **limpieza** aparecían como disponibles para reservar | `DisponibilidadService` filtra limpieza (si reserva <30 min) |
+| 4 | Habitaciones **inactivas** aparecían como disponibles | `DisponibilidadService` filtra inactivas |
+| 5 | Habitaciones en **mantenimiento** aparecían como disponibles | `DisponibilidadService` filtra mantenimiento activo |
+| 6 | Filtro de duración no funcionaba (traía todas las habitaciones) | `listarDisponiblesEnRango()` ahora recibe `$horas` y filtra por tarifa exacta |
+| 7 | Cliente nuevo no se podía crear en reserva futura | `NuevaReservaPage` permite crear cliente inline |
+| 8 | `ClienteForm.tsx` con error TS por `buscarPorDni` | Fix: destructurar `{ cliente }` del response |
+| 9 | `ClienteVisitaService` sin métodos CRUD | Agregados: `listarPorCliente`, `obtener`, `crear`, `actualizar`, `eliminar` |
+| 10 | `CheckInReservaPage` con `ocupacion: null` crasheaba | Optional chaining `h.ocupacion?.cliente` |
+| 11 | Checkout sin check-in daba 422 | `CheckoutPage` ahora detecta `sinCheckIn` y bloquea el botón |
+
+### Archivos modificados en esta sesión
+
+**Backend:**
+- `database/seeders/ConfiguracionSistemaSeeder.php` (+1 config)
+- `app/Services/DisponibilidadService.php` (reescrito: 4 filtros + métodos nuevos)
+- `app/Services/EstadoHabitacionService.php` (reescrito: prioridad reserva > ocupación)
+- `app/Services/ReservaService.php` (+15 métodos nuevos)
+- `app/Services/ClienteVisitaService.php` (+5 métodos CRUD)
+- `app/Http/Controllers/ReservaController.php` (+8 endpoints)
+- `routes/api.php` (+8 rutas)
+- `routes/console.php` (+schedule No-Show)
+- `app/Console/Commands/ProcesarNoShowReservas.php` (NUEVO)
+- `database/migrations/YYYY_MM_DD_HHmmss_add_unique_index_to_ocupacion_habitacion_table.php` (NUEVO)
+
+### Estado actual del roadmap
+
+| # | Módulo | Backend | Frontend | Estado |
+|---|--------|:---:|:---:|:---:|
+| 09A | Recepción / Walk-in | ✅ | ✅ | CERRADO |
+| **09B** | **Reservas Futuras** | ✅ | ✅ | **CERRADO** |
+| 09C | Extensiones de Tiempo | ✅ | ✅ | CERRADO |
+| OBS | Observaciones Cliente | ✅ | ✅ | CERRADO |
+| PAGOS | Pagos Mixtos + Vuelto | ✅ | ✅ | CERRADO |
+| CONS | Consumos Múltiples | ✅ | ✅ | CERRADO |
+| 14 | Limpieza | ✅ | ✅ | CERRADO |
+| 15 | Mantenimiento | ✅ | ✅ | CERRADO |
+
+### Endpoints totales del Módulo 09
+
+```
+GET    /api/reservas
+POST   /api/reservas
+POST   /api/reservas/walk-in
+GET    /api/reservas/disponibles
+GET    /api/reservas/proximas
+GET    /api/reservas/hoy
+GET    /api/reservas/proximas-check-in
+GET    /api/reservas/solo-reservas
+GET    /api/reservas/solo-walk-ins
+GET    /api/reservas/historial
+GET    /api/reservas/{id}
+GET    /api/reservas/{id}/info-check-in
+PATCH  /api/reservas/{id}/check-in
+POST   /api/reservas/{id}/check-in-validado
+PATCH  /api/reservas/{id}/check-out
+PATCH  /api/reservas/{id}/check-out-con-vuelto
+PATCH  /api/reservas/{id}/check-out-con-deuda
+PATCH  /api/reservas/{id}/cancelar
+PATCH  /api/reservas/{id}/anular
+PATCH  /api/reservas/{id}/cambiar-habitacion
+POST   /api/reservas/{id}/consumos
+POST   /api/reservas/{id}/consumos-multiple
+DELETE /api/reservas/{id}/consumos/{idConsumo}
+POST   /api/reservas/{id}/pagos
+DELETE /api/reservas/{id}/pagos/{idPago}
+POST   /api/reservas/{id}/entregar-vuelto
+GET    /api/reservas/{id}/calculo-extension
+GET    /api/reservas/{id}/extensiones
+POST   /api/reservas/{id}/extensiones
+```
+
+---
+
+## 🎯 PENDIENTE PARA PRÓXIMAS SESIONES
+
+### Fase 2 — Reservas Futuras
+- ⏳ **Banner "Reservas en riesgo"** en `RecepcionPage` (si hay reservas próximas con hab. ocupada)
+- ⏳ **Notificación push** al recepcionista cuando hay conflicto
+- ⏳ **Cronjob** con `lockForUpdate()` para No-Show
+- ⏳ **Modal de cambio de habitación** desde check-in
+
+### Módulos pendientes
+- ⏳ Módulo 10 — Decoraciones Aplicadas
+- ⏳ Módulo 11 — Caja
+- ⏳ Módulo 12 — Inventario / Kardex
+- ⏳ Módulo 13 — Cuentas por Pagar (falta cerrar)
+- ⏳ Módulo 16-21
+
+---
+
+**Última actualización:** 06/10/2026
+**Módulos completados:** 17 de 21 (09A, 09B, 09C, OBS, PAGOS, CONS, 14, 15 + 01-08)
+'@
+
+$contenido = $contenido.TrimEnd() + $seccionNueva
+
+Write-Utf8NoBom $path $contenido
+Write-Host "  OK README.md actualizado" -ForegroundColor Green
+Write-Host ""
+Write-Host "Contenido agregado:" -ForegroundColor Yellow
+Write-Host "  - Modulo 09B completo (backend)" -ForegroundColor White
+Write-Host "  - Reglas de negocio 09B-1 a 09B-25" -ForegroundColor White
+Write-Host "  - Bugs resueltos en la sesion (11 bugs)" -ForegroundColor White
+Write-Host "  - Archivos modificados" -ForegroundColor White
+Write-Host "  - Endpoints nuevos" -ForegroundColor White
+Write-Host "  - Estado del roadmap actualizado" -ForegroundColor White
+Write-Host ""
+```
+
+---
+
+## 📸 Después de pegar:
+
+**Pegame:**
+1. **Output** (debería decir "README.md actualizado")
+2. Abrí el README y confirmá que la sección se agregó al final
+
+---
+
+## 🎯 Ahora respondeme las 2 preguntas pendientes:
+
+1. **¿Movemos la 501 al Piso 5?** (con Tinker)
+2. **¿Arreglamos `HabitacionForm.tsx`** para que preseleccione el piso filtrado?
+
+Para la 2, pegame:
+```powershell
+cd C:\Users\David\Desktop\hospedaje\frontend
+Get-Content src\pages\configuracion\habitacion\HabitacionForm.tsx
+```
+
+**¿Dale?** 🚀
+🚀 BLOQUE 1 — Actualizar README backend
+Pegá esto en la terminal del backend:
+
+powershell
+# ============================================================================
+# BACKEND — Actualizar README con TODO el avance del 07/10/2026
+# ============================================================================
+
+cd C:\Users\David\Desktop\hospedaje\backend
+
+$ErrorActionPreference = "Stop"
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Content)
+    $full = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+    [System.IO.File]::WriteAllText($full, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+Write-Host "`nActualizando README backend..." -ForegroundColor Yellow
+
+$path = "README.md"
+$contenido = Get-Content $path -Raw -Encoding UTF8
+
+# Quitar el cierre viejo si ya estaba
+$contenido = $contenido -replace '(?s)\r?\n---\r?\n\r?\n\*\*Última actualización:.*$', ''
+
+$seccionNueva = @'
+
+
+---
+
+## 🆕 MÓDULO 10 — DECORACIONES APLICADAS (CERRADO)
+
+### Visión general
+
+Sistema completo para gestionar decoraciones aplicadas a reservas. Incluye:
+- Catálogo de paquetes de decoración (Módulo 07)
+- Estados dinámicos (programada, en-proceso, finalizada, cancelada)
+- Cálculo de horas extra según duración de la reserva
+- CuentaPagar automática al proveedor
+- Prefijo `DEC-` para distinguir reservas con decoración
+- Color rosa en el mapa para reservas con decoración
+
+### Modelo de negocio
+
+**El paquete de decoración INCLUYE el alquiler de la habitación.**
+Ejemplo Paquete 1 (Suite VIP, 8h):
+├── Cliente paga: S/ 199
+├── Ganancia LOCAL (hospedaje): S/ 100 (cubre alquiler + ganancia)
+└── Ganancia PROVEEDOR: S/ 99 (CuentaPagar)
+
+text
+
+**Con horas extra:**
+Ejemplo Paquete 1 (Suite VIP, 12h):
+├── Paquete base 8h: S/ 199
+├── Horas extra: 12 - 8 = 4h × S/ 10 = S/ 40
+├── Total cliente: S/ 199 + 40 = S/ 239
+├── Ganancia LOCAL: 100 + 40 = S/ 140
+└── Ganancia PROVEEDOR: S/ 99 (sin cambio)
+
+text
+
+### Tablas
+
+#### `decoraciones` (nueva)
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id_decoracion | PK | |
+| id_reserva | FK → reservas | |
+| id_paquete | FK → paquetes_decoracion | |
+| id_proveedor | FK NULL → proveedores | |
+| estado | ENUM('programada','en-proceso','finalizada','cancelada') | |
+| fecha_programada | DATETIME | Cuando el cliente la quiere |
+| fecha_inicio_preparacion | DATETIME NULL | 24h antes |
+| fecha_inicio | DATETIME NULL | Cuando el proveedor empieza |
+| fecha_fin | DATETIME NULL | Cuando termina |
+| precio_total | DECIMAL(10,2) | |
+| ganancia_local | DECIMAL(10,2) | |
+| ganancia_proveedor | DECIMAL(10,2) | |
+| adelanto | DECIMAL(10,2) | |
+| saldo | DECIMAL(10,2) | |
+| frase_personalizada | TEXT NULL | |
+| musica | VARCHAR(100) NULL | |
+| notas | TEXT NULL | |
+| id_cuenta_pagar | FK NULL → cuentas_por_pagar | |
+| id_usuario_creacion | FK → usuarios | |
+| id_usuario_anulacion | FK NULL | |
+| fecha_anulacion | DATETIME NULL | |
+| motivo_anulacion | VARCHAR(255) NULL | |
+| timestamps | | |
+
+#### `paquetes_decoracion` (modificada)
+**Nuevo campo:**
+- `precio_hora_adicional` DECIMAL(10,2) → cuánto se cobra por cada hora extra
+
+### Semilla de paquetes (CORREGIDA)
+
+| # | Nombre | Tipo Hab. | 8h Total | Local | Proveedor | Hora Adic. |
+|---|--------|-----------|----------|-------|-----------|-----------|
+| 1 | Romántico N°1 | Jacuzzi VIP | S/ 199 | S/ 100 | S/ 99 | S/ 10 |
+| 2 | Romántico N°2 | Jacuzzi VIP | S/ 199 | S/ 100 | S/ 99 | S/ 10 |
+| 3 | Estelar N°3 | Jacuzzi Estelar | S/ 259 | S/ 130 | S/ 129 | S/ 15 |
+| 4 | Romántico N°4 | Romántica | S/ 159 | S/ 60 | S/ 99 | S/ 5 |
+| 5 | Fantasía N°5 | Safari | S/ 159 | S/ 70 | S/ 89 | S/ 5 |
+
+**Paquete 6 (Aniversario) fue ELIMINADO.**
+
+### Fórmula de cálculo (en `DecoracionService::crear`)
+
+```php
+$horasExtra = max(0, $reserva->horas_base - $paquete->horas_incluidas);
+$montoExtra = $horasExtra * $paquete->precio_hora_adicional;
+
+$precioTotal    = $paquete->precio_total + $montoExtra;
+$gananciaLocal  = $paquete->ganancia_local + $montoExtra;  // extra va al hospedaje
+$gananciaProveedor = $paquete->ganancia_proveedor;  // el proveedor cobra lo mismo
+Prefijos de reserva
+Prefijo	Tipo
+WK-	Walk-in (cliente físico)
+RES-	Reserva normal
+DEC-	Reserva con decoración
+generarCodigoReserva() decide el prefijo según $datos['con_decoracion'].
+
+Endpoints
+Estados de decoración: (eliminados, ahora hardcoded en el enum)
+
+~~/estados-decoracion~~ (eliminado)
+
+Decoraciones aplicadas:
+
+text
+GET    /api/decoraciones
+GET    /api/decoraciones/activas
+GET    /api/decoraciones/proximas
+GET    /api/decoraciones/por-reserva/{idReserva}
+GET    /api/decoraciones/por-proveedor/{idProveedor}
+GET    /api/decoraciones/{id}
+POST   /api/decoraciones
+PUT    /api/decoraciones/{id}
+PATCH  /api/decoraciones/{id}/estado
+POST   /api/decoraciones/{id}/adelanto
+PATCH  /api/decoraciones/{id}/anular
+DELETE /api/decoraciones/{id}
+Reservas decoradas:
+
+text
+GET /api/reservas/solo-decoraciones     → filtro DEC-
+Reglas de negocio (Módulo 10)
+Al crear decoración
+R-DEC-1: El paquete ya incluye la habitación (NO se cobra tarifa aparte)
+
+R-DEC-2: Si la reserva tiene más horas que el paquete → se cobra hora adicional
+
+R-DEC-3: El monto extra va a ganancia LOCAL (hospedaje)
+
+R-DEC-4: La ganancia del proveedor NO cambia
+
+R-DEC-5: Se crea CuentaPagar automática al proveedor
+
+R-DEC-6: 1 reserva = 1 decoración activa
+
+R-DEC-7: Código DEC-XXXXXX
+
+Al hacer check-in
+R-DEC-8: Si la reserva es DEC-, debe existir decoración activa
+
+R-DEC-9: La decoración debe estar programada o en-proceso
+
+Anticipación mínima
+R-DEC-10: El proveedor necesita 24h mínimo (configurable)
+
+R-DEC-11: La reserva debe crearse con 24h de anticipación
+
+R-DEC-12: Se valida en DisponibilidadService
+
+Estados de decoración
+Programada → esperando que el proveedor confirme
+
+En proceso → proveedor decorando
+
+Finalizada → decoración lista
+
+Cancelada → anulada por el recepcionista
+
+Al anular reserva con decoración
+R-DEC-13: La decoración pasa a cancelada
+
+R-DEC-14: Se anula la CuentaPagar si no tiene pagos
+
+Bugs resueltos (07/10/2026)
+#	Bug	Fix
+1	La reserva con decoración sumaba tarifa + paquete	DecoracionService ahora calcula paquete + hora extra
+2	No se distinguía reserva con decoración	Prefijo DEC-
+3	La habitación con decoración se veía morada (no rosa)	EstadoHabitacionService detecta tiene_decoracion
+4	El mapa mostraba reservas confirmadas como OCUPADAS	EstadoHabitacionService ahora filtra por estado.slug (no por registro_estadia)
+5	La 106 no permitía check-in aunque estaba libre	obtenerInfoCheckIn usa esWalkIn=true
+6	Walk-in bloqueado por anticipación mínima	esWalkIn=true en crearWalkIn
+7	No se liberaban reservas vencidas	Nuevo command reservas:liberar-vencidas
+8	Faltaba anticipación mínima configurable	Campo anticipacion_minima_reserva_minutos
+9	Faltaba validación de 24h en decoración	Campo horas_antes_decoracion = 24
+Commands (cronjobs)
+Comando	Frecuencia	Descripción
+reservas:procesar-no-show	Cada minuto	Marca como No-Show (tolerancia 60 min)
+reservas:liberar-vencidas	Cada minuto	Libera reservas vencidas sin check-in (cancela decoración también)
+Archivos creados/modificados (07/10/2026)
+Nuevos:
+
+app/Console/Commands/LiberarReservasVencidas.php
+
+database/migrations/2026_10_07_122531_add_precio_hora_adicional_to_paquetes_decoracion.php
+
+Modificados:
+
+app/Models/PaqueteDecoracion.php (+precio_hora_adicional)
+
+app/Models/Decoracion.php (simplificado, estados hardcoded)
+
+app/Services/DecoracionService.php (fórmula correcta)
+
+app/Services/DisponibilidadService.php (+esWalkIn +anticipacion minima)
+
+app/Services/EstadoHabitacionService.php (filtro por estado.slug + ROSA)
+
+app/Services/ReservaService.php (generarCodigoReserva + esWalkIn en checkIn)
+
+app/Http/Controllers/ReservaController.php (+con_decoracion)
+
+routes/api.php (+solo-decoraciones)
+
+routes/console.php (+liberar-vencidas)
+
+database/seeders/ConfiguracionSistemaSeeder.php (+anticipacion +24h decoracion)
+
+Configuraciones nuevas
+Clave	Valor	Descripción
+horas_antes_decoracion	24	Anticipación mínima para decoración
+anticipacion_minima_reserva_minutos	30	Anticipación mínima para reserva normal
+Estados del mapa (actualizado)
+Color	Estado	Cuándo
+🟢 Verde	Disponible	Libre
+🔴 Rojo	Ocupada	Walk-in o reserva con check-in
+🟡 Amarillo	Por vencer	Ocupada + 30 min restantes
+🔴 Rojo oscuro	Vencida	Ocupada + tiempo excedido
+🔵 Celeste	Limpieza	Limpieza pendiente
+🟠 Naranja	Mantenimiento	Reporte activo
+🟣 Morado	Reservada	Reserva normal sin check-in
+🎨 Rosa	Con-Decoracion	Reserva con decoración sin check-in
+⚫ Gris	Inactiva	Desactivada
+Roadmap actualizado
+#	Módulo	Backend	Frontend
+01-09A	Auth, Config, Tarifas, Clientes, Productos, Promos, Decoración catálogo, Habitaciones, Recepción	✅	✅
+09B	Reservas Futuras	✅	✅
+09C	Extensiones	✅	✅
+OBS	Observaciones	✅	✅
+PAGOS	Pagos Mixtos	✅	✅
+CONS	Consumos Múltiples	✅	✅
+13	Cuentas por Pagar	✅	✅
+10	Decoraciones Aplicadas	✅	⏳ Frontend en progreso
+14	Limpieza	✅	✅
+15	Mantenimiento	✅	✅
+Última actualización: 07/10/2026
+Módulos completados: ~17 de 21
+'@
+
+c
+o
+n
+t
+e
+n
+i
+d
+o
+=
+contenido=contenido.TrimEnd() + $seccionNueva
+
+Write-Utf8NoBom 
+p
+a
+t
+h
+pathcontenido
+
+Write-Host " OK README backend actualizado" -ForegroundColor Green
+Write-Host ""
+Write-Host "Contenido agregado:" -ForegroundColor Yellow
+Write-Host " - Modulo 10 completo" -ForegroundColor White
+Write-Host " - Modelo de negocio" -ForegroundColor White
+Write-Host " - Formula de calculo" -ForegroundColor White
+Write-Host " - Prefijos (WK-, RES-, DEC-)" -ForegroundColor White
+Write-Host " - Estados del mapa" -ForegroundColor White
+Write-Host " - 9 bugs resueltos" -ForegroundColor White
+Write-Host " - 2 commands (cronjobs)" -ForegroundColor White
+Write-Host ""

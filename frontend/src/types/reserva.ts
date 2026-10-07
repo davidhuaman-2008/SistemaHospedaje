@@ -167,7 +167,7 @@ export interface HabitacionMapa {
   piso_nombre: string
   id_tipo: number
   tipo_nombre: string
-  estado: "Disponible" | "Ocupada" | "Reservada" | "Por vencer" | "Vencida" | "Limpieza" | "Mantenimiento" | "Inactiva"
+  estado: "Disponible" | "Ocupada" | "Reservada" | "Con-Decoracion" | "Reservada-Urgente" | "Por vencer" | "Vencida" | "Limpieza" | "Mantenimiento" | "Inactiva"
   color: string
   cliente: string | null
   id_reserva: number | null

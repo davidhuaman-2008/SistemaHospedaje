@@ -8,25 +8,31 @@ use Illuminate\Http\JsonResponse;
 
 class PrioridadMantenimientoController extends Controller
 {
+    // Inyecta el Service que maneja las prioridades de mantenimiento.
     public function __construct(private PrioridadMantenimientoService $service) {}
 
+    // GET /prioridades-mantenimiento → lista TODAS (activas e inactivas).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /prioridades-mantenimiento/activos → solo las activas.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /prioridades-mantenimiento/{id} → una por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /prioridades-mantenimiento → crea una prioridad nueva.
     public function store(Request $request): JsonResponse
     {
+        // `nombre` y `slug` únicos. `color` y `orden` opcionales.
         $datos = $request->validate([
             'nombre' => 'required|string|max:30|unique:prioridades_mantenimiento,nombre',
             'slug' => 'required|string|max:30|unique:prioridades_mantenimiento,slug',
@@ -41,6 +47,7 @@ class PrioridadMantenimientoController extends Controller
         ], 201);
     }
 
+    // PUT /prioridades-mantenimiento/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -57,6 +64,7 @@ class PrioridadMantenimientoController extends Controller
         ]);
     }
 
+    // PATCH /prioridades-mantenimiento/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -65,6 +73,7 @@ class PrioridadMantenimientoController extends Controller
         ]);
     }
 
+    // PATCH /prioridades-mantenimiento/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -73,6 +82,7 @@ class PrioridadMantenimientoController extends Controller
         ]);
     }
 
+    // DELETE /prioridades-mantenimiento/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

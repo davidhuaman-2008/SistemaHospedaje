@@ -8,27 +8,33 @@ use Illuminate\Http\JsonResponse;
 
 class ClienteNivelController extends Controller
 {
+    // Inyecta el Service que maneja toda la lógica de niveles de cliente.
     public function __construct(
         private ClienteNivelService $service
     ) {}
 
+    // GET /clientes-niveles → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /clientes-niveles/activos → solo los que tienen activo = true.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /clientes-niveles/{id} → devuelve un nivel por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /clientes-niveles → crea un nivel nuevo.
     public function store(Request $request): JsonResponse
     {
+        // Valida. `nombre` es único. `descuento` es porcentaje (0-100).
         $datos = $request->validate([
             'nombre' => 'required|string|max:50|unique:clientes_niveles,nombre',
             'visitas_min' => 'required|integer|min:0',
@@ -47,6 +53,7 @@ class ClienteNivelController extends Controller
         ], 201);
     }
 
+    // PUT /clientes-niveles/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -67,6 +74,7 @@ class ClienteNivelController extends Controller
         ]);
     }
 
+    // PATCH /clientes-niveles/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -75,6 +83,7 @@ class ClienteNivelController extends Controller
         ]);
     }
 
+    // PATCH /clientes-niveles/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -83,6 +92,7 @@ class ClienteNivelController extends Controller
         ]);
     }
 
+    // DELETE /clientes-niveles/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

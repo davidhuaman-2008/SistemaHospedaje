@@ -15,7 +15,7 @@ class PaqueteDecoracion extends Model
 
     protected $fillable = [
         'nombre', 'slug', 'descripcion',
-        'precio_total', 'ganancia_local', 'ganancia_proveedor',
+        'precio_total', 'ganancia_local', 'ganancia_proveedor', 'precio_hora_adicional',
         'id_proveedor', 'id_tipo_habitacion',
         'imagen',
         'horas_incluidas',
@@ -27,6 +27,7 @@ class PaqueteDecoracion extends Model
         'precio_total' => 'decimal:2',
         'ganancia_local' => 'decimal:2',
         'ganancia_proveedor' => 'decimal:2',
+        'precio_hora_adicional' => 'decimal:2',
         'horas_incluidas' => 'integer',
         'incluye_jacuzzi' => 'boolean',
         'incluye_vino' => 'boolean',

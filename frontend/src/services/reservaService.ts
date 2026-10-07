@@ -144,9 +144,9 @@ export const reservaService = {
   // MODULO 09B — RESERVAS FUTURAS
   // ========================================================================
 
-  listarDisponiblesEnRango: async (fecha: string, horas: number): Promise<ReservaDisponiblesResponse> => {
+  listarDisponiblesEnRango: async (fecha: string, horas: number, conDecoracion = false): Promise<ReservaDisponiblesResponse> => {
     const { data } = await api.get('/reservas/disponibles', {
-      params: { fecha, horas },
+      params: { fecha, horas, con_decoracion: conDecoracion ? 1 : 0 },
     })
     return data
   },
@@ -172,6 +172,11 @@ export const reservaService = {
 
   listarSoloReservas: async (): Promise<Reserva[]> => {
     const { data } = await api.get('/reservas/solo-reservas')
+    return data
+  },
+
+  listarSoloDecoraciones: async (): Promise<Reserva[]> => {
+    const { data } = await api.get('/reservas/solo-decoraciones')
     return data
   },
 

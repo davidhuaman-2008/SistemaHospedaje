@@ -8,20 +8,25 @@ use Illuminate\Http\JsonResponse;
 
 class ClienteVisitaController extends Controller
 {
+    // Inyecta el Service que maneja el historial de visitas.
     public function __construct(private ClienteVisitaService $service) {}
 
+    // GET /clientes/{idCliente}/visitas → lista las visitas de un cliente.
     public function index(int $idCliente): JsonResponse
     {
         return response()->json($this->service->listarPorCliente($idCliente));
     }
 
+    // GET /cliente-visitas/{id} → una visita específica.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /clientes/{idCliente}/visitas → registra una visita manual.
     public function store(Request $request, int $idCliente): JsonResponse
     {
+        // Valida. `fecha_salida` no puede ser anterior a `fecha_entrada`.
         $datos = $request->validate([
             'id_reserva' => 'nullable|integer',
             'id_habitacion' => 'nullable|integer',
@@ -30,6 +35,7 @@ class ClienteVisitaController extends Controller
             'monto_gastado' => 'nullable|numeric|min:0',
         ]);
 
+        // El id_cliente viene de la URL.
         $datos['id_cliente'] = $idCliente;
 
         return response()->json([
@@ -38,6 +44,7 @@ class ClienteVisitaController extends Controller
         ], 201);
     }
 
+    // PUT /cliente-visitas/{id} → actualiza una visita.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -54,6 +61,7 @@ class ClienteVisitaController extends Controller
         ]);
     }
 
+    // DELETE /cliente-visitas/{id} → elimina la visita.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

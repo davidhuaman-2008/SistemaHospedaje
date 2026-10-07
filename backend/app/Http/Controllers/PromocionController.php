@@ -8,35 +8,43 @@ use Illuminate\Http\JsonResponse;
 
 class PromocionController extends Controller
 {
+    // Inyecta el Service que maneja el catálogo de promociones.
     public function __construct(private PromocionService $service) {}
 
+    // GET /promociones → lista TODAS (activas e inactivas).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /promociones/activas → solo las que tienen activo = true.
     public function activas(): JsonResponse
     {
         return response()->json($this->service->listarActivas());
     }
 
+    // GET /promociones/vigentes → solo las vigentes HOY (fecha_inicio <= hoy <= fecha_fin).
     public function vigentes(): JsonResponse
     {
         return response()->json($this->service->listarVigentes());
     }
 
+    // GET /promociones/por-categoria/{id} → filtradas por categoría.
     public function porCategoria(int $idCategoria): JsonResponse
     {
         return response()->json($this->service->listarPorCategoria($idCategoria));
     }
 
+    // GET /promociones/{id} → una por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /promociones → crea una promoción nueva.
     public function store(Request $request): JsonResponse
     {
+        // Valida. `tipo` está restringido a 4 opciones. `valor` es obligatorio.
         $datos = $request->validate([
             'nombre' => 'required|string|max:100',
             'descripcion' => 'nullable|string|max:255',
@@ -64,6 +72,7 @@ class PromocionController extends Controller
         ], 201);
     }
 
+    // PUT /promociones/{id} → actualiza (sin `after_or_equal` en fecha_fin).
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -93,6 +102,7 @@ class PromocionController extends Controller
         ]);
     }
 
+    // PATCH /promociones/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -101,6 +111,7 @@ class PromocionController extends Controller
         ]);
     }
 
+    // PATCH /promociones/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -109,6 +120,7 @@ class PromocionController extends Controller
         ]);
     }
 
+    // DELETE /promociones/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

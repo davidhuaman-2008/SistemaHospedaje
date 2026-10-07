@@ -14,7 +14,7 @@ import { ModalLimpiezaHabitacion } from "./ModalLimpiezaHabitacion"
 import { ModalMantenimientoHabitacion } from "./ModalMantenimientoHabitacion"
 import { ReportarMantenimientoModal } from "./ReportarMantenimientoModal"
 
-type FiltroEstado = "Todos" | "Disponible" | "Ocupada" | "PorVencer" | "Vencidas" | "Limpieza" | "Reservada" | "Reservada-Urgente" | "Mantenimiento" | "Inactiva"
+type FiltroEstado = "Todos" | "Disponible" | "Ocupada" | "PorVencer" | "Vencidas" | "Limpieza" | "Reservada" | "Con-Decoracion" | "Reservada-Urgente" | "Mantenimiento" | "Inactiva"
 
 export function RecepcionPage() {
   const { usuario } = useAuth()
@@ -69,8 +69,8 @@ export function RecepcionPage() {
       setModalHabitacion(h)
       return
     }
-    // NUEVO: click en Reservada o Reservada-Urgente → Check-In
-    if (h.estado === "Reservada" || h.estado === "Reservada-Urgente") {
+    // NUEVO: click en Reservada, Reservada-Urgente o Con-Decoracion -> Check-In
+    if (h.estado === "Reservada" || h.estado === "Reservada-Urgente" || h.estado === "Con-Decoracion") {
       if (h.id_reserva) {
         navigate(`/recepcion/checkin/${h.id_reserva}`)
       } else {
@@ -114,6 +114,8 @@ export function RecepcionPage() {
     Limpieza: habitaciones.filter(h => h.estado === "Limpieza").length,
     Mantenimiento: habitaciones.filter(h => h.estado === "Mantenimiento").length,
     Reservada: habitaciones.filter(h => h.estado === "Reservada").length,
+    "Reservada": habitaciones.filter(h => h.estado === "Reservada").length,
+    "Con-Decoracion": habitaciones.filter(h => h.estado === "Con-Decoracion").length,
     "Reservada-Urgente": habitaciones.filter(h => h.estado === "Reservada-Urgente").length,
     Inactiva: habitaciones.filter(h => h.estado === "Inactiva").length,
   }
@@ -146,6 +148,7 @@ export function RecepcionPage() {
     { key: "Limpieza", label: "Limpieza", color: "bg-cyan-900/40 hover:bg-cyan-900/60 text-cyan-300", colorActivo: "bg-cyan-600 text-white border-cyan-300", emoji: "🔵" },
     { key: "Mantenimiento", label: "Mantenimiento", color: "bg-orange-900/40 hover:bg-orange-900/60 text-orange-300", colorActivo: "bg-orange-600 text-white border-orange-300", emoji: "🔧" },
     { key: "Reservada", label: "Reservadas", color: "bg-purple-900/40 hover:bg-purple-900/60 text-purple-300", colorActivo: "bg-purple-600 text-white border-purple-300", emoji: "🟣" },
+    { key: "Con-Decoracion", label: "Con Decoracion", color: "bg-pink-900/40 hover:bg-pink-900/60 text-pink-300", colorActivo: "bg-pink-600 text-white border-pink-300", emoji: "🎨" },
     { key: "Reservada-Urgente", label: "Reservas en riesgo", color: "bg-red-900/60 hover:bg-red-900/80 text-red-200", colorActivo: "bg-red-600 text-white border-red-300 animate-pulse", emoji: "🚨" },
     { key: "Inactiva", label: "Inactivas", color: "bg-slate-800 hover:bg-slate-700 text-slate-400", colorActivo: "bg-slate-600 text-white border-slate-400", emoji: "⚫" },
   ]
@@ -161,7 +164,7 @@ export function RecepcionPage() {
           <p className="text-slate-400 text-sm mt-1">
             {contadores.Disponible} disponibles · {contadores.Ocupada} ocupadas
             {" · "}{contadores.Limpieza} en limpieza
-            {contadores.Reservada > 0 && ` · ${contadores.Reservada} reservadas`}
+            {contadores.Reservada > 0 && ` · ${contadores.Reservada} reservadas`}{contadores["Con-Decoracion"] > 0 && ` · ${contadores["Con-Decoracion"]} con decoracion`}
             {contadores["Reservada-Urgente"] > 0 && ` · 🚨 ${contadores["Reservada-Urgente"]} en riesgo`}
             {contadores.Mantenimiento > 0 && ` · ${contadores.Mantenimiento} en mantenimiento`}
             {contadores.Inactiva > 0 && ` · ${contadores.Inactiva} inactivas`}

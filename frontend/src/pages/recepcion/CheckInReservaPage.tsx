@@ -536,8 +536,12 @@ export function CheckInReservaPage() {
                       <span className="text-yellow-300 font-bold">S/ {saldoRestante.toFixed(2)}</span>
                     </div>
                   )}
-                  {saldoRestante <= 0.01 && clientePaga > 0 && (
-                    <div className="text-green-400 text-center text-xs">✅ Saldo cubierto</div>
+                  {saldoRestante <= 0.01 && clientePaga > 0 && saldo > 0 && (
+                    <div className="bg-green-900/40 border border-green-700 p-2 rounded text-center">
+                      <p className="text-green-300 text-sm font-semibold">
+                        💵 Al cobrar S/ {clientePaga.toFixed(2)}, el saldo quedará en S/ 0.00
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

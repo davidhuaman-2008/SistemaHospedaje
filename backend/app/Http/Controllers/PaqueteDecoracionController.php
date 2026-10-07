@@ -8,30 +8,37 @@ use Illuminate\Http\JsonResponse;
 
 class PaqueteDecoracionController extends Controller
 {
+    // Inyecta el Service que maneja el catálogo de paquetes de decoración.
     public function __construct(private PaqueteDecoracionService $service) {}
 
+    // GET /paquetes-decoracion → lista TODOS (activos e inactivos).
     public function index(): JsonResponse
     {
         return response()->json($this->service->listar());
     }
 
+    // GET /paquetes-decoracion/activos → solo los activos.
     public function activos(): JsonResponse
     {
         return response()->json($this->service->listarActivos());
     }
 
+    // GET /paquetes-decoracion/por-tipo-habitacion/{idTipo} → filtrados por tipo.
     public function porTipoHabitacion(int $idTipo): JsonResponse
     {
         return response()->json($this->service->listarPorTipoHabitacion($idTipo));
     }
 
+    // GET /paquetes-decoracion/{id} → uno por ID.
     public function show(int $id): JsonResponse
     {
         return response()->json($this->service->obtener($id));
     }
 
+    // POST /paquetes-decoracion → crea un paquete nuevo.
     public function store(Request $request): JsonResponse
     {
+        // Valida. `precio_total`, `ganancia_local` y `ganancia_proveedor` son obligatorios.
         $datos = $request->validate([
             'nombre' => 'required|string|max:100',
             'slug' => 'nullable|string|max:100|unique:paquetes_decoracion,slug',
@@ -52,12 +59,14 @@ class PaqueteDecoracionController extends Controller
         ]);
 
         try {
+            // El Service valida la fórmula: precio_total = ganancia_local + ganancia_proveedor.
             $item = $this->service->crear($datos);
             return response()->json([
                 'mensaje' => 'Paquete de decoración creado',
                 'data' => $item,
             ], 201);
         } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la fórmula no cuadra (precio_total ≠ local + proveedor).
             return response()->json([
                 'mensaje' => 'Error de validación',
                 'error' => $e->getMessage(),
@@ -65,6 +74,7 @@ class PaqueteDecoracionController extends Controller
         }
     }
 
+    // PUT /paquetes-decoracion/{id} → actualiza. `unique` ignora el propio ID.
     public function update(Request $request, int $id): JsonResponse
     {
         $datos = $request->validate([
@@ -100,6 +110,7 @@ class PaqueteDecoracionController extends Controller
         }
     }
 
+    // PATCH /paquetes-decoracion/{id}/desactivar → soft delete.
     public function desactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -108,6 +119,7 @@ class PaqueteDecoracionController extends Controller
         ]);
     }
 
+    // PATCH /paquetes-decoracion/{id}/reactivar → activo = true.
     public function reactivar(int $id): JsonResponse
     {
         return response()->json([
@@ -116,6 +128,7 @@ class PaqueteDecoracionController extends Controller
         ]);
     }
 
+    // DELETE /paquetes-decoracion/{id} → elimina físicamente.
     public function destroy(int $id): JsonResponse
     {
         $this->service->eliminar($id);

@@ -132,4 +132,15 @@ class Reserva extends Model
         );
         $this->saldo = max(0, round((float) $this->total - (float) $this->pagado, 2));
     }
+
+    public function decoracion(): HasOne
+    {
+        return $this->hasOne(Decoracion::class, 'id_reserva', 'id_reserva')
+            ->whereNotIn('estado', ['cancelada']);
+    }
+
+    public function decoraciones(): HasMany
+    {
+        return $this->hasMany(Decoracion::class, 'id_reserva', 'id_reserva');
+    }
 }
