@@ -103,7 +103,7 @@ export function RecepcionPage() {
   }
 
   // Contadores
-  const contadores = {
+  const contadores: Record<FiltroEstado, number>  = {
     Todos: habitaciones.length,
     Disponible: habitaciones.filter(h => h.estado === "Disponible").length,
     Ocupada: habitaciones.filter(h =>
@@ -114,7 +114,6 @@ export function RecepcionPage() {
     Limpieza: habitaciones.filter(h => h.estado === "Limpieza").length,
     Mantenimiento: habitaciones.filter(h => h.estado === "Mantenimiento").length,
     Reservada: habitaciones.filter(h => h.estado === "Reservada").length,
-    "Reservada": habitaciones.filter(h => h.estado === "Reservada").length,
     "Con-Decoracion": habitaciones.filter(h => h.estado === "Con-Decoracion").length,
     "Reservada-Urgente": habitaciones.filter(h => h.estado === "Reservada-Urgente").length,
     Inactiva: habitaciones.filter(h => h.estado === "Inactiva").length,

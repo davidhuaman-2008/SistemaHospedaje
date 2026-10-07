@@ -198,12 +198,12 @@ export function CheckInReservaPage() {
       // 2. Hacer check-in validado
       await reservaService.checkInValidado(Number(idReserva))
 
-      // Calcular tiempo restante para el toast
-      if (reserva.fecha_salida_prevista) {
-        const salida = new Date(reserva.fecha_salida_prevista)
+      // FIX #1: usar info.reserva en lugar de reserva (variable no definida)
+      if (info.reserva.fecha_salida_prevista) {
+        const salida = new Date(info.reserva.fecha_salida_prevista)
         const restante = Math.max(0, Math.floor((salida.getTime() - Date.now()) / (1000 * 60)))
         toast.success(
-          `✅ Check-in realizado. Sale a las ${formatearHora(reserva.fecha_salida_prevista)} (${formatearDuracion(restante)} restantes).`
+          `✅ Check-in realizado. Sale a las ${formatearHora(info.reserva.fecha_salida_prevista)} (${formatearDuracion(restante)} restantes).`
         )
       } else {
         toast.success("✅ Check-in realizado")

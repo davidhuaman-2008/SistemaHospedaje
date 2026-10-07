@@ -574,37 +574,6 @@ export function CheckoutPage() {
           onConfirmar={ejecutarCheckoutConDeuda}
         />
       )}
-
-      {mostrarEntregarVuelto && vueltoFinal > 0 && (
-        <EntregarVueltoModal
-          idReserva={Number(idReserva)}
-          vueltoPendiente={vueltoFinal}
-          onClose={() => setMostrarEntregarVuelto(false)}
-          onSuccess={() => { setMostrarEntregarVuelto(false); cargar() }}
-        />
-      )}
-
-      {mostrarConfirmarVuelto && reserva && vueltoFinal > 0 && (
-        <ConfirmarVueltoModal
-          idReserva={Number(idReserva)}
-          vueltoPendiente={vueltoFinal}
-          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
-          habitacion={reserva.habitacion?.numero ?? ""}
-          onClose={() => setMostrarConfirmarVuelto(false)}
-          onConfirmar={ejecutarCheckoutConVuelto}
-        />
-      )}
-
-      {mostrarConfirmarDeuda && reserva && vueltoFinal < 0 && (
-        <ConfirmarDeudaModal
-          idReserva={Number(idReserva)}
-          deudaPendiente={Math.abs(vueltoFinal)}
-          nombreCliente={`${reserva.cliente?.nombre ?? ""} ${reserva.cliente?.apellido ?? ""}`.trim()}
-          habitacion={reserva.habitacion?.numero ?? ""}
-          onClose={() => setMostrarConfirmarDeuda(false)}
-          onConfirmar={ejecutarCheckoutConDeuda}
-        />
-      )}
     </AppLayout>
   )
 }
