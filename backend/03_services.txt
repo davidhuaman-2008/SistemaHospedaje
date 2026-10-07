@@ -1,4 +1,4 @@
-﻿
+
 
 ================================================================================
 === app/Services/AuthService.php ===
@@ -509,7 +509,7 @@ class ClienteVisitaService
     }
 
     /**
-     * Recalcula el nivel segÃºn las visitas actuales (R34).
+     * Recalcula el nivel segun las visitas actuales (R34).
      * Bronce: 0-4, Plata: 5-9, Oro: 10-19, VIP: 20+
      */
     public function recalcularNivel(Cliente $cliente): void
@@ -549,9 +549,6 @@ class ClienteVisitaService
 
     /**
      * Crea una visita MANUAL (boton "+ Visita" en el CRUD).
-     * - Crea la fila en cliente_visitas
-     * - Incrementa visitas, actualiza ultima_visita, suma total_gastado
-     * - Recalcula nivel
      */
     public function crear(array $datos): ClienteVisita
     {
@@ -583,13 +580,32 @@ class ClienteVisitaService
 
     /**
      * Actualiza una visita existente.
-     * NO recalcula contadores (es solo edicion de metadata).
+     * FIX #5: recalcula contadores del cliente (total_gastado, ultima_visita).
      */
     public function actualizar(int $id, array $datos): ClienteVisita
     {
-        $visita = ClienteVisita::findOrFail($id);
-        $visita->update($datos);
-        return $visita->fresh();
+        return \DB::transaction(function () use ($id, $datos) {
+            $visita = ClienteVisita::findOrFail($id);
+            $idCliente = $visita->id_cliente;
+
+            // Guardar monto anterior para ajustar el total_gastado
+            $montoAnterior = (float) $visita->monto_gastado;
+
+            // Actualizar la visita
+            $visita->update($datos);
+
+            // FIX #5: recalcular contadores del cliente
+            $montoNuevo = (float) $visita->fresh()->monto_gastado;
+            $diferencia = $montoNuevo - $montoAnterior;
+
+            if (abs($diferencia) > 0.01) {
+                $cliente = Cliente::findOrFail($idCliente);
+                $cliente->total_gastado = max(0, (float) $cliente->total_gastado + $diferencia);
+                $cliente->save();
+            }
+
+            return $visita->fresh();
+        });
     }
 
     /**
@@ -612,7 +628,8 @@ class ClienteVisitaService
 
             $visita->delete();
         });
-    }}
+    }
+}
 
 ================================================================================
 === app/Services/CuentaPagarService.php ===
@@ -3304,6 +3321,7 @@ class ProveedorService
 <?php
 
 namespace App\Services;
+
 use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Models\ExtensionReserva;
@@ -3626,17 +3644,22 @@ class ReservaService
                 'monto_final' => $montoFinal,
             ]);
 
-            if ($montoFinal && $montoFinal > 0) {
-                $reserva->pagado = (float) $reserva->pagado + $montoFinal;
-            }
+            // FIX #2: NO sumar $montoFinal al vuelo.
+            // El campo pagado se recalcula desde PagoReserva (fuente de verdad).
+            // $montoFinal solo se guarda en registro_estadia.monto_final (auditoria).
 
             $estadoFinalizada = EstadoReserva::where('slug', 'finalizada')->firstOrFail();
+
+            // Recalcular pagado desde la tabla de pagos (fuente de verdad)
+            $totalPagadoReal = PagoReserva::where('id_reserva', $idReserva)
+                ->where('anulado', false)
+                ->sum('monto');
 
             $reserva->update([
                 'id_estado' => $estadoFinalizada->id_estado,
                 'fecha_salida_real' => $ahora,
-                'pagado' => $reserva->pagado,
-                'saldo' => max(0, (float) $reserva->total - (float) $reserva->pagado),
+                'pagado' => $totalPagadoReal,
+                'saldo' => max(0, (float) $reserva->total - (float) $totalPagadoReal),
             ]);
 
             OcupacionHabitacion::where('id_reserva', $idReserva)
@@ -3820,6 +3843,9 @@ class ReservaService
             if ($modoDiferencia === 'AHORA' && $diferencia < 0) {
                 $reserva->pagado = (float) $reserva->pagado + $diferencia;
             }
+
+            // FIX #4: sumar la diferencia a monto_ajustes para que el total lo refleje
+            $reserva->monto_ajustes = (float) $reserva->monto_ajustes + $diferencia;
 
             $reserva->recalcularTotal();
             $reserva->save();
@@ -4200,7 +4226,8 @@ class ReservaService
                 throw new \InvalidArgumentException('Decision invalida sobre el vuelto.');
             }
 
-            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+            // FIX #3a: NO pasar $montoFinal a checkOut() para evitar doble suma.
+            return $this->checkOut($idReserva, $idUsuario, null);
         });
     }
 
@@ -4274,7 +4301,8 @@ class ReservaService
                 throw new \InvalidArgumentException('Decision invalida sobre la deuda.');
             }
 
-            return $this->checkOut($idReserva, $idUsuario, $montoFinal);
+            // FIX #3b: NO pasar $montoFinal a checkOut() para evitar doble suma.
+            return $this->checkOut($idReserva, $idUsuario, null);
         });
     }
 

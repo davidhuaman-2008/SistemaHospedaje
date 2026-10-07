@@ -30,7 +30,13 @@ export function CheckoutPage() {
   const [mostrarConfirmarVuelto, setMostrarConfirmarVuelto] = useState(false)
   const [mostrarConfirmarDeuda, setMostrarConfirmarDeuda] = useState(false)
 
-  const cargar = async () => {
+    const cargar = async () => {
+    // FIX #25: validar que idReserva exista (evita Number(undefined) = NaN)
+    if (!idReserva) {
+      toast.error("ID de reserva no válido")
+      navigate("/recepcion")
+      return
+    }
     try {
       setCargando(true)
       const r = await reservaService.obtener(Number(idReserva))

@@ -1,4 +1,4 @@
-﻿
+
 
 ================================================================================
 === src/pages/decoraciones/paqueteDecoracion/PaqueteDecoracionForm.tsx ===
@@ -370,7 +370,7 @@ import { reservaService } from "@/services/reservaService"
 import type { Reserva } from "@/types/reserva"
 import { ReservasTabla } from "@/pages/reservas/ReservasTabla"
 
-type Filtro = "Todas" | "Programadas" | "En proceso" | "Finalizadas" | "Canceladas"
+type Filtro = "Todas" | "Programadas" | "Activas" | "Finalizadas" | "Canceladas"
 
 export function ReservasDecoradasPage() {
   const [items, setItems] = useState<Reserva[]>([])
@@ -398,7 +398,7 @@ export function ReservasDecoradasPage() {
 
   const filtradas = items.filter((r) => {
     if (filtro === "Programadas" && r.estado?.slug !== "confirmada" && r.estado?.slug !== "pendiente") return false
-    if (filtro === "En proceso" && r.estado?.slug !== "activa") return false
+    if (filtro === "Activas" && r.estado?.slug !== "activa") return false
     if (filtro === "Finalizadas" && r.estado?.slug !== "finalizada") return false
     if (filtro === "Canceladas" && r.estado?.slug !== "cancelada" && r.estado?.slug !== "anulada") return false
 
@@ -418,7 +418,7 @@ export function ReservasDecoradasPage() {
   const filtros: { key: Filtro; label: string }[] = [
     { key: "Todas", label: "Todas" },
     { key: "Programadas", label: "Programadas" },
-    { key: "En proceso", label: "Activas" },
+    { key: "Activas", label: "Activas" },
     { key: "Finalizadas", label: "Finalizadas" },
     { key: "Canceladas", label: "Canceladas/Anuladas" },
   ]

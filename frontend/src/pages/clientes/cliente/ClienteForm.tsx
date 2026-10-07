@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { clienteService } from '@/services/clienteService'
 import { clienteObservacionService } from '@/services/clienteObservacionService'
+import { tipoDocumentoService } from '@/services/tipoDocumentoService'
 import type { Cliente, ClienteRequest, ClienteObservacion } from '@/types/cliente'
+import type { TipoDocumento } from '@/types/configuracion'
 import { AlertaClienteObservaciones } from './AlertaClienteObservaciones'
 
 interface Props {
@@ -30,6 +32,34 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
   const [visitasExistentes, setVisitasExistentes] = useState<number | null>(null)
   const [observacionesPendientes, setObservacionesPendientes] = useState<ClienteObservacion[]>([])
 
+  // Tipo de documento
+  const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([])
+  const [idTipoDocumento, setIdTipoDocumento] = useState<number | null>(inicial?.id_tipo_documento ?? null)
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        const tipos = await tipoDocumentoService.listarActivos()
+        setTiposDocumento(tipos)
+        if (!idTipoDocumento && tipos.length > 0) {
+          const dni = tipos.find(t => t.abreviatura === "DNI")
+          if (dni) setIdTipoDocumento(dni.id_documento)
+          else setIdTipoDocumento(tipos[0].id_documento)
+        }
+      } catch {
+        // silent
+      }
+    }
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (inicial?.id_tipo_documento) {
+      setIdTipoDocumento(inicial.id_tipo_documento)
+    }
+  }, [inicial])
+
   const buscarDni = async () => {
     if (!numeroDocumento) return
     setBuscando(true)
@@ -45,6 +75,9 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
         setDireccion(encontrado.direccion || '')
         setIdExistente(encontrado.id_cliente)
         setVisitasExistentes(encontrado.visitas)
+        if (encontrado.id_tipo_documento) {
+          setIdTipoDocumento(encontrado.id_tipo_documento)
+        }
 
         try {
           const obs = await clienteObservacionService.porCliente(encontrado.id_cliente)
@@ -79,6 +112,7 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
     onGuardar({
       nombre,
       apellido: apellido || null,
+      id_tipo_documento: idTipoDocumento,
       numero_documento: numeroDocumento || null,
       celular: celular || null,
       email: email || null,
@@ -105,7 +139,22 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
-          <label className="text-slate-300 text-sm">DNI / Documento</label>
+          <label className="text-slate-300 text-sm">Tipo de documento</label>
+          <select
+            value={idTipoDocumento ?? ""}
+            onChange={e => setIdTipoDocumento(e.target.value ? Number(e.target.value) : null)}
+            className="w-full bg-slate-900 text-white p-2 rounded"
+          >
+            <option value="">— Seleccionar —</option>
+            {tiposDocumento.map(t => (
+              <option key={t.id_documento} value={t.id_documento}>
+                {t.nombre} ({t.abreviatura})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-slate-300 text-sm">N° de documento</label>
           <div className="flex gap-2">
             <input
               value={numeroDocumento}

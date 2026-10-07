@@ -60,7 +60,14 @@ export function ClienteTabla({
                   {tieneObs && <span className="text-red-400 mr-1">⚠️</span>}
                   {item.nombre} {item.apellido ?? ''}
                 </td>
-                <td className="p-2">{item.numero_documento ?? '—'}</td>
+                <td className="p-2">
+                  {item.tipo_documento && (
+                    <span className="text-slate-500 text-xs mr-1">
+                      {item.tipo_documento.abreviatura}:
+                    </span>
+                  )}
+                  {item.numero_documento ?? '—'}
+                </td>
                 <td className="p-2">{item.celular ?? '—'}</td>
                 <td className="p-2">{formatearFecha(item.fecha_nacimiento)}</td>
                 <td className="p-2 font-semibold text-cyan-300">{item.visitas}</td>

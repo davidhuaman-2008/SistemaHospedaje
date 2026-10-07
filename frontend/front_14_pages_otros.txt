@@ -1,0 +1,2044 @@
+
+
+================================================================================
+=== src/pages/limpieza/LimpiezaPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { RefreshCw, Plus, Filter } from "lucide-react"
+import AppLayout from "@/components/layout/AppLayout"
+import { limpiezaService } from "@/services/limpiezaService"
+import { useAuth } from "@/hooks/useAuth"
+import { mensajeDeError } from "@/lib/errores"
+import type { Limpieza, LimpiezaPendientesResponse } from "@/types/limpieza"
+import { TarjetaLimpieza } from "./TarjetaLimpieza"
+import { NuevaLimpiezaModal } from "./NuevaLimpiezaModal"
+
+export function LimpiezaPage() {
+  const { usuario } = useAuth()
+  const [data, setData] = useState<LimpiezaPendientesResponse>({
+    pendientes: [],
+    completadas_hoy: [],
+    total_pendientes: 0,
+  })
+  const [cargando, setCargando] = useState(true)
+  const [mostrarNueva, setMostrarNueva] = useState(false)
+  const [filtroPiso, setFiltroPiso] = useState<string>("todos")
+  const [filtroTipo, setFiltroTipo] = useState<string>("todos")
+
+  // Detectar rol del usuario
+  const rolUsuario = usuario?.rol?.nombre || ""
+  const puedeOperar = ["admin", "encargado", "limpieza"].includes(rolUsuario)
+
+  const cargar = async (silencioso = false) => {
+    try {
+      if (!silencioso) setCargando(true)
+      const resp = await limpiezaService.listarPendientes()
+      setData(resp)
+    } catch {
+      if (!silencioso) toast.error("Error al cargar limpiezas")
+    } finally {
+      if (!silencioso) setCargando(false)
+    }
+  }
+
+  // Cargar al inicio
+  useEffect(() => {
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Auto-refresh cada 20s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        cargar(true)
+      }
+    }, 20000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const iniciar = async (id: number) => {
+    try {
+      await limpiezaService.iniciar(id)
+      toast.success("Limpieza iniciada")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const finalizar = async (id: number) => {
+    if (!confirm("Â¿ConfirmÃ¡s que terminaste la limpieza?")) return
+    try {
+      await limpiezaService.finalizar(id)
+      toast.success("Limpieza completada. HabitaciÃ³n disponible âœ…")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  // Aplicar filtros
+  const aplicarFiltros = (lista: Limpieza[]) => {
+    return lista.filter(l => {
+      if (filtroPiso !== "todos" && l.habitacion?.piso?.nombre !== filtroPiso) return false
+      if (filtroTipo !== "todos" && l.tipo !== filtroTipo) return false
+      return true
+    })
+  }
+
+  const pendientesFiltradas = aplicarFiltros(data.pendientes).filter(l => l.estado === "PENDIENTE")
+  const enProcesoFiltradas = aplicarFiltros(data.pendientes).filter(l => l.estado === "EN_PROCESO")
+  const completadasFiltradas = aplicarFiltros(data.completadas_hoy)
+
+  // Pisos Ãºnicos
+  const pisosUnicos = Array.from(
+    new Set(data.pendientes.map(l => l.habitacion?.piso?.nombre).filter(Boolean))
+  ) as string[]
+
+  return (
+    <AppLayout>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold">ðŸ§¹ Cola de Limpieza</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            <span className="text-yellow-400 font-semibold">{pendientesFiltradas.length}</span> pendientes Â·{" "}
+            <span className="text-blue-400 font-semibold">{enProcesoFiltradas.length}</span> en proceso Â·{" "}
+            <span className="text-green-400 font-semibold">{completadasFiltradas.length}</span> completadas hoy
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => cargar()}
+            className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm"
+            title="Actualizar"
+          >
+            <RefreshCw size={16} />
+          </button>
+          {puedeOperar && (
+            <button
+              onClick={() => setMostrarNueva(true)}
+              className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm font-medium"
+            >
+              <Plus size={16} /> Nueva Limpieza
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-slate-800 p-3 rounded-lg mb-4 flex flex-wrap gap-3 items-center">
+        <div className="flex items-center gap-2">
+          <Filter size={14} className="text-slate-400" />
+          <span className="text-slate-400 text-xs">Filtros:</span>
+        </div>
+
+        <select
+          value={filtroPiso}
+          onChange={e => setFiltroPiso(e.target.value)}
+          className="bg-slate-900 text-white text-xs p-1.5 rounded border border-slate-700"
+        >
+          <option value="todos">Todos los pisos</option>
+          {pisosUnicos.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+
+        <select
+          value={filtroTipo}
+          onChange={e => setFiltroTipo(e.target.value)}
+          className="bg-slate-900 text-white text-xs p-1.5 rounded border border-slate-700"
+        >
+          <option value="todos">Todos los tipos</option>
+          <option value="NORMAL">Normal</option>
+          <option value="PROFUNDA">Profunda</option>
+        </select>
+      </div>
+
+      {cargando ? (
+        <p className="text-slate-400 text-center py-8">Cargando...</p>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* COLUMNA IZQUIERDA: Pendientes */}
+          <div>
+            <h2 className="text-yellow-400 font-semibold mb-3 flex items-center gap-2">
+              ðŸŸ¡ PENDIENTES ({pendientesFiltradas.length})
+            </h2>
+            {pendientesFiltradas.length === 0 ? (
+              <div className="bg-slate-800 p-4 rounded text-center text-slate-500 text-sm">
+                No hay tareas pendientes âœ…
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendientesFiltradas.map(l => (
+                  <TarjetaLimpieza
+                    key={l.id_limpieza}
+                    limpieza={l}
+                    onIniciar={iniciar}
+                    puedeOperar={puedeOperar}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* COLUMNA DERECHA: En proceso + Completadas */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                ðŸ”µ EN PROCESO ({enProcesoFiltradas.length})
+              </h2>
+              {enProcesoFiltradas.length === 0 ? (
+                <div className="bg-slate-800 p-4 rounded text-center text-slate-500 text-sm">
+                  Ninguna tarea en proceso
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {enProcesoFiltradas.map(l => (
+                    <TarjetaLimpieza
+                      key={l.id_limpieza}
+                      limpieza={l}
+                      onFinalizar={finalizar}
+                      puedeOperar={puedeOperar}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="text-green-400 font-semibold mb-3 flex items-center gap-2">
+                âœ… COMPLETADAS HOY ({completadasFiltradas.length})
+              </h2>
+              {completadasFiltradas.length === 0 ? (
+                <div className="bg-slate-800 p-4 rounded text-center text-slate-500 text-sm">
+                  AÃºn no hay tareas completadas hoy
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {completadasFiltradas.map(l => (
+                    <TarjetaLimpieza
+                      key={l.id_limpieza}
+                      limpieza={l}
+                      puedeOperar={puedeOperar}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mostrarNueva && (
+        <NuevaLimpiezaModal
+          onClose={() => setMostrarNueva(false)}
+          onSuccess={() => { setMostrarNueva(false); cargar() }}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/limpieza/NuevaLimpiezaModal.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { X, Plus, AlertTriangle } from "lucide-react"
+import { limpiezaService } from "@/services/limpiezaService"
+import { habitacionMapaService } from "@/services/reservaService"
+import { mensajeDeError } from "@/lib/errores"
+import type { HabitacionMapa } from "@/types/reserva"
+
+interface Props {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function NuevaLimpiezaModal({ onClose, onSuccess }: Props) {
+  const [habitaciones, setHabitaciones] = useState<HabitacionMapa[]>([])
+  const [idHabitacion, setIdHabitacion] = useState<number | null>(null)
+  const [tipo, setTipo] = useState<"NORMAL" | "PROFUNDA">("PROFUNDA")
+  const [observaciones, setObservaciones] = useState("")
+  const [enviando, setEnviando] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const todas = await habitacionMapaService.listar()
+
+        // âš ï¸ Solo habitaciones DISPONIBLES (no ocupadas, no limpieza, no reservadas, no inactivas)
+        const disponibles = todas
+          .filter(h => h.estado === "Disponible")
+          .sort((a, b) => a.numero.localeCompare(b.numero))
+
+        setHabitaciones(disponibles)
+        if (disponibles.length > 0) setIdHabitacion(disponibles[0].id_habitacion)
+      } catch {
+        toast.error("Error al cargar habitaciones")
+      } finally {
+        setCargando(false)
+      }
+    }
+    cargar()
+  }, [])
+
+  const guardar = async () => {
+    if (!idHabitacion) return toast.error("SeleccionÃ¡ una habitaciÃ³n")
+
+    setEnviando(true)
+    try {
+      await limpiezaService.crear({
+        id_habitacion: idHabitacion,
+        tipo,
+        observaciones: observaciones.trim() || null,
+      })
+      toast.success("Limpieza creada")
+      onSuccess()
+      onClose()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="bg-purple-900 p-4 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Plus size={20} className="text-white" />
+            <div>
+              <h3 className="text-lg font-bold text-white">Nueva Limpieza Manual</h3>
+              <p className="text-purple-200 text-xs">Solo para habitaciones DISPONIBLES</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-purple-200 hover:text-white"><X size={20} /></button>
+        </div>
+
+        {cargando ? (
+          <div className="p-6 text-center text-slate-400">Cargando...</div>
+        ) : habitaciones.length === 0 ? (
+          <div className="p-6 space-y-3">
+            <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={18} className="text-yellow-300 mt-0.5" />
+                <div>
+                  <p className="text-yellow-200 font-semibold text-sm">
+                    No hay habitaciones disponibles
+                  </p>
+                  <p className="text-yellow-100 text-xs mt-1">
+                    Solo se puede crear limpieza manual en habitaciones <strong>Disponibles</strong>.
+                  </p>
+                </div>
+              </div>
+              <p className="text-yellow-100 text-xs">
+                Si necesitÃ¡s limpiar una habitaciÃ³n ocupada, primero hacÃ© el <strong>check-out</strong> del cliente.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-full bg-slate-600 hover:bg-slate-700 text-white py-2 rounded"
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">
+                HabitaciÃ³n * <span className="text-slate-500 text-xs">(solo disponibles)</span>
+              </label>
+              <select
+                value={idHabitacion ?? ""}
+                onChange={e => setIdHabitacion(e.target.value ? Number(e.target.value) : null)}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              >
+                <option value="">â€” Seleccionar â€”</option>
+                {habitaciones.map(h => (
+                  <option key={h.id_habitacion} value={h.id_habitacion}>
+                    Hab. {h.numero} Â· {h.tipo_nombre} Â· {h.piso_nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Tipo *</label>
+              <select
+                value={tipo}
+                onChange={e => setTipo(e.target.value as "NORMAL" | "PROFUNDA")}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              >
+                <option value="NORMAL">Normal</option>
+                <option value="PROFUNDA">Profunda</option>
+              </select>
+              <p className="text-slate-500 text-xs mt-1">
+                ðŸ’¡ Profunda: limpieza a fondo (muebles, cortinas, etc.)
+              </p>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">
+                Observaciones (opcional)
+              </label>
+              <textarea
+                value={observaciones}
+                onChange={e => setObservaciones(e.target.value)}
+                rows={2}
+                placeholder="Ej: Limpieza a fondo despuÃ©s de evento"
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+            </div>
+
+            <div className="bg-cyan-900/20 border border-cyan-800 p-2 rounded">
+              <p className="text-cyan-200 text-xs">
+                â„¹ï¸ {habitaciones.length} habitaciÃ³n{habitaciones.length !== 1 ? "es" : ""} disponible{habitaciones.length !== 1 ? "s" : ""} para limpieza manual
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={guardar}
+                disabled={enviando || !idHabitacion}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white py-2 rounded font-medium"
+              >
+                {enviando ? "Creando..." : "Crear Limpieza"}
+              </button>
+              <button onClick={onClose} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/limpieza/TarjetaLimpieza.tsx ===
+================================================================================
+import { Play, Check, Clock, User, AlertTriangle } from "lucide-react"
+import type { Limpieza } from "@/types/limpieza"
+
+interface Props {
+  limpieza: Limpieza
+  onIniciar?: (id: number) => void
+  onFinalizar?: (id: number) => void
+  puedeOperar: boolean
+}
+
+function tiempoRelativo(fecha: string | null): string {
+  if (!fecha) return "â€”"
+  const ahora = new Date().getTime()
+  const entonces = new Date(fecha).getTime()
+  const diffMin = Math.floor((ahora - entonces) / (1000 * 60))
+
+  if (diffMin < 1) return "hace menos de 1 min"
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const h = Math.floor(diffMin / 60)
+  const m = diffMin % 60
+  if (m === 0) return `hace ${h}h`
+  return `hace ${h}h ${m}m`
+}
+
+function minutosDesde(fecha: string | null): number {
+  if (!fecha) return 0
+  const ahora = new Date().getTime()
+  const entonces = new Date(fecha).getTime()
+  return Math.floor((ahora - entonces) / (1000 * 60))
+}
+
+export function TarjetaLimpieza({ limpieza, onIniciar, onFinalizar, puedeOperar }: Props) {
+  const minDesdeSolicitud = minutosDesde(limpieza.fecha_solicitud)
+  const esUrgente = limpieza.estado === "PENDIENTE" && minDesdeSolicitud > 30
+
+  const colorBorde = limpieza.estado === "PENDIENTE"
+    ? esUrgente ? "border-l-red-600" : "border-l-yellow-500"
+    : limpieza.estado === "EN_PROCESO"
+    ? "border-l-blue-500"
+    : "border-l-green-600"
+
+  return (
+    <div className={`bg-slate-800 rounded-lg p-4 border-l-4 ${colorBorde} space-y-3`}>
+      {/* Header */}
+      <div className="flex justify-between items-start gap-2">
+        <div>
+          <h3 className="text-white font-bold text-base flex items-center gap-2">
+            ðŸ›ï¸ Hab. {limpieza.habitacion?.numero || "â€”"}
+          </h3>
+          <p className="text-slate-400 text-xs">
+            {limpieza.habitacion?.piso?.nombre} Â· {limpieza.habitacion?.tipo?.nombre}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+            limpieza.estado === "PENDIENTE"
+              ? esUrgente ? "bg-red-900 text-red-200" : "bg-yellow-900 text-yellow-200"
+              : limpieza.estado === "EN_PROCESO"
+              ? "bg-blue-900 text-blue-200"
+              : "bg-green-900 text-green-200"
+          }`}>
+            {limpieza.estado === "PENDIENTE" ? "PENDIENTE" :
+             limpieza.estado === "EN_PROCESO" ? "EN PROCESO" :
+             "COMPLETADA"}
+          </span>
+          {limpieza.tipo === "PROFUNDA" && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-purple-900 text-purple-200 font-semibold">
+              PROFUNDA
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Tiempo */}
+      <div className="bg-slate-900 p-2 rounded text-xs">
+        <div className="flex items-center gap-1 text-slate-400">
+          <Clock size={12} />
+          {limpieza.estado === "PENDIENTE" && (
+            <span className={esUrgente ? "text-red-300 font-semibold" : "text-slate-300"}>
+              Solicitada {tiempoRelativo(limpieza.fecha_solicitud)}
+            </span>
+          )}
+          {limpieza.estado === "EN_PROCESO" && (
+            <span className="text-blue-300">
+              Iniciada {tiempoRelativo(limpieza.fecha_inicio)}
+            </span>
+          )}
+          {limpieza.estado === "COMPLETADA" && (
+            <span className="text-green-300">
+              Completada {tiempoRelativo(limpieza.fecha_fin)}
+            </span>
+          )}
+        </div>
+
+        {limpieza.usuario_asignado && (
+          <div className="flex items-center gap-1 text-slate-400 mt-1">
+            <User size={12} />
+            <span>
+              {limpieza.usuario_asignado.nombre} {limpieza.usuario_asignado.apellido}
+              {limpieza.usuario_asignado.rol && (
+                <span className="text-slate-500 ml-1">
+                  ({limpieza.usuario_asignado.rol.nombre})
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
+        {limpieza.observaciones && (
+          <p className="text-slate-500 mt-1 italic">
+            "{limpieza.observaciones}"
+          </p>
+        )}
+      </div>
+
+      {/* Alerta urgente */}
+      {esUrgente && puedeOperar && (
+        <div className="bg-red-900/40 border border-red-700 p-2 rounded flex items-center gap-2">
+          <AlertTriangle size={14} className="text-red-300" />
+          <p className="text-red-200 text-xs">
+            Lleva {minDesdeSolicitud} min sin atender
+          </p>
+        </div>
+      )}
+
+      {/* Botones */}
+      {puedeOperar && (
+        <>
+          {limpieza.estado === "PENDIENTE" && onIniciar && (
+            <button
+              onClick={() => onIniciar(limpieza.id_limpieza)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <Play size={16} /> Iniciar Limpieza
+            </button>
+          )}
+
+          {limpieza.estado === "EN_PROCESO" && onFinalizar && (
+            <button
+              onClick={() => onFinalizar(limpieza.id_limpieza)}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <Check size={16} /> Finalizar Limpieza
+            </button>
+          )}
+        </>
+      )}
+
+      {!puedeOperar && limpieza.estado !== "COMPLETADA" && (
+        <div className="bg-slate-900/60 p-2 rounded text-center text-slate-500 text-xs">
+          Solo admin, encargado o personal de limpieza pueden operar
+        </div>
+      )}
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/mantenimiento/MantenimientoPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { RefreshCw, Plus, Wrench, Play, Check, X } from "lucide-react"
+import AppLayout from "@/components/layout/AppLayout"
+import { mantenimientoService } from "@/services/mantenimientoService"
+import { useAuth } from "@/hooks/useAuth"
+import { mensajeDeError } from "@/lib/errores"
+import { IconoDinamico } from "@/components/IconoDinamico"
+import type { Mantenimiento } from "@/types/mantenimiento"
+import { ReportarMantenimientoModal } from "@/pages/recepcion/ReportarMantenimientoModal"
+
+function tiempoRelativo(fecha: string | null): string {
+  if (!fecha) return "â€”"
+  const ahora = new Date().getTime()
+  const entonces = new Date(fecha).getTime()
+  const diffMin = Math.floor((ahora - entonces) / (1000 * 60))
+  if (diffMin < 1) return "hace menos de 1 min"
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const h = Math.floor(diffMin / 60)
+  const m = diffMin % 60
+  if (m === 0) return `hace ${h}h`
+  return `hace ${h}h ${m}m`
+}
+
+export function MantenimientoPage() {
+  const { usuario } = useAuth()
+  const [items, setItems] = useState<Mantenimiento[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [mostrarNuevo, setMostrarNuevo] = useState(false)
+  const [filtroEstado, setFiltroEstado] = useState<string>("activos")
+  const [cancelando, setCancelando] = useState<Mantenimiento | null>(null)
+  const [motivoCancel, setMotivoCancel] = useState("")
+
+  const rolUsuario = usuario?.rol?.nombre || ""
+  const puedeOperar = ["admin", "encargado", "recepcionista"].includes(rolUsuario)
+
+  const cargar = async (silencioso = false) => {
+    try {
+      if (!silencioso) setCargando(true)
+      const datos = await mantenimientoService.listar()
+      setItems(datos)
+    } catch {
+      if (!silencioso) toast.error("Error al cargar")
+    } finally {
+      if (!silencioso) setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") cargar(true)
+    }, 20000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const iniciar = async (m: Mantenimiento) => {
+    try {
+      await mantenimientoService.iniciar(m.id_mantenimiento)
+      toast.success("Mantenimiento iniciado")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const resolver = async (m: Mantenimiento) => {
+    if (!confirm(`Â¿Resolver mantenimiento de la hab. ${m.habitacion?.numero}?\n\nSe crearÃ¡ una limpieza automÃ¡tica.`)) return
+    try {
+      await mantenimientoService.resolver(m.id_mantenimiento)
+      toast.success("Mantenimiento resuelto. Se creÃ³ limpieza automÃ¡tica.")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const cancelar = async () => {
+    if (!cancelando) return
+    if (!motivoCancel.trim()) return toast.error("IngresÃ¡ el motivo")
+    try {
+      await mantenimientoService.cancelar(cancelando.id_mantenimiento, motivoCancel.trim())
+      toast.success("Mantenimiento cancelado")
+      setCancelando(null); setMotivoCancel("")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  const filtrados = items.filter(m => {
+    if (filtroEstado === "activos") return ["REPORTADO", "EN_PROCESO"].includes(m.estado)
+    if (filtroEstado === "todos") return true
+    return m.estado === filtroEstado
+  })
+
+  const contadores = {
+    activos: items.filter(m => ["REPORTADO", "EN_PROCESO"].includes(m.estado)).length,
+    reportados: items.filter(m => m.estado === "REPORTADO").length,
+    enProceso: items.filter(m => m.estado === "EN_PROCESO").length,
+    resueltos: items.filter(m => m.estado === "RESUELTO").length,
+    cancelados: items.filter(m => m.estado === "CANCELADO").length,
+  }
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Wrench size={24} /> Mantenimiento
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            <span className="text-yellow-400 font-semibold">{contadores.reportados}</span> reportados Â·{" "}
+            <span className="text-orange-400 font-semibold">{contadores.enProceso}</span> en proceso Â·{" "}
+            <span className="text-green-400 font-semibold">{contadores.resueltos}</span> resueltos
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => cargar()}
+            className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm"
+          >
+            <RefreshCw size={16} />
+          </button>
+          {puedeOperar && (
+            <button
+              onClick={() => setMostrarNuevo(true)}
+              className="flex items-center gap-1 bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded text-sm font-medium"
+            >
+              <Plus size={16} /> Nuevo Reporte
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[
+          { key: "activos", label: "Activos", count: contadores.activos },
+          { key: "REPORTADO", label: "Reportados", count: contadores.reportados },
+          { key: "EN_PROCESO", label: "En Proceso", count: contadores.enProceso },
+          { key: "RESUELTO", label: "Resueltos", count: contadores.resueltos },
+          { key: "CANCELADO", label: "Cancelados", count: contadores.cancelados },
+          { key: "todos", label: "Todos", count: items.length },
+        ].map(f => {
+          const activo = filtroEstado === f.key
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFiltroEstado(f.key)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition border ${
+                activo
+                  ? "bg-slate-500 text-white border-slate-300"
+                  : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-transparent"
+              }`}
+            >
+              {f.label}
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${activo ? "bg-black/30" : "bg-black/20"}`}>
+                {f.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {cargando ? (
+        <p className="text-slate-400 text-center py-8">Cargando...</p>
+      ) : filtrados.length === 0 ? (
+        <div className="bg-slate-800 p-8 rounded-lg text-center">
+          <p className="text-slate-400">No hay mantenimientos con este filtro</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtrados.map(m => {
+            const colorEstado =
+              m.estado === "REPORTADO" ? "border-l-yellow-500" :
+              m.estado === "EN_PROCESO" ? "border-l-orange-500" :
+              m.estado === "RESUELTO" ? "border-l-green-500" :
+              "border-l-slate-500"
+
+            return (
+              <div key={m.id_mantenimiento} className={`bg-slate-800 rounded-lg p-4 border-l-4 ${colorEstado}`}>
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="text-white font-bold">
+                        ðŸ›ï¸ Hab. {m.habitacion?.numero || "â€”"}
+                      </h3>
+                      <span className="text-slate-500 text-xs">
+                        {m.habitacion?.piso?.nombre} Â· {m.habitacion?.tipo?.nombre}
+                      </span>
+                      {m.tipo?.icono && (
+                        <IconoDinamico
+                          nombre={m.tipo.icono}
+                          size={16}
+                          style={{ color: m.tipo.color || "#fff" }}
+                        />
+                      )}
+                      <span className="text-slate-400 text-xs">{m.tipo?.nombre}</span>
+                      {m.prioridad && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded font-semibold text-white"
+                          style={{ background: m.prioridad.color || "#64748b" }}
+                        >
+                          {m.prioridad.nombre.toUpperCase()}
+                        </span>
+                      )}
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+                        m.estado === "REPORTADO" ? "bg-yellow-900 text-yellow-200" :
+                        m.estado === "EN_PROCESO" ? "bg-orange-900 text-orange-200" :
+                        m.estado === "RESUELTO" ? "bg-green-900 text-green-200" :
+                        "bg-slate-700 text-slate-300"
+                      }`}>
+                        {m.estado}
+                      </span>
+                    </div>
+
+                    <p className="text-slate-300 text-sm mt-2">{m.descripcion}</p>
+
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500">
+                      <span>Reportado {tiempoRelativo(m.fecha_reporte)}</span>
+                      {m.usuario_reporta && (
+                        <span>Por: {m.usuario_reporta.nombre} {m.usuario_reporta.apellido}</span>
+                      )}
+                      {m.usuario_asignado && (
+                        <span>Asignado: {m.usuario_asignado.nombre} {m.usuario_asignado.apellido}</span>
+                      )}
+                      {m.fecha_resolucion && (
+                        <span>Resuelto: {new Date(m.fecha_resolucion).toLocaleString("es-PE")}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {puedeOperar && (
+                    <div className="flex flex-col gap-1 shrink-0">
+                      {m.estado === "REPORTADO" && (
+                        <button
+                          onClick={() => iniciar(m)}
+                          className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded text-xs flex items-center gap-1"
+                        >
+                          <Play size={12} /> Iniciar
+                        </button>
+                      )}
+                      {m.estado === "EN_PROCESO" && (
+                        <button
+                          onClick={() => resolver(m)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs flex items-center gap-1"
+                        >
+                          <Check size={12} /> Resolver
+                        </button>
+                      )}
+                      {["REPORTADO", "EN_PROCESO"].includes(m.estado) && (
+                        <button
+                          onClick={() => setCancelando(m)}
+                          className="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded text-xs flex items-center gap-1"
+                        >
+                          <X size={12} /> Cancelar
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal Nuevo Reporte */}
+      {mostrarNuevo && (
+        <ReportarMantenimientoModal
+          onClose={() => setMostrarNuevo(false)}
+          onSuccess={() => { setMostrarNuevo(false); cargar() }}
+        />
+      )}
+
+      {/* Modal Cancelar */}
+      {cancelando && (
+        <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={() => setCancelando(null)}>
+          <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="bg-slate-900 p-4 rounded-t-lg flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white">Cancelar Mantenimiento</h3>
+              <button onClick={() => setCancelando(null)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-slate-300 text-sm">
+                Â¿Cancelar el mantenimiento de la hab. <strong>{cancelando.habitacion?.numero}</strong>?
+              </p>
+              <div>
+                <label className="text-slate-300 text-sm block mb-1">Motivo *</label>
+                <textarea
+                  value={motivoCancel}
+                  onChange={e => setMotivoCancel(e.target.value)}
+                  rows={3}
+                  placeholder="Ej: No era nada, el huÃ©sped no supo usar el jacuzzi"
+                  className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={cancelar} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded font-medium">
+                  Confirmar CancelaciÃ³n
+                </button>
+                <button onClick={() => setCancelando(null)} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/cuentasPagar/AnularCuentaModal.tsx ===
+================================================================================
+import { useState } from "react"
+import { toast } from "sonner"
+import { X, AlertOctagon } from "lucide-react"
+import { cuentaPagarService } from "@/services/cuentaPagarService"
+import { mensajeDeError } from "@/lib/errores"
+import type { CuentaPagar } from "@/types/cuentaPagar"
+
+interface Props {
+  cuenta: CuentaPagar
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function AnularCuentaModal({ cuenta, onClose, onSuccess }: Props) {
+  const [motivo, setMotivo] = useState("")
+  const [enviando, setEnviando] = useState(false)
+
+  const anular = async () => {
+    if (!motivo.trim()) return toast.error("IngresÃ¡ el motivo")
+    setEnviando(true)
+    try {
+      await cuentaPagarService.anular(cuenta.id_cuenta, motivo.trim())
+      toast.success("Cuenta anulada")
+      onSuccess()
+      onClose()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="bg-red-900 p-4 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertOctagon size={20} className="text-white" />
+            <h3 className="text-lg font-bold text-white">Anular Cuenta</h3>
+          </div>
+          <button onClick={onClose} className="text-red-200 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div className="bg-red-900/30 border border-red-700 p-3 rounded">
+            <p className="text-red-200 text-sm">
+              Â¿Anular la cuenta <strong>#{cuenta.id_cuenta}</strong> por S/ {Number(cuenta.monto || 0).toFixed(2)}?
+            </p>
+            <p className="text-red-300 text-xs mt-1">
+              {cuenta.concepto}
+            </p>
+          </div>
+
+          <div className="bg-yellow-900/30 border border-yellow-700 p-3 rounded">
+            <p className="text-yellow-200 text-xs">
+              âš ï¸ Solo se puede anular si NO tiene pagos activos.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-slate-300 text-sm block mb-1">Motivo *</label>
+            <textarea
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              rows={3}
+              placeholder="Ej: Proveedor no cumpliÃ³ con el servicio"
+              className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={anular}
+              disabled={enviando}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-slate-600 text-white py-2 rounded font-medium"
+            >
+              {enviando ? "Anulando..." : "Confirmar AnulaciÃ³n"}
+            </button>
+            <button onClick={onClose} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/cuentasPagar/CuentaPagarDetallePage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
+import { ArrowLeft, DollarSign, Trash2 } from "lucide-react"
+import AppLayout from "@/components/layout/AppLayout"
+import { cuentaPagarService } from "@/services/cuentaPagarService"
+import { useAuth } from "@/hooks/useAuth"
+import { mensajeDeError } from "@/lib/errores"
+import { IconoDinamico } from "@/components/IconoDinamico"
+import type { CuentaPagar } from "@/types/cuentaPagar"
+import { RegistrarPagoProveedorModal } from "./RegistrarPagoProveedorModal"
+
+function formatearFechaHora(fecha: string | null): string {
+  if (!fecha) return "â€”"
+  return new Date(fecha).toLocaleString("es-PE")
+}
+
+export function CuentaPagarDetallePage() {
+  const { idCuenta } = useParams<{ idCuenta: string }>()
+  const navigate = useNavigate()
+  const { usuario } = useAuth()
+  const [cuenta, setCuenta] = useState<CuentaPagar | null>(null)
+  const [cargando, setCargando] = useState(true)
+  const [mostrarPago, setMostrarPago] = useState(false)
+
+  const rolUsuario = usuario?.rol?.nombre || ""
+  const puedePagar = ["admin", "encargado", "cajero"].includes(rolUsuario)
+
+  const cargar = async () => {
+    try {
+      setCargando(true)
+      const c = await cuentaPagarService.obtener(Number(idCuenta))
+      setCuenta(c)
+    } catch {
+      toast.error("Error al cargar cuenta")
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idCuenta])
+
+  const anularPago = async (idPago: number) => {
+    if (!confirm("Â¿Anular este pago?")) return
+    const motivo = prompt("Motivo de anulaciÃ³n:")
+    if (!motivo) return
+    try {
+      await cuentaPagarService.anularPago(Number(idCuenta), idPago, motivo)
+      toast.success("Pago anulado")
+      cargar()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    }
+  }
+
+  if (cargando) {
+    return (
+      <AppLayout>
+        <p className="text-slate-400">Cargando...</p>
+      </AppLayout>
+    )
+  }
+
+  if (!cuenta) {
+    return (
+      <AppLayout>
+        <p className="text-red-400">Cuenta no encontrada</p>
+      </AppLayout>
+    )
+  }
+
+  const pagosActivos = (cuenta.pagos || []).filter(p => !p.anulado)
+  const totalPagado = pagosActivos.reduce((acc, p) => acc + Number(p.monto || 0), 0)
+
+  return (
+    <AppLayout>
+      <button
+        onClick={() => navigate("/cuentas-por-pagar")}
+        className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 text-sm"
+      >
+        <ArrowLeft size={16} /> Volver
+      </button>
+
+      <div className="mb-6">
+        <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2 flex-wrap">
+          Cuenta #{cuenta.id_cuenta}
+          {cuenta.estado && (
+            <span
+              className="text-xs px-2 py-1 rounded font-semibold text-white flex items-center gap-1"
+              style={{ background: cuenta.estado.color || "#64748b" }}
+            >
+              {cuenta.estado.icono && (
+                <IconoDinamico nombre={cuenta.estado.icono} size={12} style={{ color: "#fff" }} />
+              )}
+              {cuenta.estado.nombre.toUpperCase()}
+            </span>
+          )}
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">
+          {cuenta.proveedor?.razon_social || cuenta.proveedor?.nombre_comercial}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Info */}
+        <div className="space-y-6">
+          <div className="bg-slate-800 p-5 rounded-lg">
+            <h2 className="text-lg font-semibold mb-4">InformaciÃ³n</h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between border-b border-slate-700 pb-2">
+                <span className="text-slate-400">Concepto</span>
+                <span className="text-white text-right">{cuenta.concepto}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-700 pb-2">
+                <span className="text-slate-400">Fecha emisiÃ³n</span>
+                <span className="text-white">{formatearFechaHora(cuenta.fecha_emision)}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-700 pb-2">
+                <span className="text-slate-400">Fecha vencimiento</span>
+                <span className="text-white">{formatearFechaHora(cuenta.fecha_vencimiento)}</span>
+              </div>
+              {cuenta.reserva && (
+                <div className="flex justify-between border-b border-slate-700 pb-2">
+                  <span className="text-slate-400">Reserva</span>
+                  <span className="text-white">{cuenta.reserva.codigo_reserva}</span>
+                </div>
+              )}
+              {cuenta.usuario_creacion && (
+                <div className="flex justify-between border-b border-slate-700 pb-2">
+                  <span className="text-slate-400">Creada por</span>
+                  <span className="text-white">
+                    {cuenta.usuario_creacion.nombre} {cuenta.usuario_creacion.apellido}
+                  </span>
+                </div>
+              )}
+              {cuenta.fecha_anulacion && (
+                <div className="flex justify-between border-b border-slate-700 pb-2">
+                  <span className="text-slate-400">Anulada</span>
+                  <span className="text-red-400">{formatearFechaHora(cuenta.fecha_anulacion)}</span>
+                </div>
+              )}
+              {cuenta.motivo_anulacion && (
+                <div className="bg-red-900/30 border border-red-700 p-3 rounded">
+                  <p className="text-red-200 text-xs mb-1">Motivo de anulaciÃ³n:</p>
+                  <p className="text-red-100 text-sm">{cuenta.motivo_anulacion}</p>
+                </div>
+              )}
+              {cuenta.notas && (
+                <div className="bg-slate-900 p-3 rounded">
+                  <p className="text-slate-400 text-xs mb-1">Notas:</p>
+                  <p className="text-slate-300 text-sm">{cuenta.notas}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pagos */}
+          <div className="bg-slate-800 p-5 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Pagos</h2>
+              {puedePagar && cuenta.saldo > 0.01 && !["pagada", "anulada"].includes(cuenta.estado?.slug || "") && (
+                <button
+                  onClick={() => setMostrarPago(true)}
+                  className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm"
+                >
+                  <DollarSign size={14} /> Registrar pago
+                </button>
+              )}
+            </div>
+
+            {pagosActivos.length === 0 ? (
+              <p className="text-slate-500 text-sm">Sin pagos registrados</p>
+            ) : (
+              <div className="space-y-2">
+                {pagosActivos.map(p => (
+                  <div key={p.id_pago_proveedor} className="bg-slate-900 p-3 rounded flex justify-between items-center gap-2">
+                    <div className="flex-1">
+                      <p className="text-white text-sm flex items-center gap-2">
+                        {p.metodo_pago?.icono && (
+                          <IconoDinamico nombre={p.metodo_pago.icono} size={14} style={{ color: p.metodo_pago.color || "#fff" }} />
+                        )}
+                        {p.metodo_pago?.nombre || "â€”"}
+                      </p>
+                      <p className="text-slate-500 text-xs">
+                        {formatearFechaHora(p.fecha_pago)}
+                        {p.usuario && ` Â· ${p.usuario.nombre}`}
+                        {p.referencia && ` Â· Ref: ${p.referencia}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-green-400 font-semibold text-sm">
+                        + S/ {Number(p.monto || 0).toFixed(2)}
+                      </span>
+                      {puedePagar && (
+                        <button
+                          onClick={() => anularPago(p.id_pago_proveedor)}
+                          className="text-red-400 hover:text-red-300"
+                          title="Anular pago"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Resumen */}
+        <div className="bg-slate-800 p-5 rounded-lg h-fit">
+          <h2 className="text-lg font-semibold mb-4">Resumen</h2>
+
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between border-b border-slate-700 pb-2">
+              <span className="text-slate-400">Monto total</span>
+              <span className="text-white font-bold text-lg">S/ {Number(cuenta.monto || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-700 pb-2">
+              <span className="text-slate-400">Total pagado</span>
+              <span className="text-green-400 font-semibold">S/ {Number(totalPagado || 0).toFixed(2)}</span>
+            </div>
+            <div className={`p-3 rounded ${cuenta.saldo > 0.01 ? "bg-yellow-900/40 border border-yellow-700" : "bg-green-900/40 border border-green-700"}`}>
+              {cuenta.saldo > 0.01 ? (
+                <div className="flex justify-between">
+                  <span className="text-yellow-300 font-semibold">ðŸ’° Saldo pendiente</span>
+                  <span className="text-yellow-300 font-bold text-lg">S/ {Number(cuenta.saldo || 0).toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="text-green-300 text-center font-semibold">
+                  âœ… Cuenta pagada
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {mostrarPago && (
+        <RegistrarPagoProveedorModal
+          cuenta={cuenta}
+          onClose={() => setMostrarPago(false)}
+          onSuccess={() => { setMostrarPago(false); cargar() }}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/cuentasPagar/CuentasPorPagarPage.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import { RefreshCw, Plus, Wallet, Eye, DollarSign, X } from "lucide-react"
+import AppLayout from "@/components/layout/AppLayout"
+import { cuentaPagarService } from "@/services/cuentaPagarService"
+import { useAuth } from "@/hooks/useAuth"
+import { mensajeDeError } from "@/lib/errores"
+import { IconoDinamico } from "@/components/IconoDinamico"
+import type { CuentaPagar } from "@/types/cuentaPagar"
+import { NuevaCuentaPagarModal } from "./NuevaCuentaPagarModal"
+import { RegistrarPagoProveedorModal } from "./RegistrarPagoProveedorModal"
+import { AnularCuentaModal } from "./AnularCuentaModal"
+
+function formatearFecha(fecha: string | null): string {
+  if (!fecha) return "â€”"
+  return new Date(fecha).toLocaleDateString("es-PE")
+}
+
+function esVencida(cuenta: CuentaPagar): boolean {
+  if (!cuenta.fecha_vencimiento) return false
+  if (cuenta.estado?.slug === "pagada" || cuenta.estado?.slug === "anulada") return false
+  return new Date(cuenta.fecha_vencimiento) < new Date()
+}
+
+export function CuentasPorPagarPage() {
+  const navigate = useNavigate()
+  const { usuario } = useAuth()
+  const [cuentas, setCuentas] = useState<CuentaPagar[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [filtroEstado, setFiltroEstado] = useState<string>("activas")
+  const [busqueda, setBusqueda] = useState("")
+  const [mostrarNueva, setMostrarNueva] = useState(false)
+  const [cuentaPagar, setCuentaPagar] = useState<CuentaPagar | null>(null)
+  const [cuentaAnular, setCuentaAnular] = useState<CuentaPagar | null>(null)
+
+  const rolUsuario = usuario?.rol?.nombre || ""
+  const puedeCrear = ["admin", "encargado"].includes(rolUsuario)
+  const puedePagar = ["admin", "encargado", "cajero"].includes(rolUsuario)
+
+  const cargar = async (silencioso = false) => {
+    try {
+      if (!silencioso) setCargando(true)
+      const datos = await cuentaPagarService.listar()
+      setCuentas(datos)
+    } catch {
+      if (!silencioso) toast.error("Error al cargar cuentas")
+    } finally {
+      if (!silencioso) setCargando(false)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") cargar(true)
+    }, 30000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Filtros
+  const filtradas = cuentas.filter(c => {
+    // Filtro por estado
+    if (filtroEstado === "activas") {
+      if (!["pendiente", "parcial"].includes(c.estado?.slug || "")) return false
+    } else if (filtroEstado === "vencidas") {
+      if (!esVencida(c)) return false
+    } else if (filtroEstado !== "todas") {
+      if (c.estado?.slug !== filtroEstado) return false
+    }
+
+    // Filtro por bÃºsqueda
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase().trim()
+      return (
+        c.concepto.toLowerCase().includes(q) ||
+        (c.proveedor?.razon_social || "").toLowerCase().includes(q) ||
+        (c.proveedor?.nombre_comercial || "").toLowerCase().includes(q)
+      )
+    }
+    return true
+  })
+
+  // Contadores
+  const contadores = {
+    activas: cuentas.filter(c => ["pendiente", "parcial"].includes(c.estado?.slug || "")).length,
+    vencidas: cuentas.filter(c => esVencida(c)).length,
+    pendientes: cuentas.filter(c => c.estado?.slug === "pendiente").length,
+    parciales: cuentas.filter(c => c.estado?.slug === "parcial").length,
+    pagadas: cuentas.filter(c => c.estado?.slug === "pagada").length,
+    anuladas: cuentas.filter(c => c.estado?.slug === "anulada").length,
+    todas: cuentas.length,
+  }
+
+  // Totales
+  const totalPendiente = cuentas
+    .filter(c => ["pendiente", "parcial"].includes(c.estado?.slug || ""))
+    .reduce((acc, c) => acc + Number(c.saldo || 0), 0)
+
+  const filtros = [
+    { key: "activas", label: "Activas", count: contadores.activas },
+    { key: "vencidas", label: "Vencidas", count: contadores.vencidas, danger: true },
+    { key: "pendiente", label: "Pendientes", count: contadores.pendientes },
+    { key: "parcial", label: "Parciales", count: contadores.parciales },
+    { key: "pagada", label: "Pagadas", count: contadores.pagadas },
+    { key: "anulada", label: "Anuladas", count: contadores.anuladas },
+    { key: "todas", label: "Todas", count: contadores.todas },
+  ]
+
+  return (
+    <AppLayout>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Wallet size={24} /> Cuentas por Pagar
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            <span className="text-yellow-400 font-semibold">S/ {totalPendiente.toFixed(2)}</span> pendiente de pago a proveedores
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => cargar()}
+            className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded text-sm"
+          >
+            <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
+          </button>
+          {puedeCrear && (
+            <button
+              onClick={() => setMostrarNueva(true)}
+              className="flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded text-sm font-medium"
+            >
+              <Plus size={16} /> Nueva Cuenta
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Buscador */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por concepto o proveedor..."
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          className="w-full bg-slate-800 text-white p-2 rounded border border-slate-700"
+        />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {filtros.map(f => {
+          const activo = filtroEstado === f.key
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFiltroEstado(f.key)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition border ${
+                activo
+                  ? f.danger
+                    ? "bg-red-600 text-white border-red-300"
+                    : "bg-slate-500 text-white border-slate-300"
+                  : f.danger && f.count > 0
+                  ? "bg-red-900/40 hover:bg-red-900/60 text-red-300 border-red-800"
+                  : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-transparent"
+              }`}
+            >
+              {f.label}
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${activo ? "bg-black/30" : "bg-black/20"}`}>
+                {f.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Lista */}
+      {cargando && cuentas.length === 0 ? (
+        <p className="text-slate-400 text-center py-8">Cargando...</p>
+      ) : filtradas.length === 0 ? (
+        <div className="bg-slate-800 p-8 rounded-lg text-center">
+          <p className="text-slate-400">No hay cuentas con este filtro</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtradas.map(c => {
+            const vencida = esVencida(c)
+            const colorBorde =
+              c.estado?.slug === "pagada" ? "border-l-green-600" :
+              c.estado?.slug === "anulada" ? "border-l-slate-500" :
+              vencida ? "border-l-red-600" :
+              c.estado?.slug === "parcial" ? "border-l-blue-500" :
+              "border-l-yellow-500"
+
+            return (
+              <div key={c.id_cuenta} className={`bg-slate-800 rounded-lg p-4 border-l-4 ${colorBorde}`}>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h3 className="text-white font-bold">
+                        #{c.id_cuenta} Â· {c.proveedor?.razon_social || c.proveedor?.nombre_comercial}
+                      </h3>
+                      {c.estado && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded font-semibold text-white flex items-center gap-1"
+                          style={{ background: c.estado.color || "#64748b" }}
+                        >
+                          {c.estado.icono && (
+                            <IconoDinamico nombre={c.estado.icono} size={10} style={{ color: "#fff" }} />
+                          )}
+                          {c.estado.nombre.toUpperCase()}
+                        </span>
+                      )}
+                      {vencida && (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-red-900 text-red-200">
+                          âš ï¸ VENCIDA
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-slate-300 text-sm">{c.concepto}</p>
+
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-slate-500">
+                      <span>Emitida: {formatearFecha(c.fecha_emision)}</span>
+                      {c.fecha_vencimiento && (
+                        <span className={vencida ? "text-red-400 font-semibold" : ""}>
+                          Vence: {formatearFecha(c.fecha_vencimiento)}
+                        </span>
+                      )}
+                      {c.reserva && (
+                        <span>Reserva: {c.reserva.codigo_reserva}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end gap-1 shrink-0">
+                    <div className="text-right text-xs">
+                      <span className="text-slate-400">Monto:</span>
+                      <span className="text-white font-semibold ml-2">S/ {Number(c.monto || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="text-right text-xs">
+                      <span className="text-slate-400">Pagado:</span>
+                      <span className="text-green-400 font-semibold ml-2">S/ {Number(c.monto_pagado || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="text-right text-sm">
+                      <span className="text-slate-400">Saldo:</span>
+                      <span className={`font-bold ml-2 ${c.saldo > 0 ? "text-yellow-400" : "text-green-400"}`}>
+                        S/ {Number(c.saldo || 0).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-1 mt-2">
+                      <button
+                        onClick={() => navigate(`/cuentas-por-pagar/${c.id_cuenta}`)}
+                        className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
+                        title="Ver detalle"
+                      >
+                        <Eye size={12} /> Detalle
+                      </button>
+                      {puedePagar && c.saldo > 0.01 && !["pagada", "anulada"].includes(c.estado?.slug || "") && (
+                        <button
+                          onClick={() => setCuentaPagar(c)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
+                        >
+                          <DollarSign size={12} /> Pagar
+                        </button>
+                      )}
+                      {puedeCrear && !["pagada", "anulada"].includes(c.estado?.slug || "") && (
+                        <button
+                          onClick={() => setCuentaAnular(c)}
+                          className="bg-red-700 hover:bg-red-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
+                        >
+                          <X size={12} /> Anular
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modales */}
+      {mostrarNueva && (
+        <NuevaCuentaPagarModal
+          onClose={() => setMostrarNueva(false)}
+          onSuccess={() => { setMostrarNueva(false); cargar() }}
+        />
+      )}
+
+      {cuentaPagar && (
+        <RegistrarPagoProveedorModal
+          cuenta={cuentaPagar}
+          onClose={() => setCuentaPagar(null)}
+          onSuccess={() => { setCuentaPagar(null); cargar() }}
+        />
+      )}
+
+      {cuentaAnular && (
+        <AnularCuentaModal
+          cuenta={cuentaAnular}
+          onClose={() => setCuentaAnular(null)}
+          onSuccess={() => { setCuentaAnular(null); cargar() }}
+        />
+      )}
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/cuentasPagar/NuevaCuentaPagarModal.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { X, Plus } from "lucide-react"
+import { cuentaPagarService } from "@/services/cuentaPagarService"
+import { proveedorService } from "@/services/proveedorService"
+import { mensajeDeError } from "@/lib/errores"
+
+interface Props {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function NuevaCuentaPagarModal({ onClose, onSuccess }: Props) {
+  const [proveedores, setProveedores] = useState<Array<{ id_proveedor: number; razon_social: string; nombre_comercial: string | null }>>([])
+  const [idProveedor, setIdProveedor] = useState<number | null>(null)
+  const [concepto, setConcepto] = useState("")
+  const [monto, setMonto] = useState("")
+  const [fechaVencimiento, setFechaVencimiento] = useState("")
+  const [notas, setNotas] = useState("")
+  const [enviando, setEnviando] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const ps = await proveedorService.listarActivos()
+        setProveedores(ps)
+        if (ps.length > 0) setIdProveedor(ps[0].id_proveedor)
+      } catch {
+        toast.error("Error al cargar proveedores")
+      } finally {
+        setCargando(false)
+      }
+    }
+    cargar()
+  }, [])
+
+  const guardar = async () => {
+    if (!idProveedor) return toast.error("SeleccionÃ¡ un proveedor")
+    if (!concepto.trim()) return toast.error("IngresÃ¡ el concepto")
+    const montoNum = Number(monto)
+    if (!montoNum || montoNum <= 0) return toast.error("El monto debe ser mayor a 0")
+
+    setEnviando(true)
+    try {
+      await cuentaPagarService.crear({
+        id_proveedor: idProveedor,
+        concepto: concepto.trim(),
+        monto: montoNum,
+        fecha_vencimiento: fechaVencimiento || undefined,
+        notas: notas.trim() || null,
+      })
+      toast.success("Cuenta creada")
+      onSuccess()
+      onClose()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="bg-amber-900 p-4 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Plus size={20} className="text-white" />
+            <h3 className="text-lg font-bold text-white">Nueva Cuenta por Pagar</h3>
+          </div>
+          <button onClick={onClose} className="text-amber-200 hover:text-white"><X size={20} /></button>
+        </div>
+
+        {cargando ? (
+          <div className="p-6 text-center text-slate-400">Cargando...</div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Proveedor *</label>
+              <select
+                value={idProveedor ?? ""}
+                onChange={e => setIdProveedor(e.target.value ? Number(e.target.value) : null)}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              >
+                <option value="">â€” Seleccionar â€”</option>
+                {proveedores.map(p => (
+                  <option key={p.id_proveedor} value={p.id_proveedor}>
+                    {p.razon_social}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Concepto *</label>
+              <input
+                type="text"
+                value={concepto}
+                onChange={e => setConcepto(e.target.value)}
+                placeholder="Ej: Compra de bebidas"
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Monto *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={monto}
+                onChange={e => setMonto(e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700 text-lg"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Fecha de vencimiento (opcional)</label>
+              <input
+                type="date"
+                value={fechaVencimiento}
+                onChange={e => setFechaVencimiento(e.target.value)}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+              <p className="text-slate-500 text-xs mt-1">Si no se especifica, se asume +30 dÃ­as</p>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Notas (opcional)</label>
+              <textarea
+                value={notas}
+                onChange={e => setNotas(e.target.value)}
+                rows={2}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={guardar}
+                disabled={enviando}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white py-2 rounded font-medium"
+              >
+                {enviando ? "Creando..." : "Crear Cuenta"}
+              </button>
+              <button onClick={onClose} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/cuentasPagar/RegistrarPagoProveedorModal.tsx ===
+================================================================================
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { X, DollarSign } from "lucide-react"
+import { cuentaPagarService } from "@/services/cuentaPagarService"
+import { metodoPagoService } from "@/services/metodoPagoService"
+import { mensajeDeError } from "@/lib/errores"
+import type { CuentaPagar } from "@/types/cuentaPagar"
+import type { MetodoPago } from "@/types/configuracion"
+
+interface Props {
+  cuenta: CuentaPagar
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function RegistrarPagoProveedorModal({ cuenta, onClose, onSuccess }: Props) {
+  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
+  const [monto, setMonto] = useState<string>(Number(cuenta.saldo || 0).toFixed(2))
+  const [idMetodoPago, setIdMetodoPago] = useState<number | null>(null)
+  const [referencia, setReferencia] = useState("")
+  const [observaciones, setObservaciones] = useState("")
+  const [enviando, setEnviando] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    const cargar = async () => {
+      try {
+        setCargando(true)
+        const mps = await metodoPagoService.listarActivos()
+        setMetodosPago(mps)
+        const efectivo = mps.find(m => m.nombre.toLowerCase().includes("efectivo"))
+        if (efectivo) setIdMetodoPago(efectivo.id_metodo)
+        else if (mps.length > 0) setIdMetodoPago(mps[0].id_metodo)
+      } catch {
+        toast.error("Error al cargar mÃ©todos de pago")
+      } finally {
+        setCargando(false)
+      }
+    }
+    cargar()
+  }, [])
+
+  const guardar = async () => {
+    const montoNum = Number(monto)
+    if (!montoNum || montoNum <= 0) return toast.error("El monto debe ser mayor a 0")
+    if (montoNum > Number(cuenta.saldo) + 0.01) {
+      return toast.error(`El monto excede el saldo (S/ ${Number(cuenta.saldo || 0).toFixed(2)})`)
+    }
+    if (!idMetodoPago) return toast.error("SeleccionÃ¡ un mÃ©todo de pago")
+
+    setEnviando(true)
+    try {
+      await cuentaPagarService.registrarPago(cuenta.id_cuenta, {
+        monto: montoNum,
+        id_metodo_pago: idMetodoPago,
+        referencia: referencia.trim() || null,
+        observaciones: observaciones.trim() || null,
+      })
+      toast.success("Pago registrado")
+      onSuccess()
+      onClose()
+    } catch (e: unknown) {
+      toast.error(mensajeDeError(e))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-800 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+        <div className="bg-green-900 p-4 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DollarSign size={20} className="text-white" />
+            <div>
+              <h3 className="text-lg font-bold text-white">Registrar Pago</h3>
+              <p className="text-green-200 text-xs">
+                {cuenta.proveedor?.razon_social || cuenta.proveedor?.nombre_comercial}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-green-200 hover:text-white"><X size={20} /></button>
+        </div>
+
+        {cargando ? (
+          <div className="p-6 text-center text-slate-400">Cargando...</div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div className="bg-slate-900 p-3 rounded grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <p className="text-slate-400">Monto</p>
+                <p className="text-white font-bold">S/ {Number(cuenta.monto || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Pagado</p>
+                <p className="text-green-400 font-bold">S/ {Number(cuenta.monto_pagado || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Saldo</p>
+                <p className="text-yellow-400 font-bold">S/ {Number(cuenta.saldo || 0).toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Monto a pagar *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={cuenta.saldo}
+                value={monto}
+                onChange={e => setMonto(e.target.value)}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700 text-lg"
+              />
+              <p className="text-slate-500 text-xs mt-1">PodÃ©s pagar menos del total (pago parcial)</p>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">MÃ©todo de pago *</label>
+              <select
+                value={idMetodoPago ?? ""}
+                onChange={e => setIdMetodoPago(e.target.value ? Number(e.target.value) : null)}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              >
+                <option value="">â€” Seleccionar â€”</option>
+                {metodosPago.map(mp => (
+                  <option key={mp.id_metodo} value={mp.id_metodo}>
+                    {mp.nombre} {mp.es_de_caja ? "(Caja)" : "(DueÃ±a)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Referencia (opcional)</label>
+              <input
+                type="text"
+                value={referencia}
+                onChange={e => setReferencia(e.target.value)}
+                placeholder="Nro de operaciÃ³n Yape/Transferencia"
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">Observaciones (opcional)</label>
+              <textarea
+                value={observaciones}
+                onChange={e => setObservaciones(e.target.value)}
+                rows={2}
+                className="w-full bg-slate-900 text-white p-2 rounded border border-slate-700"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={guardar}
+                disabled={enviando}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 text-white py-2 rounded font-medium"
+              >
+                {enviando ? "Registrando..." : "Registrar Pago"}
+              </button>
+              <button onClick={onClose} className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+================================================================================
+=== src/pages/DashboardPage.tsx ===
+================================================================================
+import AppLayout from "@/components/layout/AppLayout"
+import { useAuth } from "@/hooks/useAuth"
+
+export default function DashboardPage() {
+  const usuario = useAuth((s) => s.usuario)
+
+  return (
+    <AppLayout>
+      <h1 className="text-2xl lg:text-4xl font-bold">
+        Bienvenido, {usuario?.nombre}
+      </h1>
+
+      <p className="mt-2 text-slate-400">
+        {usuario?.rol?.nombre} Â· Turno: {usuario?.turno?.nombre ?? "Sin turno"}
+      </p>
+
+      <div className="mt-8 bg-slate-900 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          Datos de sesiÃ³n
+        </h2>
+
+        <div className="space-y-2 text-sm lg:text-base">
+          <p><strong>Usuario:</strong> {usuario?.nombre_usuario}</p>
+          <p><strong>Nombre:</strong> {usuario?.nombre} {usuario?.apellido}</p>
+          <p><strong>Rol:</strong> {usuario?.rol?.nombre}</p>
+          <p><strong>Turno:</strong> {usuario?.turno?.nombre ?? "â€”"}</p>
+          <p><strong>Estado:</strong> {usuario?.activo ? "Activo" : "Inactivo"}</p>
+        </div>
+      </div>
+    </AppLayout>
+  )
+}
+
+================================================================================
+=== src/pages/LoginPage.tsx ===
+================================================================================
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { authService } from "@/services/authService"
+import { useAuth } from "@/hooks/useAuth"
+
+export default function LoginPage() {
+  const navigate = useNavigate()
+  const login = useAuth((s) => s.login)
+
+  const [nombreUsuario, setNombreUsuario] = useState("")
+  const [password, setPassword] = useState("")
+  const [cargando, setCargando] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCargando(true)
+
+    try {
+      const respuesta = await authService.login({
+        nombre_usuario: nombreUsuario,
+        password: password,
+      })
+
+      login(respuesta.usuario, respuesta.token)
+      toast.success(`Bienvenido, ${respuesta.usuario.nombre}`)
+      navigate("/dashboard")
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { errors?: Record<string, string[]> } }
+      }
+      const mensajes = axiosError.response?.data?.errors
+
+      if (mensajes) {
+        toast.error(Object.values(mensajes).flat().join(" "))
+      } else {
+        toast.error("Error al iniciar sesiÃ³n")
+      }
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-slate-900 border-slate-800">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl text-white">
+            ðŸ¨ Hospedaje
+          </CardTitle>
+          <CardDescription className="text-slate-400">
+            IngresÃ¡ tus credenciales
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nombre_usuario" className="text-slate-300">
+                Usuario
+              </Label>
+              <Input
+                id="nombre_usuario"
+                type="text"
+                placeholder="nancy"
+                value={nombreUsuario}
+                onChange={(e) => setNombreUsuario(e.target.value)}
+                required
+                autoFocus
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-slate-300">
+                ContraseÃ±a
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={cargando}>
+              {cargando ? "Ingresando..." : "Ingresar"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

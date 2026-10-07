@@ -8,12 +8,13 @@ import { clienteService } from "@/services/clienteService"
 import { clienteObservacionService } from "@/services/clienteObservacionService"
 import { tarifaService } from "@/services/tarifaService"
 import { metodoPagoService } from "@/services/metodoPagoService"
+import { tipoDocumentoService } from "@/services/tipoDocumentoService"
 import { reservaService } from "@/services/reservaService"
 import { mensajeDeError } from "@/lib/errores"
 import type { Habitacion } from "@/types/habitacion"
 import type { Cliente, ClienteObservacion } from "@/types/cliente"
 import type { Tarifa } from "@/types/tarifa"
-import type { MetodoPago } from "@/types/configuracion"
+import type { MetodoPago, TipoDocumento } from "@/types/configuracion"
 import { AlertaClienteObservaciones } from "@/pages/clientes/cliente/AlertaClienteObservaciones"
 
 interface PagoItem {
@@ -31,7 +32,11 @@ export function RegistrarIngresoPage() {
   const [habitacion, setHabitacion] = useState<Habitacion | null>(null)
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
+  const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([])
   const [cargando, setCargando] = useState(true)
+
+  // Tipo de documento
+  const [idTipoDocumento, setIdTipoDocumento] = useState<number | null>(null)
 
   // Búsqueda de cliente
   const [dni, setDni] = useState("")
@@ -57,14 +62,10 @@ export function RegistrarIngresoPage() {
   const [notas, setNotas] = useState("")
   const [enviando, setEnviando] = useState(false)
 
-  // COBRO — Nuevo concepto
+  // COBRO
   const [modoCobro, setModoCobro] = useState<ModoCobro>("unico")
-
-  // Modo "un solo método"
   const [montoUnico, setMontoUnico] = useState(0)
   const [idMetodoPagoUnico, setIdMetodoPagoUnico] = useState<number | null>(null)
-
-  // Modo "varios métodos"
   const [pagosMixtos, setPagosMixtos] = useState<PagoItem[]>([
     { id: 1, id_metodo_pago: null, monto: 0 },
   ])
@@ -77,16 +78,30 @@ export function RegistrarIngresoPage() {
   useEffect(() => {
     let cancelado = false
     const cargar = async () => {
+      // FIX #26: validar que idHabitacion exista
+      if (!idHabitacion) {
+        toast.error("ID de habitación no válido")
+        navigate("/recepcion")
+        return
+      }
       try {
         setCargando(true)
         const id = Number(idHabitacion)
-        const [hab, mps] = await Promise.all([
+        const [hab, mps, tipos] = await Promise.all([
           habitacionService.obtener(id),
           metodoPagoService.listarActivos(),
+          tipoDocumentoService.listarActivos(),
         ])
         if (cancelado) return
+
         setHabitacion(hab)
         setMetodosPago(mps)
+        setTiposDocumento(tipos)
+
+        // Preseleccionar DNI
+        const dniTipo = tipos.find(t => t.abreviatura === "DNI")
+        if (dniTipo) setIdTipoDocumento(dniTipo.id_documento)
+        else if (tipos.length > 0) setIdTipoDocumento(tipos[0].id_documento)
 
         // Preseleccionar Efectivo
         const efectivo = mps.find(m => m.nombre.toLowerCase().includes("efectivo"))
@@ -98,7 +113,6 @@ export function RegistrarIngresoPage() {
           setMetodoVuelto(mps[0].id_metodo)
         }
 
-        // Preseleccionar primera fila de pagos mixtos con Efectivo
         if (efectivo) {
           setPagosMixtos([{ id: 1, id_metodo_pago: efectivo.id_metodo, monto: 0 }])
         }
@@ -115,11 +129,15 @@ export function RegistrarIngresoPage() {
     }
     cargar()
     return () => { cancelado = true }
-  }, [idHabitacion])
+  }, [idHabitacion, navigate])
 
   const buscarCliente = async () => {
+    if (!idTipoDocumento) {
+      toast.error("Seleccione un tipo de documento")
+      return
+    }
     if (!dni.trim()) {
-      toast.error("Ingrese un DNI primero")
+      toast.error("Ingrese un número de documento")
       return
     }
     setBuscando(true)
@@ -132,8 +150,6 @@ export function RegistrarIngresoPage() {
         setCliente(encontrado)
         setTelefono(encontrado.celular ?? "")
         setAlertaAceptada(false)
-
-        // Guardar reserva activa si existe
         setReservaActiva(resultado.reservaActiva)
 
         try {
@@ -175,29 +191,24 @@ export function RegistrarIngresoPage() {
   const tarifaSeleccionada = tarifas.find(t => t.id_tarifa === idTarifa)
   const totalHabitacion = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
 
-  // Cliente paga = según modo
   const clientePaga = modoCobro === "unico"
     ? montoUnico
     : pagosMixtos.reduce((acc, p) => acc + (p.monto || 0), 0)
 
-  // Vuelto o debe
   const diferencia = clientePaga - totalHabitacion
   const vuelto = diferencia > 0 ? diferencia : 0
   const clienteDebe = diferencia < 0 ? Math.abs(diferencia) : 0
 
-  // Cambiar de modo preservando el monto
   const cambiarModo = (nuevoModo: ModoCobro) => {
     if (nuevoModo === modoCobro) return
 
     if (nuevoModo === "varios" && modoCobro === "unico" && montoUnico > 0) {
-      // Migrar el monto único al primer pago mixto
       setPagosMixtos([
         { id: 1, id_metodo_pago: idMetodoPagoUnico, monto: montoUnico },
         { id: 2, id_metodo_pago: null, monto: 0 },
       ])
       setContadorPago(3)
     } else if (nuevoModo === "unico" && modoCobro === "varios") {
-      // Migrar la suma de pagos mixtos al monto único
       const suma = pagosMixtos.reduce((acc, p) => acc + (p.monto || 0), 0)
       setMontoUnico(suma)
       const primerMetodo = pagosMixtos.find(p => p.id_metodo_pago)?.id_metodo_pago
@@ -231,7 +242,6 @@ export function RegistrarIngresoPage() {
       return
     }
 
-    // VALIDACION: si el DNI no fue buscado pero ya existe en BD, rechazar
     if (!cliente && dni.trim()) {
       try {
         const verificacion = await clienteService.buscarPorDni(dni)
@@ -240,7 +250,7 @@ export function RegistrarIngresoPage() {
           return
         }
       } catch {
-        // Si falla, seguimos igual
+        // Ignorar
       }
     }
     if (!idTarifa) {
@@ -249,7 +259,6 @@ export function RegistrarIngresoPage() {
     }
     if (enviando) return
 
-    // Validar cobro
     if (modoCobro === "unico") {
       if (montoUnico > 0 && !idMetodoPagoUnico) {
         toast.error("Seleccione un método de pago")
@@ -263,14 +272,10 @@ export function RegistrarIngresoPage() {
       }
     }
 
-    // Validar vuelto si se entrega ahora
     if (vuelto > 0 && entregarVueltoAhora && !metodoVuelto) {
       toast.error("Seleccioná un método para entregar el vuelto")
       return
     }
-
-    // Si guarda como saldo a favor, no hace falta método de vuelto
-    // (el vuelto queda implícito en pagado - total)
 
     try {
       setEnviando(true)
@@ -280,6 +285,7 @@ export function RegistrarIngresoPage() {
         const nuevo = await clienteService.crear({
           nombre: clienteNuevo.nombre,
           apellido: clienteNuevo.apellido,
+          id_tipo_documento: idTipoDocumento,
           numero_documento: dni,
           celular: telefono || null,
           email: clienteNuevo.email || null,
@@ -289,7 +295,6 @@ export function RegistrarIngresoPage() {
         idCliente = nuevo.id_cliente
       }
 
-      // Armar payload
       const payload: any = {
         id_cliente: idCliente,
         id_habitacion: habitacion.id_habitacion,
@@ -299,7 +304,6 @@ export function RegistrarIngresoPage() {
         notas: notas || undefined,
       }
 
-      // Cobro
       if (modoCobro === "unico") {
         if (montoUnico > 0) {
           payload.adelanto = montoUnico
@@ -316,10 +320,8 @@ export function RegistrarIngresoPage() {
         }
       }
 
-      // Crear reserva
       const reserva = await reservaService.crearWalkIn(payload)
 
-      // Si el cliente pidió el vuelto AHORA → entregarlo
       if (vuelto > 0 && entregarVueltoAhora && metodoVuelto) {
         await reservaService.entregarVuelto(reserva.id_reserva, {
           monto: vuelto,
@@ -373,15 +375,36 @@ export function RegistrarIngresoPage() {
 
           <div className="space-y-3">
             <div>
-              <label className="text-slate-300 text-sm block mb-1">DNI</label>
+              <label className="text-slate-300 text-sm block mb-1">
+                Tipo de documento *
+              </label>
+              <select
+                value={idTipoDocumento ?? ""}
+                onChange={e => setIdTipoDocumento(e.target.value ? Number(e.target.value) : null)}
+                className="w-full bg-slate-900 text-white p-2 rounded"
+              >
+                <option value="">— Seleccionar —</option>
+                {tiposDocumento.map(t => (
+                  <option key={t.id_documento} value={t.id_documento}>
+                    {t.nombre} ({t.abreviatura})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-slate-300 text-sm block mb-1">
+                N° de documento *
+              </label>
               <div className="flex gap-2">
                 <input
                   value={dni}
                   onChange={e => {
                     const valor = e.target.value
                     setDni(valor)
-                    // Auto-buscar si ya tiene 8+ caracteres
-                    if (valor.trim().length >= 8) {
+                    const tipo = tiposDocumento.find(t => t.id_documento === idTipoDocumento)
+                    const longitud = tipo?.longitud ?? 8
+                    if (valor.trim().length >= longitud) {
                       clearTimeout((window as any).__dniTimer)
                       ;(window as any).__dniTimer = setTimeout(() => {
                         buscarCliente()
@@ -408,7 +431,7 @@ export function RegistrarIngresoPage() {
                   ✅ {cliente.nombre} {cliente.apellido}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">
-                  DNI: {cliente.numero_documento} · {cliente.visitas ?? 0} visita{(cliente.visitas ?? 0) !== 1 ? "s" : ""}
+                  Doc: {cliente.numero_documento} · {cliente.visitas ?? 0} visita{(cliente.visitas ?? 0) !== 1 ? "s" : ""}
                 </p>
                 {cliente.nivel && (
                   <p className="text-cyan-400 text-xs mt-1">
@@ -418,7 +441,6 @@ export function RegistrarIngresoPage() {
               </div>
             )}
 
-            {/* BANNER: Cliente con reserva activa */}
             {cliente && reservaActiva && (
               <div className="bg-red-950 border-2 border-red-600 rounded-lg p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -434,9 +456,7 @@ export function RegistrarIngresoPage() {
                 </div>
 
                 <div className="bg-red-900/50 p-3 rounded">
-                  <p className="text-red-100 text-sm mb-2">
-                    Ya está hospedado en:
-                  </p>
+                  <p className="text-red-100 text-sm mb-2">Ya está hospedado en:</p>
                   <div className="flex items-center gap-2 text-white">
                     <span className="text-2xl">🏨</span>
                     <div>
@@ -460,9 +480,6 @@ export function RegistrarIngresoPage() {
                   <p className="text-red-100 text-sm">
                     💡 <strong>Solución:</strong> Si necesitás otra habitación,
                     registrala a nombre de <strong>otra persona</strong> (familiar).
-                  </p>
-                  <p className="text-red-200 text-xs mt-2">
-                    Si querés cambiar de habitación, andá al Checkout de la reserva actual.
                   </p>
                 </div>
 
@@ -610,7 +627,6 @@ export function RegistrarIngresoPage() {
                     <p className="text-slate-200 font-semibold">Cobro</p>
                   </div>
 
-                  {/* Toggle tipo de cobro */}
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -636,7 +652,6 @@ export function RegistrarIngresoPage() {
                     </button>
                   </div>
 
-                  {/* Modo único */}
                   {modoCobro === "unico" && (
                     <div className="space-y-3">
                       <div>
@@ -669,7 +684,6 @@ export function RegistrarIngresoPage() {
                     </div>
                   )}
 
-                  {/* Modo varios */}
                   {modoCobro === "varios" && (
                     <div className="space-y-2">
                       {pagosMixtos.map((pago, idx) => (
@@ -718,7 +732,6 @@ export function RegistrarIngresoPage() {
                     </div>
                   )}
 
-                  {/* Resumen del cobro */}
                   <div className="border-t border-slate-700 pt-3 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-400">Total habitación:</span>
@@ -755,7 +768,6 @@ export function RegistrarIngresoPage() {
                     )}
                   </div>
 
-                  {/* ¿Qué hacer con el vuelto? */}
                   {vuelto > 0 && (
                     <div className="bg-yellow-900/30 border border-yellow-700 p-3 rounded space-y-2">
                       <p className="text-yellow-200 text-sm font-medium">¿Qué hacer con el vuelto?</p>

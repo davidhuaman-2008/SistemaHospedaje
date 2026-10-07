@@ -32,8 +32,13 @@ export function DetalleReservaPage() {
   const [mostrarDecoracion, setMostrarDecoracion] = useState(false)
   const [procesando, setProcesando] = useState(false)
 
-  const cargar = async () => {
-    if (!id) return
+    const cargar = async () => {
+    // FIX #27: validar que id exista y redirigir si no
+    if (!id) {
+      toast.error("ID de reserva no válido")
+      navigate("/reservas")
+      return
+    }
     try {
       setCargando(true)
       const r = await reservaService.obtener(Number(id))
