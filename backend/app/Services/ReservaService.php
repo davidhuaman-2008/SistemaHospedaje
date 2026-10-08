@@ -59,12 +59,29 @@ class ReservaService
             $montoHabitacion = (float) $tarifa->monto;
             $descuentoPct = 0;
             $descuentoMonto = 0;
+            $descuentoManualTipo = null;
+            $descuentoManualMotivo = null;
+
+            // Descuentos manuales (opcionales desde el request)
+            $manualesAplicar = [];
+            if (!empty($datos['descuento_manual_aniversario'])) {
+                $manualesAplicar['aniversario'] = true;
+            }
+            if (!empty($datos['descuento_manual_cumpleanos'])) {
+                $manualesAplicar['cumpleanos'] = true;
+            }
+            if (!empty($manualesAplicar)) {
+                $descuentoManualMotivo = $datos['descuento_manual_motivo'] ?? null;
+            }
 
             if (isset($datos['id_cliente'])) {
                 $cliente = Cliente::with('nivel')->find($datos['id_cliente']);
-                if ($cliente && $cliente->nivel) {
-                    $descuentoPct = (float) $cliente->nivel->descuento;
-                    $descuentoMonto = round($montoHabitacion * ($descuentoPct / 100), 2);
+                if ($cliente) {
+                    $desc = app(\App\Services\DescuentoService::class)
+                        ->calcular($cliente, $entrada, $montoHabitacion, $manualesAplicar);
+                    $descuentoPct = $desc['porcentaje'];
+                    $descuentoMonto = $desc['monto'];
+                    $descuentoManualTipo = $desc['tipo'];
                 }
             }
 
@@ -123,6 +140,9 @@ class ReservaService
                 'monto_ajustes' => 0,
                 'descuento' => $descuentoMonto,
                 'descuento_porcentaje' => $descuentoPct,
+                'descuento_manual_tipo' => $descuentoManualTipo,
+                'descuento_manual_motivo' => $descuentoManualMotivo,
+                'descuento_manual_usuario_id' => $descuentoManualTipo ? $idUsuario : null,
                 'total' => $total,
                 'pagado' => $pagado,
                 'saldo' => max(0, $total - $pagado),
@@ -210,12 +230,29 @@ class ReservaService
             $montoHabitacion = (float) $tarifa->monto;
             $descuentoPct = 0;
             $descuentoMonto = 0;
+            $descuentoManualTipo = null;
+            $descuentoManualMotivo = null;
+
+            // Descuentos manuales (opcionales desde el request)
+            $manualesAplicar = [];
+            if (!empty($datos['descuento_manual_aniversario'])) {
+                $manualesAplicar['aniversario'] = true;
+            }
+            if (!empty($datos['descuento_manual_cumpleanos'])) {
+                $manualesAplicar['cumpleanos'] = true;
+            }
+            if (!empty($manualesAplicar)) {
+                $descuentoManualMotivo = $datos['descuento_manual_motivo'] ?? null;
+            }
 
             if (isset($datos['id_cliente'])) {
                 $cliente = Cliente::with('nivel')->find($datos['id_cliente']);
-                if ($cliente && $cliente->nivel) {
-                    $descuentoPct = (float) $cliente->nivel->descuento;
-                    $descuentoMonto = round($montoHabitacion * ($descuentoPct / 100), 2);
+                if ($cliente) {
+                    $desc = app(\App\Services\DescuentoService::class)
+                        ->calcular($cliente, $entrada, $montoHabitacion, $manualesAplicar);
+                    $descuentoPct = $desc['porcentaje'];
+                    $descuentoMonto = $desc['monto'];
+                    $descuentoManualTipo = $desc['tipo'];
                 }
             }
 
@@ -245,6 +282,9 @@ class ReservaService
                 'monto_ajustes' => 0,
                 'descuento' => $descuentoMonto,
                 'descuento_porcentaje' => $descuentoPct,
+                'descuento_manual_tipo' => $descuentoManualTipo,
+                'descuento_manual_motivo' => $descuentoManualMotivo,
+                'descuento_manual_usuario_id' => $descuentoManualTipo ? $idUsuario : null,
                 'total' => $total,
                 'pagado' => $pagado,
                 'saldo' => max(0, $total - $pagado),
@@ -324,13 +364,8 @@ class ReservaService
                 'monto_final' => $montoFinal,
             ]);
 
-            // FIX #2: NO sumar $montoFinal al vuelo.
-            // El campo pagado se recalcula desde PagoReserva (fuente de verdad).
-            // $montoFinal solo se guarda en registro_estadia.monto_final (auditoria).
-
             $estadoFinalizada = EstadoReserva::where('slug', 'finalizada')->firstOrFail();
 
-            // Recalcular pagado desde la tabla de pagos (fuente de verdad)
             $totalPagadoReal = PagoReserva::where('id_reserva', $idReserva)
                 ->where('anulado', false)
                 ->sum('monto');
@@ -524,7 +559,6 @@ class ReservaService
                 $reserva->pagado = (float) $reserva->pagado + $diferencia;
             }
 
-            // FIX #4: sumar la diferencia a monto_ajustes para que el total lo refleje
             $reserva->monto_ajustes = (float) $reserva->monto_ajustes + $diferencia;
 
             $reserva->recalcularTotal();
@@ -739,7 +773,6 @@ class ReservaService
                 'observaciones' => $datos['observaciones'] ?? 'Pago adicional',
             ]);
 
-            // Recalcular pagado y saldo desde pagos (fuente de verdad)
             $totalPagadoReal = PagoReserva::where('id_reserva', $idReserva)
                 ->where('anulado', false)
                 ->sum('monto');
@@ -769,7 +802,6 @@ class ReservaService
 
             $reserva = Reserva::findOrFail($pago->id_reserva);
 
-            // Recalcular pagado y saldo desde pagos (fuente de verdad)
             $totalPagadoReal = PagoReserva::where('id_reserva', $reserva->id_reserva)
                 ->where('anulado', false)
                 ->sum('monto');
@@ -906,7 +938,6 @@ class ReservaService
                 throw new \InvalidArgumentException('Decision invalida sobre el vuelto.');
             }
 
-            // FIX #3a: NO pasar $montoFinal a checkOut() para evitar doble suma.
             return $this->checkOut($idReserva, $idUsuario, null);
         });
     }
@@ -981,7 +1012,6 @@ class ReservaService
                 throw new \InvalidArgumentException('Decision invalida sobre la deuda.');
             }
 
-            // FIX #3b: NO pasar $montoFinal a checkOut() para evitar doble suma.
             return $this->checkOut($idReserva, $idUsuario, null);
         });
     }

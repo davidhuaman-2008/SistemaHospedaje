@@ -5,7 +5,7 @@ import { RefreshCw, Plus, Wallet, Eye, DollarSign, X } from "lucide-react"
 import AppLayout from "@/components/layout/AppLayout"
 import { cuentaPagarService } from "@/services/cuentaPagarService"
 import { useAuth } from "@/hooks/useAuth"
-import { mensajeDeError } from "@/lib/errores"
+
 import { IconoDinamico } from "@/components/IconoDinamico"
 import type { CuentaPagar } from "@/types/cuentaPagar"
 import { NuevaCuentaPagarModal } from "./NuevaCuentaPagarModal"

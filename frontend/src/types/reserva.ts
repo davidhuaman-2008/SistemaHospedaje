@@ -1,7 +1,7 @@
 import type { Cliente } from "./cliente"
 import type { Habitacion } from "./habitacion"
 import type { Tarifa } from "./tarifa"
-import type { MetodoPago } from "./configuracion"
+
 
 export interface EstadoReserva {
   id_estado: number

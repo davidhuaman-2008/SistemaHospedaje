@@ -26,6 +26,8 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
   const [celular, setCelular] = useState(inicial?.celular || '')
   const [email, setEmail] = useState(inicial?.email || '')
   const [fechaNacimiento, setFechaNacimiento] = useState(normalizarFecha(inicial?.fecha_nacimiento))
+  const [fechaAniversario, setFechaAniversario] = useState(normalizarFecha(inicial?.fecha_aniversario))
+  const [casado, setCasado] = useState(inicial?.casado ?? false)
   const [direccion, setDireccion] = useState(inicial?.direccion || '')
   const [buscando, setBuscando] = useState(false)
   const [idExistente, setIdExistente] = useState<number | null>(null)
@@ -72,6 +74,8 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
         setCelular(encontrado.celular || '')
         setEmail(encontrado.email || '')
         setFechaNacimiento(normalizarFecha(encontrado.fecha_nacimiento))
+        setFechaAniversario(normalizarFecha(encontrado.fecha_aniversario))
+        setCasado(encontrado.casado ?? false)
         setDireccion(encontrado.direccion || '')
         setIdExistente(encontrado.id_cliente)
         setVisitasExistentes(encontrado.visitas)
@@ -117,6 +121,8 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
       celular: celular || null,
       email: email || null,
       fecha_nacimiento: fechaNacimiento || null,
+      fecha_aniversario: fechaAniversario || null,
+      casado: casado,
       direccion: direccion || null,
       activo: true,
     }, idExistente ?? undefined)
@@ -188,9 +194,44 @@ export function ClienteForm({ inicial, onGuardar, onCancelar }: Props) {
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
         <div>
-          <label className="text-slate-300 text-sm">Fecha de nacimiento</label>
+          <label className="text-slate-300 text-sm">
+            Fecha de nacimiento
+            <span className="text-pink-400 text-xs ml-1">(🎂 10% dcto)</span>
+          </label>
           <input type="date" value={fechaNacimiento} onChange={e => setFechaNacimiento(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />
         </div>
+
+        <div className="flex items-center gap-2 pt-6">
+          <input
+            type="checkbox"
+            id="casado-check"
+            checked={casado}
+            onChange={e => setCasado(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <label htmlFor="casado-check" className="text-slate-300 text-sm cursor-pointer">
+            💍 Casado (acta verificada)
+          </label>
+        </div>
+
+        <div>
+          <label className="text-slate-300 text-sm">
+            Fecha de aniversario
+            {casado ? (
+              <span className="text-purple-400 text-xs ml-1">(💍 15% dcto)</span>
+            ) : (
+              <span className="text-slate-500 text-xs ml-1">(requiere ser casado)</span>
+            )}
+          </label>
+          <input
+            type="date"
+            value={fechaAniversario}
+            onChange={e => setFechaAniversario(e.target.value)}
+            disabled={!casado}
+            className="w-full bg-slate-900 text-white p-2 rounded disabled:opacity-50"
+          />
+        </div>
+
         <div className="col-span-1 md:col-span-2 lg:col-span-3">
           <label className="text-slate-300 text-sm">Dirección</label>
           <input value={direccion} onChange={e => setDireccion(e.target.value)} className="w-full bg-slate-900 text-white p-2 rounded" />

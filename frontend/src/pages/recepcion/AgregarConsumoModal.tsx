@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import {
-  X, Search, ShoppingCart, Tag, Plus, Minus, Trash2,
-  Wallet, CreditCard, DollarSign,
+  X, Search, ShoppingCart, Tag, Plus, Trash2,
+
 } from "lucide-react"
 import { reservaService } from "@/services/reservaService"
 import { productoService } from "@/services/productoService"

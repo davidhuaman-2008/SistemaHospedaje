@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { X, Banknote, AlertTriangle } from "lucide-react"
+import { X, AlertTriangle } from "lucide-react"
 import { metodoPagoService } from "@/services/metodoPagoService"
 import { mensajeDeError } from "@/lib/errores"
 import type { MetodoPago } from "@/types/configuracion"
@@ -19,7 +19,6 @@ interface Props {
 }
 
 export function ConfirmarVueltoModal({
-  idReserva,
   vueltoPendiente,
   nombreCliente,
   habitacion,

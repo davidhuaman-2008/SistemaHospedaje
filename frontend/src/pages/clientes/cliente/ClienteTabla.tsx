@@ -37,6 +37,7 @@ export function ClienteTabla({
             <th className="p-2 text-left">Documento</th>
             <th className="p-2 text-left">Celular</th>
             <th className="p-2 text-left">F. Nac.</th>
+            <th className="p-2 text-left">F. Aniv.</th>
             <th className="p-2 text-left">Visitas</th>
             <th className="p-2 text-left">Nivel</th>
             <th className="p-2 text-left">Estado</th>
@@ -69,7 +70,16 @@ export function ClienteTabla({
                   {item.numero_documento ?? '—'}
                 </td>
                 <td className="p-2">{item.celular ?? '—'}</td>
-                <td className="p-2">{formatearFecha(item.fecha_nacimiento)}</td>
+                <td className="p-2 text-pink-300">{formatearFecha(item.fecha_nacimiento)}</td>
+                <td className="p-2">
+                  {item.casado ? (
+                    <span className="text-purple-300">
+                      💍 {formatearFecha(item.fecha_aniversario)}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600">—</span>
+                  )}
+                </td>
                 <td className="p-2 font-semibold text-cyan-300">{item.visitas}</td>
                 <td className="p-2">
                   {item.nivel ? (

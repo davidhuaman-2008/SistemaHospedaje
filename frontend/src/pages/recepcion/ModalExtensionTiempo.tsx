@@ -32,7 +32,6 @@ function formatearMinutos(minutos: number): string {
 export function ModalExtensionTiempo({
   idReserva,
   idCliente,
-  nombreCliente,
   onClose,
   onSuccess,
 }: Props) {
@@ -144,7 +143,7 @@ export function ModalExtensionTiempo({
 
       // 2. Si es "No cobrar" → registrar observación al cliente
       if (esNoCobrar) {
-        await clienteObservacionService.crear(idCliente, {
+        await clienteObservacionService.crear(idCliente!, {
           id_tipo_observacion: idTipoObs!,
           id_gravedad: idGravedadObs!,
           motivo: observaciones.trim(),

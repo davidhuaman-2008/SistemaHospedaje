@@ -21,7 +21,6 @@ import {
   Package,
   Tag,
   Percent,
-  Palette,
   Sparkles,
   Gift,
   Truck,

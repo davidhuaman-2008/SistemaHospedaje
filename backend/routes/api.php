@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductoController;
@@ -484,4 +484,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Pagos a Proveedor ---
     Route::post('cuentas-por-pagar/{id}/pagos', [\App\Http\Controllers\CuentaPagarController::class, 'registrarPago']);
     Route::delete('cuentas-por-pagar/{id}/pagos/{idPago}', [\App\Http\Controllers\CuentaPagarController::class, 'anularPago']);
+});
+
+// ============================================================================
+// DESCUENTOS (configuraciones dinamicas para el frontend)
+// ============================================================================
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('descuentos/config', [\App\Http\Controllers\DescuentoController::class, 'config']);
+    Route::get('descuentos/manuales', [\App\Http\Controllers\DescuentoController::class, 'manuales']);
 });

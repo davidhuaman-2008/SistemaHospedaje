@@ -12,6 +12,7 @@ export interface Cliente {
   email: string | null
   fecha_nacimiento: string | null
   fecha_aniversario: string | null
+  casado: boolean
   direccion: string | null
   visitas: number
   ultima_visita: string | null
@@ -35,6 +36,7 @@ export interface ClienteRequest {
   email?: string | null
   fecha_nacimiento?: string | null
   fecha_aniversario?: string | null
+  casado?: boolean
   direccion?: string | null
   id_nivel?: number | null
   activo?: boolean
@@ -87,6 +89,7 @@ export interface BuscarClienteResponse {
   cliente: Cliente | null
   reserva_activa?: ReservaActiva | null
 }
+
 export interface ReservaActiva {
   id_reserva: number
   codigo_reserva: string

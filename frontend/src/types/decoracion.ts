@@ -1,5 +1,5 @@
-import type { Cliente } from "./cliente"
-import type { Habitacion } from "./habitacion"
+
+
 import type { Reserva } from "./reserva"
 import type { PaqueteDecoracion } from "./paqueteDecoracion"
 import type { CuentaPagar } from "./cuentaPagar"

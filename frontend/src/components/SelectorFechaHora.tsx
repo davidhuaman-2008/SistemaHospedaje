@@ -44,7 +44,7 @@ function esPasado(d: Date, hoy: Date): boolean {
   return dSinHora < hoySinHora
 }
 
-export function SelectorFechaHora({ fechaEntrada, horas, onChangeFecha, onChangeHoras }: Props) {
+export function SelectorFechaHora({ fechaEntrada, horas, onChangeFecha }: Props) {
   const { fecha: fechaActual, hora: horaActual } = parsearISO(fechaEntrada)
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)

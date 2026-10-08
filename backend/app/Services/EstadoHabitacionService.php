@@ -51,9 +51,12 @@ class EstadoHabitacionService
         $ahora = Carbon::now();
 
         // =====================================================================
-        // 3. OCUPACION ACTIVA CON CHECK-IN (cliente adentro)
+        // 3. OCUPACION ACTIVA CON CHECK-IN REAL (cliente adentro AHORA)
         // =====================================================================
-        $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente'])
+        // FIX: Solo cuenta como "Ocupada" si la fecha de entrada YA PASO.
+        // Si la reserva tiene estado "activa" pero fecha_entrada futura,
+        // se trata como reserva proxima (se maneja en el paso 4).
+        $ocupacionActual = OcupacionHabitacion::with(['reserva.cliente', 'reserva.registroEstadia'])
             ->where('id_habitacion', $habitacion->id_habitacion)
             ->where('estado', 'ACTIVA')
             ->where('fecha_inicio', '<=', $ahora)
@@ -64,27 +67,68 @@ class EstadoHabitacionService
             ->first();
 
         if ($ocupacionActual && $ocupacionActual->reserva) {
-            return $this->ocupadaConTiempo($ocupacionActual, $ahora);
+            // Verificar que el check-in sea real (fecha entrada <= ahora)
+            $reg = $ocupacionActual->reserva->registroEstadia;
+            $checkInReal = $reg && $reg->fecha_entrada <= $ahora;
+
+            if ($checkInReal) {
+                return $this->ocupadaConTiempo($ocupacionActual, $ahora);
+            }
         }
 
         // =====================================================================
         // 4. RESERVA SIN CHECK-IN (futura O vencida)
         //    Incluye las que tienen decoracion (color rosa)
         // =====================================================================
+        // FIX: Detecta reservas pendientes/confirmadas SIN check-in
+        // O reservas "activas" cuya fecha de entrada es FUTURA (check-in falso)
         $reservaSinCheckIn = OcupacionHabitacion::with(['reserva.cliente', 'reserva.estado', 'reserva.registroEstadia'])
             ->where('id_habitacion', $habitacion->id_habitacion)
             ->where('estado', 'ACTIVA')
-            ->whereHas('reserva', function ($q) {
-                $q->whereHas('estado', function ($q2) {
-                    $q2->whereIn('slug', ['confirmada', 'pendiente']);
+            ->where(function ($q) use ($ahora) {
+                // Caso 1: reserva confirmada/pendiente sin check-in
+                $q->whereHas('reserva', function ($q2) {
+                    $q2->whereHas('estado', function ($q3) {
+                        $q3->whereIn('slug', ['confirmada', 'pendiente']);
+                    });
+                    $q2->whereDoesntHave('registroEstadia');
+                })
+                // Caso 2: reserva "activa" con fecha de entrada futura (check-in falso)
+                ->orWhereHas('reserva', function ($q2) use ($ahora) {
+                    $q2->whereHas('estado', function ($q3) {
+                        $q3->where('slug', 'activa');
+                    })
+                    ->where('fecha_entrada', '>', $ahora);
                 });
-                $q->whereDoesntHave('registroEstadia');
             })
             ->orderBy('fecha_inicio')
             ->first();
 
         if ($reservaSinCheckIn && $reservaSinCheckIn->reserva) {
-            $horasAntes = Configuracion::obtener('horas_antes_bloqueo_reserva', 4);
+            // ============================================================
+            // BLOQUEO DINAMICO POR HABITACION (R1: nada hardcodeado)
+            // ============================================================
+            // La habitacion se bloquea "morada" cuando ya NO alcanza el tiempo
+            // para hacer un walk-in con la duracion MAXIMA + limpieza.
+            //
+            // Ejemplo: Hab. con tarifa max 8h + 1h limpieza = 9h antes
+            //          Si reserva es a las 02:00, se bloquea a las 17:00 del dia anterior
+            //
+            // Formula: horas_bloqueo = max_horas_tarifa_habitacion + horas_limpieza
+            $idTipoHab = $reservaSinCheckIn->reserva->habitacion?->id_tipo;
+            $maxHorasTarifa = 0;
+            if ($idTipoHab) {
+                $maxHorasTarifa = (int) \App\Models\Tarifa::where('id_tipo', $idTipoHab)
+                    ->where('activo', true)
+                    ->max('horas') ?? 0;
+            }
+            $horasLimpieza = (int) Configuracion::obtener('horas_limpieza_bloqueo_reserva', 1);
+            $horasAntes = $maxHorasTarifa + $horasLimpieza;
+            // Fallback: si no hay tarifas, usar el default viejo
+            if ($horasAntes <= $horasLimpieza) {
+                $horasAntes = Configuracion::obtener('horas_antes_bloqueo_reserva', 4) + $horasLimpieza;
+            }
+
             $limiteBloqueo = $ahora->copy()->addHours($horasAntes);
             $minutosParaEntrada = (int) round($ahora->diffInMinutes($reservaSinCheckIn->fecha_inicio, false));
 

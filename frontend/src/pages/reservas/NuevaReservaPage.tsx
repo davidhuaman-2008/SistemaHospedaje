@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
-import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban, Calendar, Clock, Timer, Sparkles } from "lucide-react"
+import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban, Calendar, Clock, Timer, Sparkles, Gift } from "lucide-react"
 import AppLayout from "@/components/layout/AppLayout"
 import { clienteService } from "@/services/clienteService"
 import { clienteObservacionService } from "@/services/clienteObservacionService"
@@ -10,7 +10,9 @@ import { metodoPagoService } from "@/services/metodoPagoService"
 import { reservaService } from "@/services/reservaService"
 import { decoracionService } from "@/services/decoracionService"
 import { paqueteDecoracionService } from "@/services/paqueteDecoracionService"
+import { descuentoService } from "@/services/descuentoService"
 import { mensajeDeError } from "@/lib/errores"
+import { calcularDescuento } from "@/lib/descuentos"
 import { SelectorDisponibilidad } from "@/components/SelectorDisponibilidad"
 import { SelectorFechaHora } from "@/components/SelectorFechaHora"
 import type { Cliente, ClienteObservacion } from "@/types/cliente"
@@ -18,6 +20,8 @@ import type { Tarifa } from "@/types/tarifa"
 import type { MetodoPago } from "@/types/configuracion"
 import type { HabitacionLibre } from "@/types/reserva"
 import type { PaqueteDecoracion } from "@/types/paqueteDecoracion"
+import type { DescuentoConfig, DescuentoManualesConfig } from "@/types/descuento"
+import { DescuentosManualesSwitch, type DescuentosManualesState } from "@/components/DescuentosManualesSwitch"
 import { AlertaClienteObservaciones } from "@/pages/clientes/cliente/AlertaClienteObservaciones"
 
 interface PagoItem {
@@ -35,11 +39,16 @@ export function NuevaReservaPage() {
   const navigate = useNavigate()
 
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
+  const [descuentoConfig, setDescuentoConfig] = useState<DescuentoConfig | null>(null)
+  const [descuentoManualesConfig, setDescuentoManualesConfig] = useState<DescuentoManualesConfig | null>(null)
+  const [descuentosManuales, setDescuentosManuales] = useState<DescuentosManualesState>({
+    aniversario: false,
+    cumpleanos: false,
+    motivo: "",
+  })
 
-  // Tipo de servicio
   const [tipoServicio, setTipoServicio] = useState<TipoServicio>("solo-reserva")
 
-  // Búsqueda de cliente
   const [dni, setDni] = useState("")
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [busquedaRealizada, setBusquedaRealizada] = useState(false)
@@ -55,25 +64,21 @@ export function NuevaReservaPage() {
     email: "",
   })
 
-  // Fecha y duración
   const [fechaEntrada, setFechaEntrada] = useState("")
   const [horas, setHoras] = useState<number>(6)
   const [cantidadPersonas, setCantidadPersonas] = useState(2)
   const [telefono, setTelefono] = useState("")
   const [notas, setNotas] = useState("")
 
-  // Habitación + tarifa
   const [habitacion, setHabitacion] = useState<HabitacionLibre | null>(null)
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [idTarifa, setIdTarifa] = useState<number | null>(null)
 
-  // Decoración (solo si tipoServicio === "con-decoracion")
   const [paquetes, setPaquetes] = useState<PaqueteDecoracion[]>([])
   const [idPaquete, setIdPaquete] = useState<number | null>(null)
   const [frasePersonalizada, setFrasePersonalizada] = useState("")
   const [musica, setMusica] = useState("")
 
-  // Adelanto
   const [modoCobro, setModoCobro] = useState<ModoCobro>("unico")
   const [montoUnico, setMontoUnico] = useState(0)
   const [idMetodoPagoUnico, setIdMetodoPagoUnico] = useState<number | null>(null)
@@ -87,8 +92,14 @@ export function NuevaReservaPage() {
   useEffect(() => {
     const cargar = async () => {
       try {
-        const mps = await metodoPagoService.listarActivos()
+        const [mps, configDesc, manualesCfg] = await Promise.all([
+          metodoPagoService.listarActivos(),
+          descuentoService.obtenerConfiguraciones(),
+          descuentoService.obtenerManuales(),
+        ])
         setMetodosPago(mps)
+        setDescuentoConfig(configDesc)
+        setDescuentoManualesConfig(manualesCfg)
 
         const efectivo = mps.find(m => m.nombre.toLowerCase().includes("efectivo"))
         if (efectivo) {
@@ -176,7 +187,6 @@ export function NuevaReservaPage() {
         setIdTarifa(filtradas[0].id_tarifa)
       }
 
-      // Si es con decoracion, cargar paquetes del tipo de habitacion
       if (tipoServicio === "con-decoracion") {
         const todos = await paqueteDecoracionService.listarActivos()
         const filtrados = todos.filter(
@@ -201,7 +211,6 @@ export function NuevaReservaPage() {
     setIdPaquete(null)
   }
 
-  // Al cambiar tipo de servicio, limpiar
   const cambiarTipoServicio = (tipo: TipoServicio) => {
     setTipoServicio(tipo)
     setHabitacion(null)
@@ -214,12 +223,48 @@ export function NuevaReservaPage() {
   }
 
   const tarifaSeleccionada = tarifas.find((t) => t.id_tarifa === idTarifa)
-  const totalHabitacion = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
+  const montoHabitacionBase = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
+
+  // Cliente virtual para descuento (usa cliente existente O clienteNuevo temporal)
+  const fechaEntradaDate = fechaEntrada ? new Date(fechaEntrada) : new Date()
+  const clienteParaDescuento: Cliente | null = cliente ?? (
+    clienteNuevo.nombre.trim() && clienteNuevo.fecha_nacimiento
+      ? {
+          id_cliente: 0,
+          nombre: clienteNuevo.nombre,
+          apellido: clienteNuevo.apellido || null,
+          id_tipo_documento: null,
+          numero_documento: null,
+          celular: null,
+          email: clienteNuevo.email || null,
+          fecha_nacimiento: clienteNuevo.fecha_nacimiento,
+          fecha_aniversario: null,
+          casado: false,
+          direccion: null,
+          visitas: 0,
+          ultima_visita: null,
+          total_gastado: 0,
+          id_nivel: null,
+          activo: true,
+        } as Cliente
+      : null
+  )
+  const descuento = calcularDescuento(
+    clienteParaDescuento,
+    fechaEntradaDate,
+    montoHabitacionBase,
+    descuentoConfig,
+    {
+      aniversario: descuentosManuales.aniversario,
+      cumpleanos: descuentosManuales.cumpleanos,
+    }
+  )
+  const totalHabitacionConDescuento = montoHabitacionBase - descuento.monto
 
   const paqueteSeleccionado = paquetes.find((p) => p.id_paquete === idPaquete)
   const totalDecoracion = paqueteSeleccionado ? Number(paqueteSeleccionado.precio_total) : 0
 
-  const totalReserva = totalHabitacion + (tipoServicio === "con-decoracion" ? totalDecoracion : 0)
+  const totalReserva = totalHabitacionConDescuento + (tipoServicio === "con-decoracion" ? totalDecoracion : 0)
 
   const clientePaga = modoCobro === "unico"
     ? montoUnico
@@ -269,7 +314,6 @@ export function NuevaReservaPage() {
       return
     }
 
-    // VALIDACION: si el DNI no fue buscado pero ya existe en BD, rechazar
     if (!cliente && dni.trim()) {
       try {
         const verificacion = await clienteService.buscarPorDni(dni)
@@ -278,7 +322,7 @@ export function NuevaReservaPage() {
           return
         }
       } catch {
-        // Si falla, seguimos igual
+        // Ignorar
       }
     }
     if (!fechaEntrada) {
@@ -315,6 +359,13 @@ export function NuevaReservaPage() {
       }
     }
 
+    // Validar motivo si hay descuentos manuales
+    const hayDescuentoManual = descuentosManuales.aniversario || descuentosManuales.cumpleanos
+    if (hayDescuentoManual && descuentoManualesConfig?.motivo_requerido && !descuentosManuales.motivo.trim()) {
+      toast.error("Ingresá el motivo/constancia para aplicar el descuento manual")
+      return
+    }
+
     if (enviando) return
 
     try {
@@ -345,6 +396,17 @@ export function NuevaReservaPage() {
         notas: notas || undefined,
       }
 
+      // Descuentos manuales
+      if (descuentosManuales.aniversario) {
+        payload.descuento_manual_aniversario = true
+      }
+      if (descuentosManuales.cumpleanos) {
+        payload.descuento_manual_cumpleanos = true
+      }
+      if (hayDescuentoManual) {
+        payload.descuento_manual_motivo = descuentosManuales.motivo.trim() || null
+      }
+
       if (modoCobro === "unico") {
         if (montoUnico > 0) {
           payload.adelanto = montoUnico
@@ -361,10 +423,8 @@ export function NuevaReservaPage() {
         }
       }
 
-      // 1. Crear la reserva
       const reserva = await reservaService.crearReserva(payload)
 
-      // 2. Si es con decoracion, crear la decoracion
       if (tipoServicio === "con-decoracion" && idPaquete) {
         try {
           await decoracionService.crear({
@@ -375,7 +435,6 @@ export function NuevaReservaPage() {
           })
           toast.success(`¡Reserva ${reserva.codigo_reserva} con decoración creada!`)
         } catch (err: unknown) {
-          // La reserva se creó pero la decoración falló
           toast.warning(`Reserva creada pero la decoración falló: ${mensajeDeError(err)}`)
         }
       } else {
@@ -528,7 +587,7 @@ export function NuevaReservaPage() {
                   </div>
                   <div>
                     <label className="text-slate-300 text-sm block mb-1">
-                      Fecha de nacimiento <span className="text-cyan-400 text-xs">(opcional)</span>
+                      Fecha de nacimiento <span className="text-pink-400 text-xs">(🎂 10% dcto)</span>
                     </label>
                     <input
                       type="date"
@@ -716,6 +775,30 @@ export function NuevaReservaPage() {
                   ))}
                 </div>
               )}
+
+              {/* BANNER DE DESCUENTO */}
+              {descuento.porcentaje > 0 && idTarifa && (
+                <div className="mt-3 bg-gradient-to-r from-pink-950 to-purple-950 border-2 border-pink-600 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gift size={20} className="text-pink-400" />
+                    <p className="text-pink-200 font-bold">
+                      {descuento.motivo}: {descuento.porcentaje}%
+                    </p>
+                  </div>
+                  <div className="flex justify-between text-sm text-pink-100">
+                    <span>Monto habitación:</span>
+                    <span>S/ {montoHabitacionBase.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-pink-100">
+                    <span>Descuento:</span>
+                    <span>-S/ {descuento.monto.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-pink-700 pt-1 mt-1 text-white font-bold">
+                    <span>Total habitación:</span>
+                    <span>S/ {totalHabitacionConDescuento.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -897,8 +980,14 @@ export function NuevaReservaPage() {
               <div className="border-t border-slate-700 pt-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">Habitación:</span>
-                  <span className="text-white font-semibold">S/ {totalHabitacion.toFixed(2)}</span>
+                  <span className="text-white font-semibold">S/ {montoHabitacionBase.toFixed(2)}</span>
                 </div>
+                {descuento.monto > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-pink-300">Descuento:</span>
+                    <span className="text-pink-300 font-semibold">-S/ {descuento.monto.toFixed(2)}</span>
+                  </div>
+                )}
                 {tipoServicio === "con-decoracion" && paqueteSeleccionado && (
                   <div className="flex justify-between text-sm">
                     <span className="text-purple-300">Decoración:</span>
@@ -932,6 +1021,15 @@ export function NuevaReservaPage() {
                 />
               </div>
             </div>
+          )}
+
+          {/* Descuentos manuales */}
+          {idTarifa && descuentoManualesConfig?.habilitado && (
+            <DescuentosManualesSwitch
+              config={descuentoManualesConfig}
+              value={descuentosManuales}
+              onChange={setDescuentosManuales}
+            />
           )}
 
           {/* BOTONES */}

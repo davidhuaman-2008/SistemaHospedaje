@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useNavigate, useParams } from "react-router-dom"
-import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban } from "lucide-react"
+import { Search, ArrowLeft, Plus, Trash2, DollarSign, CreditCard, Ban, Gift } from "lucide-react"
 import AppLayout from "@/components/layout/AppLayout"
 import { habitacionService } from "@/services/habitacionService"
 import { clienteService } from "@/services/clienteService"
@@ -9,12 +9,16 @@ import { clienteObservacionService } from "@/services/clienteObservacionService"
 import { tarifaService } from "@/services/tarifaService"
 import { metodoPagoService } from "@/services/metodoPagoService"
 import { tipoDocumentoService } from "@/services/tipoDocumentoService"
-import { reservaService } from "@/services/reservaService"
+import { reservaService, habitacionMapaService } from "@/services/reservaService"
+import { descuentoService } from "@/services/descuentoService"
 import { mensajeDeError } from "@/lib/errores"
+import { calcularDescuento } from "@/lib/descuentos"
 import type { Habitacion } from "@/types/habitacion"
 import type { Cliente, ClienteObservacion } from "@/types/cliente"
 import type { Tarifa } from "@/types/tarifa"
 import type { MetodoPago, TipoDocumento } from "@/types/configuracion"
+import type { DescuentoConfig, DescuentoManualesConfig } from "@/types/descuento"
+import { DescuentosManualesSwitch, type DescuentosManualesState } from "@/components/DescuentosManualesSwitch"
 import { AlertaClienteObservaciones } from "@/pages/clientes/cliente/AlertaClienteObservaciones"
 
 interface PagoItem {
@@ -33,12 +37,17 @@ export function RegistrarIngresoPage() {
   const [tarifas, setTarifas] = useState<Tarifa[]>([])
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([])
+  const [descuentoConfig, setDescuentoConfig] = useState<DescuentoConfig | null>(null)
+  const [descuentoManualesConfig, setDescuentoManualesConfig] = useState<DescuentoManualesConfig | null>(null)
+  const [descuentosManuales, setDescuentosManuales] = useState<DescuentosManualesState>({
+    aniversario: false,
+    cumpleanos: false,
+    motivo: "",
+  })
   const [cargando, setCargando] = useState(true)
 
-  // Tipo de documento
   const [idTipoDocumento, setIdTipoDocumento] = useState<number | null>(null)
 
-  // Búsqueda de cliente
   const [dni, setDni] = useState("")
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [busquedaRealizada, setBusquedaRealizada] = useState(false)
@@ -47,7 +56,6 @@ export function RegistrarIngresoPage() {
   const [alertaAceptada, setAlertaAceptada] = useState(false)
   const [reservaActiva, setReservaActiva] = useState<any>(null)
 
-  // Cliente nuevo
   const [clienteNuevo, setClienteNuevo] = useState({
     nombre: "",
     apellido: "",
@@ -55,14 +63,12 @@ export function RegistrarIngresoPage() {
     email: "",
   })
 
-  // Alquiler
   const [idTarifa, setIdTarifa] = useState<number | null>(null)
   const [cantidadPersonas, setCantidadPersonas] = useState(2)
   const [telefono, setTelefono] = useState("")
   const [notas, setNotas] = useState("")
   const [enviando, setEnviando] = useState(false)
 
-  // COBRO
   const [modoCobro, setModoCobro] = useState<ModoCobro>("unico")
   const [montoUnico, setMontoUnico] = useState(0)
   const [idMetodoPagoUnico, setIdMetodoPagoUnico] = useState<number | null>(null)
@@ -71,14 +77,12 @@ export function RegistrarIngresoPage() {
   ])
   const [contadorPago, setContadorPago] = useState(2)
 
-  // Vuelto
   const [entregarVueltoAhora, setEntregarVueltoAhora] = useState(false)
   const [metodoVuelto, setMetodoVuelto] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelado = false
     const cargar = async () => {
-      // FIX #26: validar que idHabitacion exista
       if (!idHabitacion) {
         toast.error("ID de habitación no válido")
         navigate("/recepcion")
@@ -87,23 +91,25 @@ export function RegistrarIngresoPage() {
       try {
         setCargando(true)
         const id = Number(idHabitacion)
-        const [hab, mps, tipos] = await Promise.all([
+        const [hab, mps, tipos, configDesc, manualesCfg] = await Promise.all([
           habitacionService.obtener(id),
           metodoPagoService.listarActivos(),
           tipoDocumentoService.listarActivos(),
+          descuentoService.obtenerConfiguraciones(),
+          descuentoService.obtenerManuales(),
         ])
         if (cancelado) return
 
         setHabitacion(hab)
         setMetodosPago(mps)
         setTiposDocumento(tipos)
+        setDescuentoConfig(configDesc)
+        setDescuentoManualesConfig(manualesCfg)
 
-        // Preseleccionar DNI
         const dniTipo = tipos.find(t => t.abreviatura === "DNI")
         if (dniTipo) setIdTipoDocumento(dniTipo.id_documento)
         else if (tipos.length > 0) setIdTipoDocumento(tipos[0].id_documento)
 
-        // Preseleccionar Efectivo
         const efectivo = mps.find(m => m.nombre.toLowerCase().includes("efectivo"))
         if (efectivo) {
           setIdMetodoPagoUnico(efectivo.id_metodo)
@@ -189,7 +195,43 @@ export function RegistrarIngresoPage() {
   }
 
   const tarifaSeleccionada = tarifas.find(t => t.id_tarifa === idTarifa)
-  const totalHabitacion = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
+  const montoHabitacionBase = tarifaSeleccionada ? Number(tarifaSeleccionada.monto) : 0
+
+  // Cliente virtual para descuento (usa cliente existente O clienteNuevo temporal)
+  const fechaEntradaDate = new Date()
+  const clienteParaDescuento: Cliente | null = cliente ?? (
+    clienteNuevo.nombre.trim() && clienteNuevo.fecha_nacimiento
+      ? {
+          id_cliente: 0,
+          nombre: clienteNuevo.nombre,
+          apellido: clienteNuevo.apellido || null,
+          id_tipo_documento: null,
+          numero_documento: null,
+          celular: null,
+          email: clienteNuevo.email || null,
+          fecha_nacimiento: clienteNuevo.fecha_nacimiento,
+          fecha_aniversario: null,
+          casado: false,
+          direccion: null,
+          visitas: 0,
+          ultima_visita: null,
+          total_gastado: 0,
+          id_nivel: null,
+          activo: true,
+        } as Cliente
+      : null
+  )
+  const descuento = calcularDescuento(
+    clienteParaDescuento,
+    fechaEntradaDate,
+    montoHabitacionBase,
+    descuentoConfig,
+    {
+      aniversario: descuentosManuales.aniversario,
+      cumpleanos: descuentosManuales.cumpleanos,
+    }
+  )
+  const totalHabitacion = montoHabitacionBase - descuento.monto
 
   const clientePaga = modoCobro === "unico"
     ? montoUnico
@@ -277,8 +319,39 @@ export function RegistrarIngresoPage() {
       return
     }
 
+    // Validar motivo si hay descuentos manuales activados
+    const hayDescuentoManual = descuentosManuales.aniversario || descuentosManuales.cumpleanos
+    if (hayDescuentoManual && descuentoManualesConfig?.motivo_requerido && !descuentosManuales.motivo.trim()) {
+      toast.error("Ingresá el motivo/constancia para aplicar el descuento manual")
+      return
+    }
+
     try {
       setEnviando(true)
+
+      // FIX: Validar disponibilidad ANTES de crear el cliente.
+      // Si la reserva va a fallar, NO dejamos cliente huerfano en la BD.
+      let habitacionDisponible = false
+      let motivoNoDisponible: string | null = null
+      try {
+        const estadoHab = await habitacionMapaService.obtener(habitacion.id_habitacion)
+        const estadoSlug = estadoHab?.estado?.estado
+        if (estadoSlug === 'Disponible') {
+          habitacionDisponible = true
+        } else {
+          motivoNoDisponible = `La habitación ${habitacion.numero} no está disponible ahora (estado: ${estadoSlug ?? 'desconocido'}). Verificá el mapa.`
+        }
+      } catch {
+        // Si el endpoint falla, permitimos continuar (el backend lo validará)
+        habitacionDisponible = true
+      }
+
+      if (!habitacionDisponible) {
+        toast.error(motivoNoDisponible ?? 'La habitación no está disponible')
+        setEnviando(false)
+        return
+      }
+
       let idCliente = cliente?.id_cliente
 
       if (!idCliente) {
@@ -302,6 +375,17 @@ export function RegistrarIngresoPage() {
         cantidad_personas: cantidadPersonas,
         telefono: telefono || undefined,
         notas: notas || undefined,
+      }
+
+      // Descuentos manuales
+      if (descuentosManuales.aniversario) {
+        payload.descuento_manual_aniversario = true
+      }
+      if (descuentosManuales.cumpleanos) {
+        payload.descuento_manual_cumpleanos = true
+      }
+      if (hayDescuentoManual) {
+        payload.descuento_manual_motivo = descuentosManuales.motivo.trim() || null
       }
 
       if (modoCobro === "unico") {
@@ -336,7 +420,12 @@ export function RegistrarIngresoPage() {
 
       navigate("/recepcion")
     } catch (e: unknown) {
-      toast.error(mensajeDeError(e))
+      const mensaje = mensajeDeError(e)
+      if (mensaje.toLowerCase().includes("no esta disponible") || mensaje.toLowerCase().includes("no está disponible")) {
+        toast.error(`🚫 La habitación se cruzará con una reserva próxima. Elegí otra habitación o una tarifa más corta.`)
+      } else {
+        toast.error(mensaje)
+      }
     } finally {
       setEnviando(false)
     }
@@ -426,16 +515,26 @@ export function RegistrarIngresoPage() {
             </div>
 
             {cliente && !reservaActiva && (
-              <div className="bg-slate-900 p-3 rounded border border-green-700">
+              <div className="bg-slate-900 p-3 rounded border border-green-700 space-y-2">
                 <p className="text-green-400 text-sm font-medium">
                   ✅ {cliente.nombre} {cliente.apellido}
                 </p>
-                <p className="text-slate-400 text-xs mt-1">
+                <p className="text-slate-400 text-xs">
                   Doc: {cliente.numero_documento} · {cliente.visitas ?? 0} visita{(cliente.visitas ?? 0) !== 1 ? "s" : ""}
                 </p>
                 {cliente.nivel && (
-                  <p className="text-cyan-400 text-xs mt-1">
+                  <p className="text-cyan-400 text-xs">
                     Nivel: {cliente.nivel.nombre} ({cliente.nivel.descuento}% descuento)
+                  </p>
+                )}
+                {cliente.fecha_nacimiento && (
+                  <p className="text-pink-400 text-xs">
+                    🎂 Nacimiento: {new Date(cliente.fecha_nacimiento).toLocaleDateString("es-PE")}
+                  </p>
+                )}
+                {cliente.casado && cliente.fecha_aniversario && (
+                  <p className="text-purple-400 text-xs">
+                    💍 Aniversario: {new Date(cliente.fecha_aniversario).toLocaleDateString("es-PE")}
                   </p>
                 )}
               </div>
@@ -454,35 +553,15 @@ export function RegistrarIngresoPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="bg-red-900/50 p-3 rounded">
                   <p className="text-red-100 text-sm mb-2">Ya está hospedado en:</p>
-                  <div className="flex items-center gap-2 text-white">
-                    <span className="text-2xl">🏨</span>
-                    <div>
-                      <p className="font-bold text-lg">
-                        Habitación {reservaActiva.habitacion?.numero || "—"}
-                      </p>
-                      <p className="text-red-200 text-xs">
-                        {reservaActiva.habitacion?.tipo?.nombre} · {reservaActiva.habitacion?.piso?.nombre}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-red-200 text-xs mt-2">
-                    Entrada: {new Date(reservaActiva.fecha_entrada).toLocaleString("es-PE")}
+                  <p className="font-bold text-lg text-white">
+                    Habitación {reservaActiva.habitacion?.numero || "—"}
                   </p>
-                  <p className="text-red-200 text-xs">
+                  <p className="text-red-200 text-xs mt-1">
                     Código: {reservaActiva.codigo_reserva}
                   </p>
                 </div>
-
-                <div className="bg-red-900/40 p-3 rounded border border-red-700">
-                  <p className="text-red-100 text-sm">
-                    💡 <strong>Solución:</strong> Si necesitás otra habitación,
-                    registrala a nombre de <strong>otra persona</strong> (familiar).
-                  </p>
-                </div>
-
                 <button
                   type="button"
                   onClick={() => {
@@ -519,7 +598,6 @@ export function RegistrarIngresoPage() {
                     value={clienteNuevo.nombre}
                     onChange={e => setClienteNuevo({ ...clienteNuevo, nombre: e.target.value })}
                     className="w-full bg-slate-900 text-white p-2 rounded"
-                    placeholder="Nombre completo"
                   />
                 </div>
                 <div>
@@ -533,7 +611,7 @@ export function RegistrarIngresoPage() {
                 <div>
                   <label className="text-slate-300 text-sm block mb-1">
                     Fecha de nacimiento
-                    <span className="text-cyan-400 text-xs ml-2">(para promociones de cumpleaños)</span>
+                    <span className="text-pink-400 text-xs ml-1">(🎂 10% dcto)</span>
                   </label>
                   <input
                     type="date"
@@ -610,9 +688,33 @@ export function RegistrarIngresoPage() {
                   </div>
                   <div>
                     <p className="text-slate-400 text-xs">Precio base</p>
-                    <p className="text-white font-semibold">S/ {Number(tarifaSeleccionada.monto).toFixed(2)}</p>
+                    <p className="text-white font-semibold">S/ {montoHabitacionBase.toFixed(2)}</p>
                   </div>
                 </div>
+
+                {/* BANNER DE DESCUENTO */}
+                {descuento.porcentaje > 0 && (
+                  <div className="bg-gradient-to-r from-pink-950 to-purple-950 border-2 border-pink-600 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gift size={20} className="text-pink-400" />
+                      <p className="text-pink-200 font-bold">
+                        {descuento.motivo}: {descuento.porcentaje}%
+                      </p>
+                    </div>
+                    <div className="flex justify-between text-sm text-pink-100">
+                      <span>Monto habitación:</span>
+                      <span>S/ {montoHabitacionBase.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-pink-100">
+                      <span>Descuento:</span>
+                      <span>-S/ {descuento.monto.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-pink-700 pt-1 mt-1 text-white font-bold">
+                      <span>Total habitación:</span>
+                      <span>S/ {totalHabitacion.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-slate-900 p-3 rounded">
                   <p className="text-lg text-white font-bold">
@@ -755,9 +857,6 @@ export function RegistrarIngresoPage() {
                           <span className="text-red-300 font-semibold">🔴 CLIENTE DEBE:</span>
                           <span className="text-red-300 font-bold text-lg">S/ {clienteDebe.toFixed(2)}</span>
                         </div>
-                        <p className="text-red-200 text-xs mt-1">
-                          El cliente entra debiendo. Deberá pagar al check-out.
-                        </p>
                       </div>
                     )}
 
@@ -827,6 +926,17 @@ export function RegistrarIngresoPage() {
               </>
             )}
           </div>
+
+          {/* Descuentos manuales (aniversario / cumpleanos) */}
+          {idTarifa && descuentoManualesConfig?.habilitado && (
+            <div className="mt-5">
+              <DescuentosManualesSwitch
+                config={descuentoManualesConfig}
+                value={descuentosManuales}
+                onChange={setDescuentosManuales}
+              />
+            </div>
+          )}
 
           <div className="flex gap-2 mt-5">
             <button

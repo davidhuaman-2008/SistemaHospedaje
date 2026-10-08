@@ -23,7 +23,6 @@ interface Props {
 }
 
 export function ConfirmarDeudaModal({
-  idReserva,
   deudaPendiente,
   nombreCliente,
   habitacion,

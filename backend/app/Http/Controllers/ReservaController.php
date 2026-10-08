@@ -90,6 +90,9 @@ class ReservaController extends Controller
             'telefono' => 'nullable|string|max:20',
             'notas' => 'nullable|string',
             'observaciones' => 'nullable|string',
+            'descuento_manual_aniversario' => 'nullable|boolean',
+            'descuento_manual_cumpleanos' => 'nullable|boolean',
+            'descuento_manual_motivo' => 'nullable|string|max:255',
         ]);
 
         try {
