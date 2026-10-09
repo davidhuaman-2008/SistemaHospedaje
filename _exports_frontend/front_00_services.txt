@@ -1,4 +1,7 @@
-
+================================================================================
+=== front_00_services.txt ===
+=== TOTAL: 34 archivos ===
+================================================================================
 
 ================================================================================
 === src/services/api.ts ===
@@ -13,7 +16,7 @@
     },
   })
 
-  // Interceptor: agrega el token a cada peticiÃ³n
+  // Interceptor: agrega el token a cada petición
   api.interceptors.request.use((config) => {
     const token = localStorage.getItem("token")
     if (token) {
@@ -311,7 +314,7 @@ export const clienteService = {
   /**
    * Busca un cliente por DNI.
    * El backend devuelve: { existe: boolean, cliente: Cliente | null }
-   * Este mÃ©todo devuelve solo el cliente (o null).
+   * Este método devuelve solo el cliente (o null).
    */
   /**
    * Busca un cliente por DNI.
@@ -538,6 +541,36 @@ export const decoracionService = {
 }
 
 ================================================================================
+=== src/services/descuentoService.ts ===
+================================================================================
+import api from './api'
+import type { DescuentoConfig, DescuentoManualesConfig } from '@/types/descuento'
+
+/**
+ * Servicio de descuentos.
+ * R1: NADA hardcodeado. Todo viene de la BD.
+ */
+export const descuentoService = {
+  /**
+   * Obtiene las configuraciones de descuentos automaticos.
+   * Endpoint: GET /api/descuentos/config
+   */
+  obtenerConfiguraciones: async (): Promise<DescuentoConfig> => {
+    const { data } = await api.get<DescuentoConfig>('/descuentos/config')
+    return data
+  },
+
+  /**
+   * Obtiene las opciones de descuentos manuales disponibles.
+   * Endpoint: GET /api/descuentos/manuales
+   */
+  obtenerManuales: async (): Promise<DescuentoManualesConfig> => {
+    const { data } = await api.get<DescuentoManualesConfig>('/descuentos/manuales')
+    return data
+  },
+}
+
+================================================================================
 === src/services/estadoCuentaPagarService.ts ===
 ================================================================================
 import api from './api'
@@ -726,7 +759,7 @@ export const limpiezaService = {
   },
 
   /**
-   * Inicia una limpieza (PENDIENTE â†’ EN_PROCESO).
+   * Inicia una limpieza (PENDIENTE → EN_PROCESO).
    */
   iniciar: async (id: number): Promise<Limpieza> => {
     const { data } = await api.patch(`/limpieza/${id}/iniciar`)
@@ -734,7 +767,7 @@ export const limpiezaService = {
   },
 
   /**
-   * Finaliza una limpieza (EN_PROCESO â†’ COMPLETADA).
+   * Finaliza una limpieza (EN_PROCESO → COMPLETADA).
    */
   finalizar: async (id: number, observaciones?: string): Promise<Limpieza> => {
     const { data } = await api.patch(`/limpieza/${id}/finalizar`, {
@@ -744,7 +777,7 @@ export const limpiezaService = {
   },
 
   /**
-   * Finaliza TODAS las limpiezas activas de una vez (Limpieza RÃ¡pida).
+   * Finaliza TODAS las limpiezas activas de una vez (Limpieza Rápida).
    */
   finalizarTodas: async (observaciones?: string): Promise<{ total: number; ids: number[] }> => {
     const { data } = await api.patch('/limpieza/finalizar-todas', {
@@ -1355,7 +1388,7 @@ export const reservaService = {
   },
 
   // ========================================================================
-  // MODULO 09B â€” RESERVAS FUTURAS
+  // MODULO 09B — RESERVAS FUTURAS
   // ========================================================================
 
   listarDisponiblesEnRango: async (fecha: string, horas: number, conDecoracion = false): Promise<ReservaDisponiblesResponse> => {
@@ -1381,7 +1414,7 @@ export const reservaService = {
   },
 
   // ========================================================================
-  // FILTRADO â€” Reservas (RES-) vs Estadias (WK-)
+  // FILTRADO — Reservas (RES-) vs Estadias (WK-)
   // ========================================================================
 
   listarSoloReservas: async (): Promise<Reserva[]> => {
@@ -1828,3 +1861,4 @@ export const usuarioService = {
     await api.delete(`/usuarios/${id}`)
   },
 }
+

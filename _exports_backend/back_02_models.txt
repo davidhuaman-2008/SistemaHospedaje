@@ -1,0 +1,1738 @@
+================================================================================
+=== back_02_models.txt ===
+=== TOTAL: 40 archivos ===
+================================================================================
+
+================================================================================
+=== app\Models\CategoriaMovimiento.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class CategoriaMovimiento extends Model
+{
+    protected $table = 'categorias_movimiento';
+    protected $primaryKey = 'id_categoria';
+
+    protected $fillable = [
+        'nombre', 'tipo', 'descripcion', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+}
+
+================================================================================
+=== app\Models\CategoriaProducto.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class CategoriaProducto extends Model
+{
+    protected $table = 'categorias_producto';
+    protected $primaryKey = 'id_categoria_producto';
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion', 'icono', 'color', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function productos(): HasMany
+    {
+        return $this->hasMany(Producto::class, 'id_categoria_producto', 'id_categoria_producto');
+    }
+}
+
+================================================================================
+=== app\Models\CategoriaPromocion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class CategoriaPromocion extends Model
+{
+    protected $table = 'categorias_promocion';
+    protected $primaryKey = 'id_categoria_promocion';
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion', 'icono', 'color', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function promociones(): HasMany
+    {
+        return $this->hasMany(Promocion::class, 'id_categoria_promocion', 'id_categoria_promocion');
+    }
+}
+
+================================================================================
+=== app\Models\Cliente.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Cliente extends Model
+{
+    protected $table = 'clientes';
+    protected $primaryKey = 'id_cliente';
+
+    protected $fillable = [
+        'nombre', 'apellido', 'id_tipo_documento', 'numero_documento',
+        'celular', 'email', 'fecha_nacimiento', 'fecha_aniversario',
+        'direccion', 'visitas', 'ultima_visita', 'total_gastado',
+        'id_nivel', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'visitas' => 'integer',
+        'total_gastado' => 'decimal:2',
+        'fecha_nacimiento' => 'date',
+        'fecha_aniversario' => 'date',
+        'ultima_visita' => 'date',
+    ];
+
+    public function tipoDocumento(): BelongsTo
+    {
+        return $this->belongsTo(TipoDocumento::class, 'id_tipo_documento', 'id_documento');
+    }
+
+    public function nivel(): BelongsTo
+    {
+        return $this->belongsTo(ClienteNivel::class, 'id_nivel', 'id_nivel');
+    }
+
+    /**
+     * Historial de visitas (relacion con cliente_visitas).
+     *
+     * NOTA: se llama `historialVisitas` (no `visitas`) para no colisionar
+     * con el campo `visitas` (int) que guarda el contador de visitas.
+     */
+    public function historialVisitas(): HasMany
+    {
+        return $this->hasMany(ClienteVisita::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function observaciones(): HasMany
+    {
+        return $this->hasMany(ClienteObservacion::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function reservas(): HasMany
+    {
+        return $this->hasMany(Reserva::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function observacionesPendientes(): HasMany
+    {
+        return $this->hasMany(ClienteObservacion::class, 'id_cliente', 'id_cliente')
+                    ->where('resuelto', false);
+    }
+}
+
+================================================================================
+=== app\Models\ClienteNivel.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class ClienteNivel extends Model
+{
+    protected $table = 'clientes_niveles';
+    protected $primaryKey = 'id_nivel';
+
+    protected $fillable = [
+        'nombre', 'visitas_min', 'visitas_max', 'descuento',
+        'color', 'icono', 'beneficios', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'visitas_min' => 'integer',
+        'visitas_max' => 'integer',
+        'descuento' => 'decimal:2',
+    ];
+}
+
+================================================================================
+=== app\Models\ClienteObservacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ClienteObservacion extends Model
+{
+    protected $table = 'cliente_observaciones';
+    protected $primaryKey = 'id_observacion';
+
+    protected $fillable = [
+        'id_cliente', 'id_tipo_observacion', 'id_gravedad',
+        'motivo', 'monto_deuda', 'resuelto', 'fecha_resolucion',
+        'id_usuario_creacion',
+    ];
+
+    protected $casts = [
+        'resuelto' => 'boolean',
+        'monto_deuda' => 'decimal:2',
+        'fecha_resolucion' => 'datetime',
+    ];
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoObservacion::class, 'id_tipo_observacion', 'id_tipo_observacion');
+    }
+
+    public function gravedad(): BelongsTo
+    {
+        return $this->belongsTo(GravedadObservacion::class, 'id_gravedad', 'id_gravedad');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_creacion', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\ClienteVisita.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ClienteVisita extends Model
+{
+    protected $table = 'cliente_visitas';
+    protected $primaryKey = 'id_visita';
+
+    protected $fillable = [
+        'id_cliente', 'id_reserva', 'id_habitacion',
+        'fecha_entrada', 'fecha_salida', 'monto_gastado',
+    ];
+
+    protected $casts = [
+        'fecha_entrada' => 'datetime',
+        'fecha_salida' => 'datetime',
+        'monto_gastado' => 'decimal:2',
+    ];
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'id_cliente', 'id_cliente');
+    }
+}
+
+================================================================================
+=== app\Models\Configuracion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Configuracion extends Model
+{
+    protected $table = 'configuraciones';
+    protected $primaryKey = 'id_configuracion';
+
+    protected $fillable = [
+        'clave', 'valor', 'tipo', 'descripcion', 'grupo',
+    ];
+
+    /**
+     * Obtiene un valor de configuración casteado según su tipo.
+     */
+    public static function obtener(string $clave, mixed $default = null): mixed
+    {
+        $config = static::where('clave', $clave)->first();
+        if (!$config) return $default;
+
+        return match ($config->tipo) {
+            'INT' => (int) $config->valor,
+            'DECIMAL' => (float) $config->valor,
+            'BOOLEAN' => filter_var($config->valor, FILTER_VALIDATE_BOOLEAN),
+            default => $config->valor,
+        };
+    }
+
+    /**
+     * Establece un valor de configuración.
+     */
+    public static function establecer(string $clave, mixed $valor): void
+    {
+        static::where('clave', $clave)->update(['valor' => (string) $valor]);
+    }
+}
+
+================================================================================
+=== app\Models\CuentaPagar.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class CuentaPagar extends Model
+{
+    protected $table = 'cuentas_por_pagar';
+    protected $primaryKey = 'id_cuenta';
+
+    protected $fillable = [
+        'id_proveedor', 'id_estado_cuenta', 'id_reserva', 'id_decoracion',
+        'concepto', 'monto', 'monto_pagado', 'saldo',
+        'fecha_emision', 'fecha_vencimiento',
+        'id_usuario_creacion', 'id_usuario_anulacion',
+        'fecha_anulacion', 'motivo_anulacion', 'notas',
+    ];
+
+    protected $casts = [
+        'monto' => 'decimal:2',
+        'monto_pagado' => 'decimal:2',
+        'saldo' => 'decimal:2',
+        'fecha_emision' => 'datetime',
+        'fecha_vencimiento' => 'datetime',
+        'fecha_anulacion' => 'datetime',
+    ];
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function estado(): BelongsTo
+    {
+        return $this->belongsTo(EstadoCuentaPagar::class, 'id_estado_cuenta', 'id_estado_cuenta');
+    }
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function usuarioCreacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_creacion', 'id');
+    }
+
+    public function usuarioAnulacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_anulacion', 'id');
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoProveedor::class, 'id_cuenta', 'id_cuenta');
+    }
+}
+
+================================================================================
+=== app\Models\Decoracion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Decoracion extends Model
+{
+    protected $table = 'decoraciones';
+    protected $primaryKey = 'id_decoracion';
+
+    protected $fillable = [
+        'id_reserva', 'id_paquete', 'id_proveedor', 'estado',
+        'fecha_programada', 'fecha_inicio_preparacion', 'fecha_inicio', 'fecha_fin',
+        'precio_total', 'ganancia_local', 'ganancia_proveedor', 'adelanto', 'saldo',
+        'frase_personalizada', 'musica', 'notas',
+        'id_cuenta_pagar',
+        'id_usuario_creacion', 'id_usuario_anulacion', 'fecha_anulacion', 'motivo_anulacion',
+    ];
+
+    protected $casts = [
+        'fecha_programada' => 'datetime',
+        'fecha_inicio_preparacion' => 'datetime',
+        'fecha_inicio' => 'datetime',
+        'fecha_fin' => 'datetime',
+        'precio_total' => 'decimal:2',
+        'ganancia_local' => 'decimal:2',
+        'ganancia_proveedor' => 'decimal:2',
+        'adelanto' => 'decimal:2',
+        'saldo' => 'decimal:2',
+        'fecha_anulacion' => 'datetime',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function paquete(): BelongsTo
+    {
+        return $this->belongsTo(PaqueteDecoracion::class, 'id_paquete', 'id_paquete');
+    }
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function cuentaPagar(): BelongsTo
+    {
+        return $this->belongsTo(CuentaPagar::class, 'id_cuenta_pagar', 'id_cuenta');
+    }
+
+    public function usuarioCreacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_creacion', 'id');
+    }
+
+    public function usuarioAnulacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_anulacion', 'id');
+    }
+
+    /**
+     * Estados disponibles (hardcoded)
+     */
+    public static function estados(): array
+    {
+        return [
+            'programada' => ['nombre' => 'Programada', 'color' => '#f59e0b', 'icono' => 'calendar-clock'],
+            'en-proceso' => ['nombre' => 'En proceso', 'color' => '#eab308', 'icono' => 'loader'],
+            'finalizada' => ['nombre' => 'Finalizada', 'color' => '#10b981', 'icono' => 'check-check'],
+            'cancelada' => ['nombre' => 'Cancelada', 'color' => '#64748b', 'icono' => 'x-circle'],
+        ];
+    }
+
+    /**
+     * Accessor para obtener el estado con su metadata.
+     */
+    public function getEstadoInfoAttribute(): array
+    {
+        $estados = self::estados();
+        return $estados[$this->estado] ?? $estados['programada'];
+    }
+}
+
+================================================================================
+=== app\Models\EstadoCuentaPagar.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class EstadoCuentaPagar extends Model
+{
+    protected $table = 'estados_cuenta_pagar';
+    protected $primaryKey = 'id_estado_cuenta';
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion', 'color', 'icono',
+        'es_estado_final', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'es_estado_final' => 'boolean',
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function cuentas(): HasMany
+    {
+        return $this->hasMany(CuentaPagar::class, 'id_estado_cuenta', 'id_estado_cuenta');
+    }
+}
+
+================================================================================
+=== app\Models\EstadoReserva.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class EstadoReserva extends Model
+{
+    protected $table = 'estados_reserva';
+    protected $primaryKey = 'id_estado';
+
+    protected $fillable = [
+        'nombre', 'slug', 'color', 'descripcion', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function reservas(): HasMany
+    {
+        return $this->hasMany(Reserva::class, 'id_estado', 'id_estado');
+    }
+}
+
+================================================================================
+=== app\Models\ExtensionReserva.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ExtensionReserva extends Model
+{
+    protected $table = 'extensiones_reserva';
+    protected $primaryKey = 'id_extension';
+
+    protected $fillable = [
+        'id_reserva', 'horas_extra', 'monto', 'es_turno_adicional',
+        'minutos_exceso', 'precio_hora_extra_aplicado', 'tolerancia_minutos',
+        'pagado_inmediato', 'cargado_a_cuenta', 'id_metodo_pago',
+        'id_usuario', 'fecha_extension', 'observaciones',
+    ];
+
+    protected $casts = [
+        'horas_extra' => 'integer',
+        'monto' => 'decimal:2',
+        'es_turno_adicional' => 'boolean',
+        'minutos_exceso' => 'integer',
+        'precio_hora_extra_aplicado' => 'decimal:2',
+        'tolerancia_minutos' => 'integer',
+        'pagado_inmediato' => 'boolean',
+        'cargado_a_cuenta' => 'boolean',
+        'fecha_extension' => 'datetime',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class, 'id_metodo_pago', 'id_metodo');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\GravedadObservacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class GravedadObservacion extends Model
+{
+    protected $table = 'gravedades_observacion';
+    protected $primaryKey = 'id_gravedad';
+
+    protected $fillable = [
+        'nombre', 'slug', 'color', 'prioridad', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'prioridad' => 'integer',
+    ];
+}
+
+================================================================================
+=== app\Models\Habitacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Habitacion extends Model
+{
+    protected $table = 'habitaciones';
+    protected $primaryKey = 'id_habitacion';
+
+    protected $fillable = [
+        'id_piso', 'id_tipo', 'numero', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function piso(): BelongsTo
+    {
+        return $this->belongsTo(Piso::class, 'id_piso', 'id_piso');
+    }
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoHabitacion::class, 'id_tipo', 'id_tipo');
+    }
+}
+
+================================================================================
+=== app\Models\Limpieza.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Limpieza extends Model
+{
+    protected $table = 'limpieza';
+    protected $primaryKey = 'id_limpieza';
+
+    protected $fillable = [
+        'id_habitacion', 'id_reserva', 'id_usuario_asignado',
+        'estado', 'tipo', 'fecha_solicitud', 'fecha_inicio', 'fecha_fin',
+        'observaciones',
+    ];
+
+    protected $casts = [
+        'fecha_solicitud' => 'datetime',
+        'fecha_inicio' => 'datetime',
+        'fecha_fin' => 'datetime',
+    ];
+
+    public function habitacion(): BelongsTo
+    {
+        return $this->belongsTo(Habitacion::class, 'id_habitacion', 'id_habitacion');
+    }
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function usuarioAsignado(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_asignado', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\Mantenimiento.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Mantenimiento extends Model
+{
+    protected $table = 'mantenimiento';
+    protected $primaryKey = 'id_mantenimiento';
+
+    protected $fillable = [
+        'id_habitacion', 'id_tipo_mantenimiento', 'id_prioridad',
+        'id_usuario_reporta', 'id_usuario_asignado',
+        'descripcion', 'estado',
+        'fecha_reporte', 'fecha_inicio', 'fecha_resolucion',
+        'observaciones', 'motivo_cancelacion',
+    ];
+
+    protected $casts = [
+        'fecha_reporte' => 'datetime',
+        'fecha_inicio' => 'datetime',
+        'fecha_resolucion' => 'datetime',
+    ];
+
+    public function habitacion(): BelongsTo
+    {
+        return $this->belongsTo(Habitacion::class, 'id_habitacion', 'id_habitacion');
+    }
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoMantenimiento::class, 'id_tipo_mantenimiento', 'id_tipo_mantenimiento');
+    }
+
+    public function prioridad(): BelongsTo
+    {
+        return $this->belongsTo(PrioridadMantenimiento::class, 'id_prioridad', 'id_prioridad');
+    }
+
+    public function usuarioReporta(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_reporta', 'id');
+    }
+
+    public function usuarioAsignado(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_asignado', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\MetodoPago.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class MetodoPago extends Model
+{
+    protected $table = 'metodos_pago';
+    protected $primaryKey = 'id_metodo';
+
+    protected $fillable = [
+        'nombre', 'descripcion', 'es_de_caja', 'icono', 'color',
+        'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'es_de_caja' => 'boolean',
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+}
+
+================================================================================
+=== app\Models\OcupacionHabitacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class OcupacionHabitacion extends Model
+{
+    protected $table = 'ocupacion_habitacion';
+    protected $primaryKey = 'id_ocupacion';
+
+    protected $fillable = [
+        'id_habitacion', 'id_reserva', 'fecha_inicio', 'fecha_fin', 'estado',
+    ];
+
+    protected $casts = [
+        'fecha_inicio' => 'datetime',
+        'fecha_fin' => 'datetime',
+    ];
+
+    public function habitacion(): BelongsTo
+    {
+        return $this->belongsTo(Habitacion::class, 'id_habitacion', 'id_habitacion');
+    }
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+}
+
+================================================================================
+=== app\Models\PagoProveedor.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PagoProveedor extends Model
+{
+    protected $table = 'pagos_proveedor';
+    protected $primaryKey = 'id_pago_proveedor';
+
+    protected $fillable = [
+        'id_cuenta', 'monto', 'id_metodo_pago', 'fecha_pago', 'id_usuario',
+        'referencia', 'observaciones',
+        'anulado', 'id_usuario_anulacion', 'fecha_anulacion', 'motivo_anulacion',
+    ];
+
+    protected $casts = [
+        'monto' => 'decimal:2',
+        'fecha_pago' => 'datetime',
+        'anulado' => 'boolean',
+        'fecha_anulacion' => 'datetime',
+    ];
+
+    public function cuenta(): BelongsTo
+    {
+        return $this->belongsTo(CuentaPagar::class, 'id_cuenta', 'id_cuenta');
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class, 'id_metodo_pago', 'id_metodo');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id');
+    }
+
+    public function usuarioAnulacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_anulacion', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\PagoReserva.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PagoReserva extends Model
+{
+    protected $table = 'pagos_reserva';
+    protected $primaryKey = 'id_pago';
+
+    protected $fillable = [
+        'id_reserva', 'id_metodo_pago', 'monto', 'es_adelanto', 'fecha_pago',
+        'id_usuario', 'observaciones',
+        'anulado', 'id_usuario_anulacion', 'fecha_anulacion', 'motivo_anulacion',
+    ];
+
+    protected $casts = [
+        'monto' => 'decimal:2',
+        'es_adelanto' => 'boolean',
+        'fecha_pago' => 'datetime',
+        'anulado' => 'boolean',
+        'fecha_anulacion' => 'datetime',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class, 'id_metodo_pago', 'id_metodo');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\PaqueteDecoracion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PaqueteDecoracion extends Model
+{
+    protected $table = 'paquetes_decoracion';
+    protected $primaryKey = 'id_paquete';
+
+    public $timestamps = true;
+    const UPDATED_AT = null;
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion',
+        'precio_total', 'ganancia_local', 'ganancia_proveedor', 'precio_hora_adicional',
+        'id_proveedor', 'id_tipo_habitacion',
+        'imagen',
+        'horas_incluidas',
+        'incluye_jacuzzi', 'incluye_vino', 'incluye_decoracion',
+        'incluye_sexshop', 'incluye_netflix', 'activo',
+    ];
+
+    protected $casts = [
+        'precio_total' => 'decimal:2',
+        'ganancia_local' => 'decimal:2',
+        'ganancia_proveedor' => 'decimal:2',
+        'precio_hora_adicional' => 'decimal:2',
+        'horas_incluidas' => 'integer',
+        'incluye_jacuzzi' => 'boolean',
+        'incluye_vino' => 'boolean',
+        'incluye_decoracion' => 'boolean',
+        'incluye_sexshop' => 'boolean',
+        'incluye_netflix' => 'boolean',
+        'activo' => 'boolean',
+        'created_at' => 'datetime',
+    ];
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function tipoHabitacion(): BelongsTo
+    {
+        return $this->belongsTo(TipoHabitacion::class, 'id_tipo_habitacion', 'id_tipo');
+    }
+}
+
+================================================================================
+=== app\Models\Piso.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Piso extends Model
+{
+    protected $table = 'pisos';
+    protected $primaryKey = 'id_piso';
+
+    protected $fillable = [
+        'nombre', 'descripcion', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+}
+
+================================================================================
+=== app\Models\PrioridadMantenimiento.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class PrioridadMantenimiento extends Model
+{
+    protected $table = 'prioridades_mantenimiento';
+    protected $primaryKey = 'id_prioridad';
+
+    protected $fillable = [
+        'nombre', 'slug', 'color', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function mantenimientos(): HasMany
+    {
+        return $this->hasMany(Mantenimiento::class, 'id_prioridad', 'id_prioridad');
+    }
+}
+
+================================================================================
+=== app\Models\Producto.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Producto extends Model
+{
+    protected $table = 'productos';
+    protected $primaryKey = 'id_producto';
+
+    protected $fillable = [
+        'nombre', 'descripcion', 'id_categoria_producto', 'id_proveedor',
+        'codigo_barra', 'precio_compra', 'precio_venta',
+        'stock_actual', 'stock_minimo', 'unidad_medida', 'imagen', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'precio_compra' => 'decimal:2',
+        'precio_venta' => 'decimal:2',
+        'stock_actual' => 'integer',
+        'stock_minimo' => 'integer',
+    ];
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaProducto::class, 'id_categoria_producto', 'id_categoria_producto');
+    }
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor', 'id_proveedor');
+    }
+}
+
+================================================================================
+=== app\Models\Promocion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Promocion extends Model
+{
+    protected $table = 'promociones';
+    protected $primaryKey = 'id_promocion';
+
+    protected $fillable = [
+        'nombre', 'descripcion', 'id_categoria_promocion', 'tipo', 'valor',
+        'fecha_inicio', 'fecha_fin', 'dias_semana', 'hora_inicio', 'hora_fin',
+        'id_tipo_habitacion', 'monto_minimo',
+        'requiere_codigo', 'codigo',
+        'limite_uso', 'usos_actuales', 'limite_por_cliente',
+        'acumulable', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'requiere_codigo' => 'boolean',
+        'acumulable' => 'boolean',
+        'valor' => 'decimal:2',
+        'monto_minimo' => 'decimal:2',
+        'fecha_inicio' => 'date',
+        'fecha_fin' => 'date',
+        'limite_uso' => 'integer',
+        'usos_actuales' => 'integer',
+        'limite_por_cliente' => 'integer',
+    ];
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaPromocion::class, 'id_categoria_promocion', 'id_categoria_promocion');
+    }
+
+    public function tipoHabitacion(): BelongsTo
+    {
+        return $this->belongsTo(TipoHabitacion::class, 'id_tipo_habitacion', 'id_tipo');
+    }
+
+    public function promocionesCliente(): HasMany
+    {
+        return $this->hasMany(PromocionCliente::class, 'id_promocion', 'id_promocion');
+    }
+}
+
+================================================================================
+=== app\Models\PromocionCliente.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class PromocionCliente extends Model
+{
+    protected $table = 'promociones_cliente';
+    protected $primaryKey = 'id_promo_cliente';
+
+    protected $fillable = [
+        'id_promocion', 'id_cliente', 'codigo_personalizado',
+        'fecha_vencimiento', 'usado', 'fecha_uso',
+    ];
+
+    protected $casts = [
+        'usado' => 'boolean',
+        'fecha_vencimiento' => 'date',
+        'fecha_uso' => 'datetime',
+    ];
+
+    public function promocion(): BelongsTo
+    {
+        return $this->belongsTo(Promocion::class, 'id_promocion', 'id_promocion');
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'id_cliente', 'id_cliente');
+    }
+}
+
+================================================================================
+=== app\Models\Proveedor.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Proveedor extends Model
+{
+    protected $table = 'proveedores';
+    protected $primaryKey = 'id_proveedor';
+
+    protected $fillable = [
+        'razon_social', 'nombre_comercial', 'ruc', 'telefono', 'email',
+        'direccion', 'contacto', 'tipo', 'notas', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
+    public function productos(): HasMany
+    {
+        return $this->hasMany(Producto::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function cuentasPagar(): HasMany
+    {
+        return $this->hasMany(CuentaPagar::class, 'id_proveedor', 'id_proveedor');
+    }
+
+    public function paquetesDecoracion(): HasMany
+    {
+        return $this->hasMany(PaqueteDecoracion::class, 'id_proveedor', 'id_proveedor');
+    }
+}
+
+================================================================================
+=== app\Models\RegistroEstadia.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class RegistroEstadia extends Model
+{
+    protected $table = 'registros_estadia';
+    protected $primaryKey = 'id_registro';
+
+    protected $fillable = [
+        'id_reserva', 'fecha_entrada', 'fecha_salida', 'horas_reales',
+        'id_usuario_checkin', 'id_usuario_checkout',
+        'monto_final', 'observaciones',
+    ];
+
+    protected $casts = [
+        'fecha_entrada' => 'datetime',
+        'fecha_salida' => 'datetime',
+        'horas_reales' => 'integer',
+        'monto_final' => 'decimal:2',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function usuarioCheckin(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_checkin', 'id');
+    }
+
+    public function usuarioCheckout(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_checkout', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\Reserva.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+class Reserva extends Model
+{
+    protected $table = 'reservas';
+    protected $primaryKey = 'id_reserva';
+
+    protected $fillable = [
+        'codigo_reserva', 'tipo_reserva', 'id_estado',
+        'id_cliente', 'id_habitacion', 'id_tarifa', 'id_usuario_creacion',
+        'cantidad_personas',
+        'fecha_entrada', 'fecha_salida_prevista', 'fecha_salida_real',
+        'horas_base', 'horas_extra', 'horas_totales',
+        'monto_habitacion', 'monto_horas_extra', 'monto_consumos', 'monto_ajustes',
+        'descuento', 'descuento_porcentaje',
+        'total', 'pagado', 'saldo',
+        'vuelto_entregado',
+        'telefono', 'notas', 'observaciones',
+        'id_usuario_anulacion', 'fecha_anulacion', 'motivo_anulacion',
+    ];
+
+    protected $casts = [
+        'cantidad_personas' => 'integer',
+        'fecha_entrada' => 'datetime',
+        'fecha_salida_prevista' => 'datetime',
+        'fecha_salida_real' => 'datetime',
+        'horas_base' => 'integer',
+        'horas_extra' => 'integer',
+        'horas_totales' => 'integer',
+        'monto_habitacion' => 'decimal:2',
+        'monto_horas_extra' => 'decimal:2',
+        'monto_consumos' => 'decimal:2',
+        'monto_ajustes' => 'decimal:2',
+        'descuento' => 'decimal:2',
+        'descuento_porcentaje' => 'decimal:2',
+        'total' => 'decimal:2',
+        'pagado' => 'decimal:2',
+        'saldo' => 'decimal:2',
+        'vuelto_entregado' => 'decimal:2',
+        'fecha_anulacion' => 'datetime',
+    ];
+
+    public function estado(): BelongsTo
+    {
+        return $this->belongsTo(EstadoReserva::class, 'id_estado', 'id_estado');
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'id_cliente', 'id_cliente');
+    }
+
+    public function habitacion(): BelongsTo
+    {
+        return $this->belongsTo(Habitacion::class, 'id_habitacion', 'id_habitacion');
+    }
+
+    public function tarifa(): BelongsTo
+    {
+        return $this->belongsTo(Tarifa::class, 'id_tarifa', 'id_tarifa');
+    }
+
+    public function usuarioCreacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_creacion', 'id');
+    }
+
+    public function usuarioAnulacion(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario_anulacion', 'id');
+    }
+
+    public function ocupaciones(): HasMany
+    {
+        return $this->hasMany(OcupacionHabitacion::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoReserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function registroEstadia(): HasOne
+    {
+        return $this->hasOne(RegistroEstadia::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function extensiones(): HasMany
+    {
+        return $this->hasMany(ExtensionReserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function consumos(): HasMany
+    {
+        return $this->hasMany(ReservaConsumo::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function ajustes(): HasMany
+    {
+        return $this->hasMany(ReservaAjuste::class, 'id_reserva', 'id_reserva');
+    }
+
+    /**
+     * Calcula el vuelto final: pagado - total
+     * Positivo = a devolver
+     * Negativo = a cobrar
+     */
+    public function getVueltoFinalAttribute(): float
+    {
+        return round((float) $this->pagado - (float) $this->total, 2);
+    }
+
+    /**
+     * Recalcula el total sumando todos los conceptos.
+     */
+    public function recalcularTotal(): void
+    {
+        $this->total = round(
+            (float) $this->monto_habitacion
+            + (float) $this->monto_horas_extra
+            + (float) $this->monto_consumos
+            + (float) $this->monto_ajustes
+            - (float) $this->descuento,
+            2
+        );
+        $this->saldo = max(0, round((float) $this->total - (float) $this->pagado, 2));
+    }
+
+    public function decoracion(): HasOne
+    {
+        return $this->hasOne(Decoracion::class, 'id_reserva', 'id_reserva')
+            ->whereNotIn('estado', ['cancelada']);
+    }
+
+    public function decoraciones(): HasMany
+    {
+        return $this->hasMany(Decoracion::class, 'id_reserva', 'id_reserva');
+    }
+}
+
+
+================================================================================
+=== app\Models\ReservaAjuste.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ReservaAjuste extends Model
+{
+    protected $table = 'reserva_ajustes';
+    protected $primaryKey = 'id_ajuste';
+
+    protected $fillable = [
+        'id_reserva', 'tipo', 'monto_anterior', 'monto_nuevo',
+        'diferencia', 'id_usuario', 'fecha_ajuste', 'notas',
+    ];
+
+    protected $casts = [
+        'monto_anterior' => 'decimal:2',
+        'monto_nuevo' => 'decimal:2',
+        'diferencia' => 'decimal:2',
+        'fecha_ajuste' => 'datetime',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\ReservaConsumo.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ReservaConsumo extends Model
+{
+    protected $table = 'reserva_consumos';
+    protected $primaryKey = 'id_consumo';
+
+    protected $fillable = [
+        'id_reserva', 'id_producto', 'cantidad',
+        'precio_unitario', 'subtotal', 'pagado', 'id_metodo_pago',
+        'id_usuario', 'fecha_consumo', 'observaciones',
+    ];
+
+    protected $casts = [
+        'cantidad' => 'integer',
+        'precio_unitario' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'pagado' => 'boolean',
+        'fecha_consumo' => 'datetime',
+    ];
+
+    public function reserva(): BelongsTo
+    {
+        return $this->belongsTo(Reserva::class, 'id_reserva', 'id_reserva');
+    }
+
+    public function producto(): BelongsTo
+    {
+        return $this->belongsTo(Producto::class, 'id_producto', 'id_producto');
+    }
+
+    public function metodoPago(): BelongsTo
+    {
+        return $this->belongsTo(MetodoPago::class, 'id_metodo_pago', 'id_metodo');
+    }
+
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario', 'id');
+    }
+}
+
+================================================================================
+=== app\Models\Rol.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Rol extends Model
+{
+    protected $table = 'roles';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+        'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
+    public function usuarios(): HasMany
+    {
+        return $this->hasMany(Usuario::class, 'id_rol');
+    }
+}
+
+================================================================================
+=== app\Models\Tarifa.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Tarifa extends Model
+{
+    protected $table = 'tarifas';
+    protected $primaryKey = 'id_tarifa';
+
+    protected $fillable = [
+        'id_tipo',
+        'horas',
+        'monto',
+        'precio_hora_extra',
+        'max_horas_extra',
+        'precio_turno_adicional',
+        'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'horas' => 'integer',
+        'max_horas_extra' => 'integer',
+        'monto' => 'decimal:2',
+        'precio_hora_extra' => 'decimal:2',
+        'precio_turno_adicional' => 'decimal:2',
+    ];
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoHabitacion::class, 'id_tipo', 'id_tipo');
+    }
+}
+
+================================================================================
+=== app\Models\TipoDocumento.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class TipoDocumento extends Model
+{
+    protected $table = 'tipos_documento';
+    protected $primaryKey = 'id_documento';
+
+    protected $fillable = [
+        'nombre', 'abreviatura', 'longitud', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'longitud' => 'integer',
+    ];
+
+    public function clientes(): HasMany
+    {
+        return $this->hasMany(Cliente::class, 'id_tipo_documento', 'id_documento');
+    }
+}
+
+================================================================================
+=== app\Models\TipoHabitacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class TipoHabitacion extends Model
+{
+    protected $table = 'tipos_habitacion';
+    protected $primaryKey = 'id_tipo';
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion', 'capacidad', 'camas',
+        'tiene_jacuzzi', 'activo',
+    ];
+
+    protected $casts = [
+        'tiene_jacuzzi' => 'boolean',
+        'activo' => 'boolean',
+        'capacidad' => 'integer',
+        'camas' => 'integer',
+    ];
+
+    public function habitaciones(): HasMany
+    {
+        return $this->hasMany(Habitacion::class, 'id_tipo', 'id_tipo');
+    }
+
+    public function tarifas(): HasMany
+    {
+        return $this->hasMany(Tarifa::class, 'id_tipo', 'id_tipo');
+    }
+
+    public function paquetesDecoracion(): HasMany
+    {
+        return $this->hasMany(PaqueteDecoracion::class, 'id_tipo_habitacion', 'id_tipo');
+    }
+
+    public function promociones(): HasMany
+    {
+        return $this->hasMany(Promocion::class, 'id_tipo_habitacion', 'id_tipo');
+    }
+}
+
+================================================================================
+=== app\Models\TipoMantenimiento.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class TipoMantenimiento extends Model
+{
+    protected $table = 'tipos_mantenimiento';
+    protected $primaryKey = 'id_tipo_mantenimiento';
+
+    protected $fillable = [
+        'nombre', 'slug', 'descripcion', 'icono', 'color', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+
+    public function mantenimientos(): HasMany
+    {
+        return $this->hasMany(Mantenimiento::class, 'id_tipo_mantenimiento', 'id_tipo_mantenimiento');
+    }
+}
+
+================================================================================
+=== app\Models\TipoObservacion.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class TipoObservacion extends Model
+{
+    protected $table = 'tipos_observacion';
+    protected $primaryKey = 'id_tipo_observacion';
+
+    protected $fillable = [
+        'nombre', 'slug', 'icono', 'color', 'descripcion', 'orden', 'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'orden' => 'integer',
+    ];
+}
+
+================================================================================
+=== app\Models\Turno.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Turno extends Model
+{
+    protected $table = 'turnos';
+
+    protected $fillable = [
+        'nombre',
+        'hora_inicio',
+        'hora_fin',
+        'descripcion',
+        'activo',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
+
+    public function usuarios(): HasMany
+    {
+        return $this->hasMany(Usuario::class, 'id_turno');
+    }
+}
+
+================================================================================
+=== app\Models\Usuario.php ===
+================================================================================
+<?php
+
+namespace App\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Sanctum\HasApiTokens;
+
+class Usuario extends Authenticatable
+{
+    use HasApiTokens;
+
+    protected $table = 'usuarios';
+
+    protected $fillable = [
+        'nombre',
+        'apellido',
+        'nombre_usuario',
+        'password',
+        'id_rol',
+        'id_turno',
+        'activo',
+        'ultimo_login',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean',
+        'ultimo_login' => 'datetime',
+        'password' => 'hashed',
+    ];
+
+    public function rol(): BelongsTo
+    {
+        return $this->belongsTo(Rol::class, 'id_rol');
+    }
+
+    public function turno(): BelongsTo
+    {
+        return $this->belongsTo(Turno::class, 'id_turno');
+    }
+
+    public function esAdmin(): bool
+    {
+        return $this->rol?->nombre === 'admin';
+    }
+}
+

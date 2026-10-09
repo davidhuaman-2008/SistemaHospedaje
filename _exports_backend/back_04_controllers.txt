@@ -1,0 +1,4290 @@
+================================================================================
+=== back_04_controllers.txt ===
+=== TOTAL: 37 archivos ===
+================================================================================
+
+================================================================================
+=== app\Http\Controllers\AuthController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\AuthService;
+use Illuminate\Http\Request;
+
+class AuthController extends Controller
+{
+    // Laravel inyecta el servicio automáticamente (dependency injection).
+    public function __construct(private AuthService $authService) {}
+
+    // POST /api/login
+    public function login(Request $request)
+    {
+        // Valida que vengan los dos campos. Si falta algo → 422 automático.
+        $datos = $request->validate([
+            'nombre_usuario' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        // Toda la lógica real (buscar usuario, verificar password, generar token)
+        // vive en AuthService. Aquí solo se delega.
+        $resultado = $this->authService->login(
+            $datos['nombre_usuario'],
+            $datos['password']
+        );
+
+        // Devuelve el usuario y el token Bearer que usará el frontend.
+        return response()->json([
+            'mensaje' => 'Login exitoso',
+            'usuario' => $resultado['usuario'],
+            'token' => $resultado['token'],
+        ]);
+    }
+
+    // POST /api/logout (protegida con auth:sanctum)
+    public function logout(Request $request)
+    {
+        // Revoca SOLO el token actual del usuario autenticado.
+        $this->authService->logout($request->user());
+
+        return response()->json([
+            'mensaje' => 'Sesión cerrada correctamente',
+        ]);
+    }
+
+    // GET /api/yo (protegida con auth:sanctum)
+    public function yo(Request $request)
+    {
+        // Devuelve el usuario autenticado con sus relaciones rol y turno
+        // ya cargadas (eager loading) para el frontend.
+        return response()->json(
+            $request->user()->load(['rol', 'turno'])
+        );
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\CategoriaMovimientoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\CategoriaMovimientoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class CategoriaMovimientoController extends Controller
+{
+    // Laravel inyecta el Service automáticamente.
+    public function __construct(
+        private CategoriaMovimientoService $service
+    ) {}
+
+    // GET /categorias-movimiento  (y opcional ?tipo=Ingreso|Egreso)
+    public function index(Request $request): JsonResponse
+    {
+        // Si viene ?tipo=..., filtra por ese tipo. Si no, lista todo.
+        if ($request->has('tipo')) {
+            return response()->json($this->service->listarPorTipo($request->tipo));
+        }
+        return response()->json($this->service->listar());
+    }
+
+    // GET /categorias-movimiento/activos
+    public function activos(): JsonResponse
+    {
+        // Solo las que tienen activo = true.
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /categorias-movimiento/{id}
+    public function show(int $id): JsonResponse
+    {
+        // Devuelve una sola categoría.
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /categorias-movimiento
+    public function store(Request $request): JsonResponse
+    {
+        // Valida los campos obligatorios (nombre y tipo).
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50',
+            'tipo' => 'required|in:Ingreso,Egreso',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        // Crea vía Service y responde 201 (Created).
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Categoría creada',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /categorias-movimiento/{id}
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // 'sometimes' = solo valida los campos que vengan en el body.
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50',
+            'tipo' => 'sometimes|in:Ingreso,Egreso',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        // Actualiza y devuelve el item modificado.
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Categoría actualizada',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /categorias-movimiento/{id}/desactivar
+    public function desactivar(int $id): JsonResponse
+    {
+        // Soft delete: activo = false.
+        return response()->json([
+            'mensaje' => 'Categoría desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /categorias-movimiento/{id}/reactivar
+    public function reactivar(int $id): JsonResponse
+    {
+        // Vuelve a poner activo = true.
+        return response()->json([
+            'mensaje' => 'Categoría reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /categorias-movimiento/{id}
+    public function destroy(int $id): JsonResponse
+    {
+        // Elimina físicamente y devuelve solo el mensaje.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Categoría eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\CategoriaProductoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\CategoriaProductoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class CategoriaProductoController extends Controller
+{
+    // Laravel inyecta el Service automáticamente.
+    public function __construct(private CategoriaProductoService $service) {}
+
+    // GET /categorias-producto
+    public function index(): JsonResponse
+    {
+        // Lista TODAS las categorías (activas e inactivas).
+        return response()->json($this->service->listar());
+    }
+
+    // GET /categorias-producto/activos
+    public function activos(): JsonResponse
+    {
+        // Solo las categorías con activo = true.
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /categorias-producto/{id}
+    public function show(int $id): JsonResponse
+    {
+        // Devuelve una sola categoría.
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /categorias-producto
+    public function store(Request $request): JsonResponse
+    {
+        // Valida los campos. `nombre` y `slug` deben ser únicos en la tabla.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:categorias_producto,nombre',
+            'slug' => 'required|string|max:50|unique:categorias_producto,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        // Crea y responde 201 (Created).
+        return response()->json([
+            'mensaje' => 'Categoría creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /categorias-producto/{id}
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // Igual que store, pero ignora el propio ID en la validación `unique`.
+        // El último parámetro (`id_categoria_producto`) es la columna PK.
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:categorias_producto,nombre,' . $id . ',id_categoria_producto',
+            'slug' => 'sometimes|string|max:50|unique:categorias_producto,slug,' . $id . ',id_categoria_producto',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Categoría actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /categorias-producto/{id}/desactivar
+    public function desactivar(int $id): JsonResponse
+    {
+        // Soft delete: activo = false.
+        return response()->json([
+            'mensaje' => 'Categoría desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /categorias-producto/{id}/reactivar
+    public function reactivar(int $id): JsonResponse
+    {
+        // Vuelve a activo = true.
+        return response()->json([
+            'mensaje' => 'Categoría reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /categorias-producto/{id}
+    public function destroy(int $id): JsonResponse
+    {
+        // Elimina físicamente y devuelve solo el mensaje.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Categoría eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\CategoriaPromocionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\CategoriaPromocionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class CategoriaPromocionController extends Controller
+{
+    // Laravel inyecta el Service automáticamente.
+    public function __construct(private CategoriaPromocionService $service) {}
+
+    // GET /categorias-promocion
+    public function index(): JsonResponse
+    {
+        // Lista TODAS las categorías (activas e inactivas).
+        return response()->json($this->service->listar());
+    }
+
+    // GET /categorias-promocion/activos
+    public function activos(): JsonResponse
+    {
+        // Solo las que tienen activo = true.
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /categorias-promocion/{id}
+    public function show(int $id): JsonResponse
+    {
+        // Devuelve una sola categoría.
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /categorias-promocion
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `nombre` y `slug` deben ser únicos en la tabla.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:categorias_promocion,nombre',
+            'slug' => 'required|string|max:50|unique:categorias_promocion,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        // Crea y responde 201 (Created).
+        return response()->json([
+            'mensaje' => 'Categoría creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /categorias-promocion/{id}
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // Igual que store, pero ignora el propio ID en la validación `unique`.
+        // El último parámetro (`id_categoria_promocion`) es la columna PK.
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:categorias_promocion,nombre,' . $id . ',id_categoria_promocion',
+            'slug' => 'sometimes|string|max:50|unique:categorias_promocion,slug,' . $id . ',id_categoria_promocion',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Categoría actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /categorias-promocion/{id}/desactivar
+    public function desactivar(int $id): JsonResponse
+    {
+        // Soft delete: activo = false.
+        return response()->json([
+            'mensaje' => 'Categoría desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /categorias-promocion/{id}/reactivar
+    public function reactivar(int $id): JsonResponse
+    {
+        // Vuelve a activo = true.
+        return response()->json([
+            'mensaje' => 'Categoría reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /categorias-promocion/{id}
+    public function destroy(int $id): JsonResponse
+    {
+        // Elimina físicamente y devuelve solo el mensaje.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Categoría eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ClienteController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ClienteService;
+use App\Services\ClienteVisitaService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ClienteController extends Controller
+{
+    // Inyecta DOS servicios: uno para clientes y otro para visitas.
+    public function __construct(
+        private ClienteService $service,
+        private ClienteVisitaService $visitaService,
+    ) {}
+
+    // GET /clientes
+    public function index(): JsonResponse
+    {
+        // Lista TODOS los clientes (activos e inactivos).
+        return response()->json($this->service->listar());
+    }
+
+    // GET /clientes/activos
+    public function activos(): JsonResponse
+    {
+        // Solo clientes con activo = true.
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /clientes/buscar?dni=X
+    // Endpoint especial: la búsqueda por DNI para el módulo de recepción.
+    public function buscar(Request $request): JsonResponse
+    {
+        $dni = $request->query('dni');
+
+        // Si no mandan DNI, responde con "no existe" (evita error 500).
+        if (!$dni) {
+            return response()->json([
+                'existe' => false,
+                'cliente' => null,
+                'reserva_activa' => null,
+            ]);
+        }
+
+        // El Service busca por DNI y adjunta `reserva_activa` como atributo dinámico.
+        $cliente = $this->service->buscarPorDni($dni);
+
+        // Extrae el atributo ANTES de serializar.
+        // (Regla R-D20: NO usar $appends porque rompe la serialización de colecciones.)
+        $reservaActiva = $cliente ? $cliente->getAttribute('reserva_activa') : null;
+
+        // Devuelve un JSON con 3 campos separados:
+        //   - existe: booleano
+        //   - cliente: el cliente completo (o null)
+        //   - reserva_activa: la reserva activa si tiene (o null)
+        return response()->json([
+            'existe' => $cliente !== null,
+            'cliente' => $cliente,
+            'reserva_activa' => $reservaActiva,
+        ]);
+    }
+
+    // GET /clientes/{id}
+    public function show(int $id): JsonResponse
+    {
+        // Devuelve un solo cliente.
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /clientes
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `numero_documento` debe ser único en la tabla clientes.
+        // Los campos FK se validan con `exists` para que apunten a filas reales.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'apellido' => 'nullable|string|max:100',
+            'id_tipo_documento' => 'nullable|exists:tipos_documento,id_documento',
+            'numero_documento' => 'nullable|string|max:30|unique:clientes,numero_documento',
+            'celular' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:150',
+            'fecha_nacimiento' => 'nullable|date',
+            'fecha_aniversario' => 'nullable|date',
+            'direccion' => 'nullable|string|max:255',
+            'id_nivel' => 'nullable|exists:clientes_niveles,id_nivel',
+            'activo' => 'boolean',
+        ]);
+
+        // Crea y responde 201 (Created).
+        return response()->json([
+            'mensaje' => 'Cliente creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /clientes/{id}
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // Igual que store, pero `unique` ignora el propio ID (columna PK: id_cliente).
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:100',
+            'apellido' => 'nullable|string|max:100',
+            'id_tipo_documento' => 'nullable|exists:tipos_documento,id_documento',
+            'numero_documento' => 'nullable|string|max:30|unique:clientes,numero_documento,' . $id . ',id_cliente',
+            'celular' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:150',
+            'fecha_nacimiento' => 'nullable|date',
+            'fecha_aniversario' => 'nullable|date',
+            'direccion' => 'nullable|string|max:255',
+            'id_nivel' => 'nullable|exists:clientes_niveles,id_nivel',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Cliente actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /clientes/{id}/desactivar
+    public function desactivar(int $id): JsonResponse
+    {
+        // Soft delete: activo = false.
+        return response()->json([
+            'mensaje' => 'Cliente desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /clientes/{id}/reactivar
+    public function reactivar(int $id): JsonResponse
+    {
+        // Vuelve a activo = true.
+        return response()->json([
+            'mensaje' => 'Cliente reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /clientes/{id}
+    public function destroy(int $id): JsonResponse
+    {
+        // Elimina físicamente y devuelve solo el mensaje.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Cliente eliminado']);
+    }
+
+    // GET /clientes/{id}/visitas
+    public function visitas(int $id): JsonResponse
+    {
+        // Usa el SEGUNDO servicio (ClienteVisitaService) para listar las visitas del cliente.
+        return response()->json($this->visitaService->listarPorCliente($id));
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ClienteNivelController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ClienteNivelService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ClienteNivelController extends Controller
+{
+    // Inyecta el Service que maneja toda la lógica de niveles de cliente.
+    public function __construct(
+        private ClienteNivelService $service
+    ) {}
+
+    // GET /clientes-niveles → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /clientes-niveles/activos → solo los que tienen activo = true.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /clientes-niveles/{id} → devuelve un nivel por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /clientes-niveles → crea un nivel nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `nombre` es único. `descuento` es porcentaje (0-100).
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:clientes_niveles,nombre',
+            'visitas_min' => 'required|integer|min:0',
+            'visitas_max' => 'nullable|integer|min:0',
+            'descuento' => 'required|numeric|min:0|max:100',
+            'color' => 'nullable|string|max:20',
+            'icono' => 'nullable|string|max:50',
+            'beneficios' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Nivel de cliente creado',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /clientes-niveles/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:clientes_niveles,nombre,' . $id . ',id_nivel',
+            'visitas_min' => 'sometimes|integer|min:0',
+            'visitas_max' => 'nullable|integer|min:0',
+            'descuento' => 'sometimes|numeric|min:0|max:100',
+            'color' => 'nullable|string|max:20',
+            'icono' => 'nullable|string|max:50',
+            'beneficios' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Nivel de cliente actualizado',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /clientes-niveles/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Nivel de cliente desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /clientes-niveles/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Nivel de cliente reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /clientes-niveles/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Nivel de cliente eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ClienteObservacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ClienteObservacionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ClienteObservacionController extends Controller
+{
+    // Inyecta el Service que maneja las observaciones/alertas de clientes.
+    public function __construct(private ClienteObservacionService $service) {}
+
+    // GET /cliente-observaciones → lista TODAS las observaciones del sistema.
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listarTodas());
+    }
+
+    // GET /clientes/{id}/observaciones → solo las de un cliente.
+    public function porCliente(int $idCliente): JsonResponse
+    {
+        return response()->json($this->service->listarPorCliente($idCliente));
+    }
+
+    // GET /cliente-observaciones/{id} → una observación por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /clientes/{id}/observaciones → crea una observación al cliente.
+    public function store(Request $request, int $idCliente): JsonResponse
+    {
+        // Valida que el tipo y la gravedad existan en sus tablas.
+        $datos = $request->validate([
+            'id_tipo_observacion' => 'required|exists:tipos_observacion,id_tipo_observacion',
+            'id_gravedad' => 'required|exists:gravedades_observacion,id_gravedad',
+            'motivo' => 'required|string|max:255',
+            'monto_deuda' => 'nullable|numeric|min:0',
+        ]);
+
+        // El id_cliente viene de la URL, no del body.
+        $datos['id_cliente'] = $idCliente;
+        // El usuario que la crea sale del token autenticado (Sanctum).
+        $datos['id_usuario_creacion'] = $request->user()->id;
+
+        return response()->json([
+            'mensaje' => 'Observación registrada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PATCH /cliente-observaciones/{id}/resolver → marca la observación como resuelta.
+    public function resolver(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Observación resuelta',
+            'data' => $this->service->resolver($id),
+        ]);
+    }
+
+    // DELETE /cliente-observaciones/{id} → elimina la observación.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Observación eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ClienteVisitaController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ClienteVisitaService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ClienteVisitaController extends Controller
+{
+    // Inyecta el Service que maneja el historial de visitas.
+    public function __construct(private ClienteVisitaService $service) {}
+
+    // GET /clientes/{idCliente}/visitas → lista las visitas de un cliente.
+    public function index(int $idCliente): JsonResponse
+    {
+        return response()->json($this->service->listarPorCliente($idCliente));
+    }
+
+    // GET /cliente-visitas/{id} → una visita específica.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /clientes/{idCliente}/visitas → registra una visita manual.
+    public function store(Request $request, int $idCliente): JsonResponse
+    {
+        // Valida. `fecha_salida` no puede ser anterior a `fecha_entrada`.
+        $datos = $request->validate([
+            'id_reserva' => 'nullable|integer',
+            'id_habitacion' => 'nullable|integer',
+            'fecha_entrada' => 'required|date',
+            'fecha_salida' => 'nullable|date|after_or_equal:fecha_entrada',
+            'monto_gastado' => 'nullable|numeric|min:0',
+        ]);
+
+        // El id_cliente viene de la URL.
+        $datos['id_cliente'] = $idCliente;
+
+        return response()->json([
+            'mensaje' => 'Visita registrada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /cliente-visitas/{id} → actualiza una visita.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_reserva' => 'nullable|integer',
+            'id_habitacion' => 'nullable|integer',
+            'fecha_entrada' => 'sometimes|date',
+            'fecha_salida' => 'nullable|date',
+            'monto_gastado' => 'nullable|numeric|min:0',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Visita actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // DELETE /cliente-visitas/{id} → elimina la visita.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Visita eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ConfiguracionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Configuracion;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ConfiguracionController extends Controller
+{
+    // GET /configuraciones → lista TODAS las configuraciones del sistema.
+    // Ordenadas por grupo y luego por clave (para agruparlas visualmente).
+    public function index(): JsonResponse
+    {
+        return response()->json(
+            Configuracion::orderBy('grupo')->orderBy('clave')->get()
+        );
+    }
+
+    // GET /configuraciones/grupo/{grupo} → solo las de un grupo.
+    // Ejemplo: /configuraciones/grupo/reservas → tolerancias, buffer, etc.
+    public function porGrupo(string $grupo): JsonResponse
+    {
+        return response()->json(
+            Configuracion::where('grupo', $grupo)->orderBy('clave')->get()
+        );
+    }
+
+    // PUT /configuraciones/{clave} → actualiza el valor de UNA configuración.
+    // Se identifica por su `clave` (string), NO por ID.
+    public function update(Request $request, string $clave): JsonResponse
+    {
+        // Solo se permite cambiar el valor. La clave no se toca.
+        $datos = $request->validate([
+            'valor' => 'required|string|max:255',
+        ]);
+
+        // Busca por clave. Si no existe → 404 automático.
+        $config = Configuracion::where('clave', $clave)->firstOrFail();
+        $config->update(['valor' => $datos['valor']]);
+
+        // Devuelve el modelo recargado desde la BD (fresh) para evitar caché.
+        return response()->json([
+            'mensaje' => 'Configuración actualizada',
+            'data' => $config->fresh(),
+        ]);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\Controller.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+abstract class Controller
+{
+    //
+}
+
+
+================================================================================
+=== app\Http\Controllers\CuentaPagarController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\CuentaPagarService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
+class CuentaPagarController extends Controller
+{
+    // Inyecta el Service que maneja las cuentas por pagar a proveedores.
+    public function __construct(private CuentaPagarService $service) {}
+
+    // GET /cuentas-por-pagar → lista TODAS las cuentas.
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /cuentas-por-pagar/pendientes → solo las que tienen saldo > 0.
+    public function pendientes(): JsonResponse
+    {
+        return response()->json($this->service->listarPendientes());
+    }
+
+    // GET /cuentas-por-pagar/por-proveedor/{idProveedor} → filtradas por proveedor.
+    public function porProveedor(int $idProveedor): JsonResponse
+    {
+        return response()->json($this->service->listarPorProveedor($idProveedor));
+    }
+
+    // GET /cuentas-por-pagar/vencidas → solo las que pasaron su fecha_vencimiento.
+    public function vencidas(): JsonResponse
+    {
+        return response()->json($this->service->listarVencidas());
+    }
+
+    // GET /cuentas-por-pagar/{id} → una cuenta con sus pagos.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /cuentas-por-pagar → crea una cuenta por pagar manualmente.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `id_proveedor` es obligatorio y debe existir.
+        // `fecha_vencimiento` no puede ser anterior a `fecha_emision`.
+        $datos = $request->validate([
+            'id_proveedor' => 'required|exists:proveedores,id_proveedor',
+            'id_reserva' => 'nullable|exists:reservas,id_reserva',
+            'id_decoracion' => 'nullable|integer',
+            'concepto' => 'required|string|max:255',
+            'monto' => 'required|numeric|min:0.01',
+            'fecha_emision' => 'nullable|date',
+            'fecha_vencimiento' => 'nullable|date|after_or_equal:fecha_emision',
+            'notas' => 'nullable|string',
+        ]);
+
+        // Pasa el ID del usuario autenticado (Auth::id()) al Service.
+        return response()->json([
+            'mensaje' => 'Cuenta creada',
+            'data' => $this->service->crear($datos, Auth::id()),
+        ], 201);
+    }
+
+    // PUT /cuentas-por-pagar/{id} → actualiza datos básicos.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // Solo permite editar concepto, fecha_vencimiento y notas.
+        // NO se puede cambiar el monto ni el proveedor.
+        $datos = $request->validate([
+            'concepto' => 'sometimes|string|max:255',
+            'fecha_vencimiento' => 'nullable|date',
+            'notas' => 'nullable|string',
+        ]);
+
+        // try/catch para capturar reglas de negocio del Service.
+        // Si el Service lanza InvalidArgumentException → responde 422 con el motivo.
+        try {
+            return response()->json([
+                'mensaje' => 'Cuenta actualizada',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /cuentas-por-pagar/{id}/anular → anula la cuenta (no la borra).
+    public function anular(Request $request, int $id): JsonResponse
+    {
+        // El motivo es OBLIGATORIO (queda en auditoría).
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:500',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Cuenta anulada',
+                'data' => $this->service->anular($id, Auth::id(), $datos['motivo']),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // POST /cuentas-por-pagar/{id}/pagos → registra un pago al proveedor.
+    public function registrarPago(Request $request, int $id): JsonResponse
+    {
+        // Valida. `monto` debe ser positivo. `id_metodo_pago` debe existir.
+        $datos = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+            'referencia' => 'nullable|string|max:100',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Pago registrado',
+                'data' => $this->service->registrarPago($id, $datos, Auth::id()),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo de error: el monto excede el saldo pendiente.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // DELETE /cuentas-por-pagar/{id}/pagos/{idPago} → anula un pago.
+    public function anularPago(Request $request, int $id, int $idPago): JsonResponse
+    {
+        // El motivo es OBLIGATORIO.
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:500',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Pago anulado',
+                'data' => $this->service->anularPago($idPago, Auth::id(), $datos['motivo']),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\DecoracionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\DecoracionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
+class DecoracionController extends Controller
+{
+    // Inyecta el Service que maneja las decoraciones aplicadas a reservas.
+    public function __construct(private DecoracionService $service) {}
+
+    // GET /decoraciones → lista TODAS las decoraciones.
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /decoraciones/activas → solo programadas + en-proceso.
+    public function activas(): JsonResponse
+    {
+        return response()->json($this->service->listarActivas());
+    }
+
+    // GET /decoraciones/proximas → las que se vienen pronto.
+    public function proximas(): JsonResponse
+    {
+        return response()->json($this->service->listarProximas());
+    }
+
+    // GET /decoraciones/por-reserva/{idReserva} → las de una reserva.
+    public function porReserva(int $idReserva): JsonResponse
+    {
+        return response()->json($this->service->listarPorReserva($idReserva));
+    }
+
+    // GET /decoraciones/por-proveedor/{idProveedor} → las de un proveedor.
+    public function porProveedor(int $idProveedor): JsonResponse
+    {
+        return response()->json($this->service->listarPorProveedor($idProveedor));
+    }
+
+    // GET /decoraciones/{id} → una decoración con sus relaciones.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /decoraciones → aplica una decoración a una reserva.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `id_reserva` e `id_paquete` son obligatorios y deben existir.
+        $datos = $request->validate([
+            'id_reserva' => 'required|exists:reservas,id_reserva',
+            'id_paquete' => 'required|exists:paquetes_decoracion,id_paquete',
+            'fecha_programada' => 'nullable|date',
+            'adelanto' => 'nullable|numeric|min:0',
+            'frase_personalizada' => 'nullable|string|max:500',
+            'musica' => 'nullable|string|max:100',
+            'notas' => 'nullable|string',
+        ]);
+
+        try {
+            // El Service calcula precio, ganancias, crea CuentaPagar y devuelve la decoración.
+            $decoracion = $this->service->crear($datos, Auth::id());
+            return response()->json([
+                'mensaje' => 'Decoracion creada correctamente',
+                'data' => $decoracion,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo de error: reserva sin anticipación de 24h, o reserva ya decorada.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PUT /decoraciones/{id} → actualiza datos personalizables.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        // Solo permite editar los campos personalizables.
+        // NO se puede cambiar de reserva ni de paquete.
+        $datos = $request->validate([
+            'fecha_programada' => 'nullable|date',
+            'frase_personalizada' => 'nullable|string|max:500',
+            'musica' => 'nullable|string|max:100',
+            'notas' => 'nullable|string',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Decoracion actualizada',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /decoraciones/{id}/estado → cambia el estado (programada → en-proceso → finalizada).
+    public function cambiarEstado(Request $request, int $id): JsonResponse
+    {
+        // Solo permite 3 estados. `cancelada` se maneja por `anular()`.
+        $datos = $request->validate([
+            'estado' => 'required|in:programada,en-proceso,finalizada',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Estado actualizado',
+                'data' => $this->service->cambiarEstado($id, $datos['estado'], $datos['observaciones'] ?? null),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: intentar saltar de programada a finalizada sin pasar por en-proceso.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // POST /decoraciones/{id}/adelanto → registra un adelanto al proveedor.
+    public function registrarAdelanto(Request $request, int $id): JsonResponse
+    {
+        // Valida que el monto sea positivo y que el método de pago exista.
+        $datos = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Adelanto registrado',
+                'data' => $this->service->registrarAdelanto(
+                    $id,
+                    (float) $datos['monto'],       // cast explícito a float
+                    (int) $datos['id_metodo_pago'], // cast explícito a int
+                    Auth::id()                      // quién lo registra
+                ),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: adelanto mayor al saldo pendiente.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /decoraciones/{id}/anular → anula la decoración (guarda motivo).
+    public function anular(Request $request, int $id): JsonResponse
+    {
+        // El motivo es OBLIGATORIO (queda en auditoría).
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Decoracion anulada',
+                'data' => $this->service->anular($id, Auth::id(), $datos['motivo']),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: intentar anular una decoración ya finalizada.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // DELETE /decoraciones/{id} → elimina físicamente (solo si no tiene pagos).
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Decoracion eliminada']);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: no se puede eliminar si ya tiene pagos registrados.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\DescuentoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\DescuentoService;
+use Illuminate\Http\JsonResponse;
+
+class DescuentoController extends Controller
+{
+    public function __construct(private DescuentoService $service) {}
+
+    /**
+     * GET /api/descuentos/config
+     * Devuelve las configuraciones de descuentos automaticos.
+     */
+    public function config(): JsonResponse
+    {
+        return response()->json($this->service->obtenerConfiguraciones());
+    }
+
+    /**
+     * GET /api/descuentos/manuales
+     * Devuelve las opciones de descuento manual disponibles.
+     */
+    public function manuales(): JsonResponse
+    {
+        return response()->json($this->service->obtenerManuales());
+    }
+}
+
+================================================================================
+=== app\Http\Controllers\EstadoCuentaPagarController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\EstadoCuentaPagarService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class EstadoCuentaPagarController extends Controller
+{
+    // Inyecta el Service que maneja los estados de cuenta por pagar.
+    public function __construct(private EstadoCuentaPagarService $service) {}
+
+    // GET /estados-cuenta-pagar → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /estados-cuenta-pagar/activos → solo activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /estados-cuenta-pagar/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /estados-cuenta-pagar → crea un estado nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `es_estado_final` marca si es terminal.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:estados_cuenta_pagar,nombre',
+            'slug' => 'required|string|max:50|unique:estados_cuenta_pagar,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:20',
+            'icono' => 'nullable|string|max:50',
+            'es_estado_final' => 'boolean',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Estado creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /estados-cuenta-pagar/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:estados_cuenta_pagar,nombre,' . $id . ',id_estado_cuenta',
+            'slug' => 'sometimes|string|max:50|unique:estados_cuenta_pagar,slug,' . $id . ',id_estado_cuenta',
+            'descripcion' => 'nullable|string|max:255',
+            'color' => 'nullable|string|max:20',
+            'icono' => 'nullable|string|max:50',
+            'es_estado_final' => 'boolean',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Estado actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /estados-cuenta-pagar/{id}/desactivar → soft delete (con protección).
+    public function desactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Estado desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: no se puede desactivar un estado que está en uso.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /estados-cuenta-pagar/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Estado reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /estados-cuenta-pagar/{id} → elimina (con protección).
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Estado eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: no se puede eliminar si hay cuentas usándolo.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\EstadoHabitacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\EstadoHabitacionService;
+use App\Models\Habitacion;
+use Illuminate\Http\JsonResponse;
+
+class EstadoHabitacionController extends Controller
+{
+    // Inyecta el Service que calcula el estado en vivo de cada habitación.
+    public function __construct(private EstadoHabitacionService $service) {}
+
+    // GET /habitaciones-mapa → devuelve las 32 habitaciones con su estado calculado.
+    public function mapa(): JsonResponse
+    {
+        return response()->json($this->service->mapa());
+    }
+
+    // GET /habitaciones-mapa/{id} → una habitación con su estado calculado.
+    public function show(int $id): JsonResponse
+    {
+        // Carga la habitación con sus relaciones piso y tipo (eager loading).
+        // findOrFail → si no existe, devuelve 404 automáticamente.
+        $habitacion = Habitacion::with(['piso', 'tipo'])->findOrFail($id);
+
+        // Calcula el estado en vivo (Disponible, Ocupada, Por vencer, Vencida, etc.).
+        $estado = $this->service->calcular($habitacion);
+
+        // Devuelve la habitación completa + su estado calculado.
+        return response()->json([
+            'habitacion' => $habitacion,
+            'estado' => $estado,
+        ]);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\EstadoReservaController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\EstadoReserva;
+use Illuminate\Http\JsonResponse;
+
+class EstadoReservaController extends Controller
+{
+    // GET /estados-reserva → lista TODOS los estados ordenados por `orden`.
+    public function index(): JsonResponse
+    {
+        return response()->json(EstadoReserva::orderBy('orden')->get());
+    }
+
+    // GET /estados-reserva/activos → solo los que tienen activo = true.
+    public function activos(): JsonResponse
+    {
+        return response()->json(
+            EstadoReserva::where('activo', true)->orderBy('orden')->get()
+        );
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\GravedadObservacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\GravedadObservacionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class GravedadObservacionController extends Controller
+{
+    // Inyecta el Service que maneja las gravedades de observaciones.
+    public function __construct(private GravedadObservacionService $service) {}
+
+    // GET /gravedades-observacion → lista TODAS (activas e inactivas).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /gravedades-observacion/activos → solo las activas.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /gravedades-observacion/{id} → una por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /gravedades-observacion → crea una gravedad nueva.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `prioridad` es un entero ≥ 1.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:30|unique:gravedades_observacion,nombre',
+            'slug' => 'required|string|max:30|unique:gravedades_observacion,slug',
+            'color' => 'nullable|string|max:20',
+            'prioridad' => 'required|integer|min:1',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Gravedad creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /gravedades-observacion/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:30|unique:gravedades_observacion,nombre,' . $id . ',id_gravedad',
+            'slug' => 'sometimes|string|max:30|unique:gravedades_observacion,slug,' . $id . ',id_gravedad',
+            'color' => 'nullable|string|max:20',
+            'prioridad' => 'sometimes|integer|min:1',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Gravedad actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /gravedades-observacion/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Gravedad desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /gravedades-observacion/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Gravedad reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /gravedades-observacion/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Gravedad eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\HabitacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\HabitacionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class HabitacionController extends Controller
+{
+    // Inyecta el Service que maneja las habitaciones.
+    public function __construct(private HabitacionService $service) {}
+
+    // GET /habitaciones → lista TODAS (activas e inactivas).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /habitaciones/activas → solo las activas.
+    public function activas(): JsonResponse
+    {
+        return response()->json($this->service->listarActivas());
+    }
+
+    // GET /habitaciones/por-piso/{idPiso} → filtradas por piso.
+    public function porPiso(int $idPiso): JsonResponse
+    {
+        return response()->json($this->service->listarPorPiso($idPiso));
+    }
+
+    // GET /habitaciones/por-tipo/{idTipo} → filtradas por tipo.
+    public function porTipo(int $idTipo): JsonResponse
+    {
+        return response()->json($this->service->listarPorTipo($idTipo));
+    }
+
+    // GET /habitaciones/{id} → una por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /habitaciones → crea una habitación nueva.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida que el piso y el tipo existan. `numero` es único.
+        $datos = $request->validate([
+            'id_piso' => 'required|exists:pisos,id_piso',
+            'id_tipo' => 'required|exists:tipos_habitacion,id_tipo',
+            'numero' => 'required|string|max:10|unique:habitaciones,numero',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Habitación creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /habitaciones/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_piso' => 'sometimes|exists:pisos,id_piso',
+            'id_tipo' => 'sometimes|exists:tipos_habitacion,id_tipo',
+            'numero' => 'sometimes|string|max:10|unique:habitaciones,numero,' . $id . ',id_habitacion',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Habitación actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /habitaciones/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Habitación desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /habitaciones/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Habitación reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /habitaciones/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Habitación eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\LimpiezaController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\LimpiezaService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
+class LimpiezaController extends Controller
+{
+    // Inyecta el Service que maneja la cola de limpieza.
+    public function __construct(private LimpiezaService $service) {}
+
+    // GET /limpieza → lista TODAS las limpiezas (histórico completo).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /limpieza/pendientes → resumen para la pantalla de limpieza.
+    public function pendientes(): JsonResponse
+    {
+        // Devuelve 3 cosas en un solo JSON (optimización para el frontend):
+        //   - pendientes: tareas PENDIENTE + EN_PROCESO
+        //   - completadas_hoy: las que se terminaron hoy
+        //   - total_pendientes: contador para el badge del sidebar
+        return response()->json([
+            'pendientes' => $this->service->listarPendientes(),
+            'completadas_hoy' => $this->service->listarCompletadasHoy(),
+            'total_pendientes' => $this->service->contarPendientes(),
+        ]);
+    }
+
+    // POST /limpieza → crea una tarea de limpieza MANUALMENTE.
+    public function store(Request $request): JsonResponse
+    {
+        // `id_habitacion` es obligatorio. `id_reserva` y `tipo` son opcionales.
+        $datos = $request->validate([
+            'id_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            'id_reserva' => 'nullable|exists:reservas,id_reserva',
+            'tipo' => 'nullable|in:NORMAL,PROFUNDA',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Limpieza creada',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la habitación ya tiene una limpieza pendiente.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /limpieza/{id}/iniciar → PENDIENTE → EN_PROCESO.
+    public function iniciar(int $id): JsonResponse
+    {
+        try {
+            // El Service auto-asigna la limpieza al usuario que la inicia.
+            $limpieza = $this->service->iniciar($id, Auth::id());
+            return response()->json([
+                'mensaje' => 'Limpieza iniciada',
+                'data' => $limpieza,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la limpieza ya está EN_PROCESO o COMPLETADA.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /limpieza/{id}/finalizar → EN_PROCESO → COMPLETADA.
+    public function finalizar(Request $request, int $id): JsonResponse
+    {
+        // Las observaciones son opcionales al finalizar.
+        $datos = $request->validate([
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $limpieza = $this->service->finalizar($id, Auth::id(), $datos['observaciones'] ?? null);
+            return response()->json([
+                'mensaje' => 'Limpieza finalizada. Habitación disponible.',
+                'data' => $limpieza,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: intentar finalizar una limpieza que no está en proceso.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * PATCH /api/limpieza/finalizar-todas
+     * Finaliza TODAS las limpiezas activas (Limpieza Rápida).
+     */
+    public function finalizarTodas(Request $request): JsonResponse
+    {
+        // Observaciones opcionales que se aplican a TODAS las limpiezas finalizadas.
+        $datos = $request->validate([
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // El Service itera sobre todas las PENDIENTES + EN_PROCESO y las cierra.
+            $resultado = $this->service->finalizarTodas(
+                Auth::id(),
+                $datos['observaciones'] ?? null
+            );
+
+            // Respuesta con el total de limpiezas cerradas + detalle.
+            return response()->json([
+                'mensaje' => "{$resultado['total']} limpiezas finalizadas",
+                'data' => $resultado,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\MantenimientoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\MantenimientoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
+class MantenimientoController extends Controller
+{
+    // Inyecta el Service que maneja las reparaciones de habitaciones.
+    public function __construct(private MantenimientoService $service) {}
+
+    // GET /mantenimiento → lista TODOS los reportes (histórico completo).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /mantenimiento/pendientes → resumen para la pantalla de mantenimiento.
+    public function pendientes(): JsonResponse
+    {
+        // Devuelve 2 bloques en un solo JSON:
+        //   - pendientes: reportes REPORTADO + EN_PROCESO
+        //   - total_pendientes: contador para badge del sidebar
+        return response()->json([
+            'pendientes' => $this->service->listarPendientes(),
+            'total_pendientes' => $this->service->contarPendientes(),
+        ]);
+    }
+
+    // GET /mantenimiento/habitacion/{idHabitacion} → historial de una habitación.
+    public function porHabitacion(int $idHabitacion): JsonResponse
+    {
+        return response()->json($this->service->listarPorHabitacion($idHabitacion));
+    }
+
+    // GET /mantenimiento/{id} → un reporte con sus relaciones.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /mantenimiento → reporta un problema nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `id_habitacion`, `id_tipo_mantenimiento` y `id_prioridad`
+        // deben existir en sus tablas. `descripcion` es obligatoria.
+        $datos = $request->validate([
+            'id_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            'id_tipo_mantenimiento' => 'required|exists:tipos_mantenimiento,id_tipo_mantenimiento',
+            'id_prioridad' => 'required|exists:prioridades_mantenimiento,id_prioridad',
+            'descripcion' => 'required|string|max:1000',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // El Service valida que no haya otro reporte activo y que la hab. esté Disponible.
+            $mantenimiento = $this->service->crear($datos, Auth::id());
+            return response()->json([
+                'mensaje' => 'Mantenimiento reportado',
+                'data' => $mantenimiento,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la habitación ya tiene un reporte activo, o está ocupada.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /mantenimiento/{id}/iniciar → REPORTADO → EN_PROCESO.
+    public function iniciar(int $id): JsonResponse
+    {
+        try {
+            // El Service auto-asigna el reporte al usuario que lo inicia.
+            $mantenimiento = $this->service->iniciar($id, Auth::id());
+            return response()->json([
+                'mensaje' => 'Mantenimiento iniciado',
+                'data' => $mantenimiento,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: el reporte ya está EN_PROCESO o RESUELTO.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /mantenimiento/{id}/resolver → EN_PROCESO → RESUELTO.
+    public function resolver(Request $request, int $id): JsonResponse
+    {
+        // Observaciones opcionales al resolver.
+        $datos = $request->validate([
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // IMPORTANTE: el Service crea automáticamente una LIMPIEZA
+            // para esa habitación (después de reparar hay que limpiar).
+            $mantenimiento = $this->service->resolver($id, Auth::id(), $datos['observaciones'] ?? null);
+            return response()->json([
+                'mensaje' => 'Mantenimiento resuelto. Se creó limpieza automática.',
+                'data' => $mantenimiento,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: intentar resolver un reporte que no está EN_PROCESO.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /mantenimiento/{id}/cancelar → cancela el reporte con un motivo.
+    public function cancelar(Request $request, int $id): JsonResponse
+    {
+        // El motivo es OBLIGATORIO (queda en auditoría).
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:500',
+        ]);
+
+        try {
+            // El Service guarda `motivo_cancelacion`.
+            $mantenimiento = $this->service->cancelar($id, Auth::id(), $datos['motivo']);
+            return response()->json([
+                'mensaje' => 'Mantenimiento cancelado',
+                'data' => $mantenimiento,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: intentar cancelar un reporte ya resuelto.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // DELETE /mantenimiento/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // Este método NO tiene try/catch porque eliminar no tiene reglas de negocio.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Mantenimiento eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\MetodoPagoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\MetodoPagoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class MetodoPagoController extends Controller
+{
+    // Inyecta el Service que maneja los métodos de pago.
+    public function __construct(
+        private MetodoPagoService $service
+    ) {}
+
+    // GET /metodos-pago → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /metodos-pago/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /metodos-pago/de-caja → solo los que entran a caja (R39).
+    public function deCaja(): JsonResponse
+    {
+        return response()->json($this->service->listarDeCaja());
+    }
+
+    // GET /metodos-pago/de-duenia → solo los que van a la cuenta de la dueña.
+    public function deDuenia(): JsonResponse
+    {
+        return response()->json($this->service->listarDeDuenia());
+    }
+
+    // GET /metodos-pago/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /metodos-pago → crea un método nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` único. `es_de_caja` OBLIGATORIO (define R39).
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:metodos_pago,nombre',
+            'descripcion' => 'nullable|string|max:255',
+            'es_de_caja' => 'required|boolean',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Método de pago creado',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /metodos-pago/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:metodos_pago,nombre,' . $id . ',id_metodo',
+            'descripcion' => 'nullable|string|max:255',
+            'es_de_caja' => 'boolean',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Método de pago actualizado',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /metodos-pago/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Método de pago desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /metodos-pago/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Método de pago reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /metodos-pago/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Método de pago eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\PaqueteDecoracionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\PaqueteDecoracionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class PaqueteDecoracionController extends Controller
+{
+    // Inyecta el Service que maneja el catálogo de paquetes de decoración.
+    public function __construct(private PaqueteDecoracionService $service) {}
+
+    // GET /paquetes-decoracion → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /paquetes-decoracion/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /paquetes-decoracion/por-tipo-habitacion/{idTipo} → filtrados por tipo.
+    public function porTipoHabitacion(int $idTipo): JsonResponse
+    {
+        return response()->json($this->service->listarPorTipoHabitacion($idTipo));
+    }
+
+    // GET /paquetes-decoracion/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /paquetes-decoracion → crea un paquete nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `precio_total`, `ganancia_local` y `ganancia_proveedor` son obligatorios.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'slug' => 'nullable|string|max:100|unique:paquetes_decoracion,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'precio_total' => 'required|numeric|min:0',
+            'ganancia_local' => 'required|numeric|min:0',
+            'ganancia_proveedor' => 'required|numeric|min:0',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
+            'id_tipo_habitacion' => 'nullable|exists:tipos_habitacion,id_tipo',
+            'imagen' => 'nullable|string|max:255',
+            'horas_incluidas' => 'integer|min:1',
+            'incluye_jacuzzi' => 'boolean',
+            'incluye_vino' => 'boolean',
+            'incluye_decoracion' => 'boolean',
+            'incluye_sexshop' => 'boolean',
+            'incluye_netflix' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        try {
+            // El Service valida la fórmula: precio_total = ganancia_local + ganancia_proveedor.
+            $item = $this->service->crear($datos);
+            return response()->json([
+                'mensaje' => 'Paquete de decoración creado',
+                'data' => $item,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la fórmula no cuadra (precio_total ≠ local + proveedor).
+            return response()->json([
+                'mensaje' => 'Error de validación',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    // PUT /paquetes-decoracion/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:100',
+            'slug' => 'sometimes|string|max:100|unique:paquetes_decoracion,slug,' . $id . ',id_paquete',
+            'descripcion' => 'nullable|string|max:255',
+            'precio_total' => 'sometimes|numeric|min:0',
+            'ganancia_local' => 'sometimes|numeric|min:0',
+            'ganancia_proveedor' => 'sometimes|numeric|min:0',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
+            'id_tipo_habitacion' => 'nullable|exists:tipos_habitacion,id_tipo',
+            'imagen' => 'nullable|string|max:255',
+            'horas_incluidas' => 'sometimes|integer|min:1',
+            'incluye_jacuzzi' => 'boolean',
+            'incluye_vino' => 'boolean',
+            'incluye_decoracion' => 'boolean',
+            'incluye_sexshop' => 'boolean',
+            'incluye_netflix' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        try {
+            $item = $this->service->actualizar($id, $datos);
+            return response()->json([
+                'mensaje' => 'Paquete actualizado',
+                'data' => $item,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'mensaje' => 'Error de validación',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    // PATCH /paquetes-decoracion/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Paquete desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /paquetes-decoracion/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Paquete reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /paquetes-decoracion/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Paquete eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\PisoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\PisoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class PisoController extends Controller
+{
+    // Inyecta el Service que maneja los pisos del hospedaje.
+    public function __construct(
+        private PisoService $service
+    ) {}
+
+    // GET /pisos → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /pisos/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /pisos/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /pisos → crea un piso nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` único. `orden` para ordenarlo en el frontend.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:pisos,nombre',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Piso creado',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /pisos/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:pisos,nombre,' . $id . ',id_piso',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Piso actualizado',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /pisos/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Piso desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /pisos/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Piso reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /pisos/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Piso eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\PrioridadMantenimientoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\PrioridadMantenimientoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class PrioridadMantenimientoController extends Controller
+{
+    // Inyecta el Service que maneja las prioridades de mantenimiento.
+    public function __construct(private PrioridadMantenimientoService $service) {}
+
+    // GET /prioridades-mantenimiento → lista TODAS (activas e inactivas).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /prioridades-mantenimiento/activos → solo las activas.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /prioridades-mantenimiento/{id} → una por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /prioridades-mantenimiento → crea una prioridad nueva.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `color` y `orden` opcionales.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:30|unique:prioridades_mantenimiento,nombre',
+            'slug' => 'required|string|max:30|unique:prioridades_mantenimiento,slug',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Prioridad creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /prioridades-mantenimiento/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:30|unique:prioridades_mantenimiento,nombre,' . $id . ',id_prioridad',
+            'slug' => 'sometimes|string|max:30|unique:prioridades_mantenimiento,slug,' . $id . ',id_prioridad',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Prioridad actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /prioridades-mantenimiento/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Prioridad desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /prioridades-mantenimiento/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Prioridad reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /prioridades-mantenimiento/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Prioridad eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ProductoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ProductoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ProductoController extends Controller
+{
+    // Inyecta el Service que maneja los productos.
+    public function __construct(private ProductoService $service) {}
+
+    // GET /productos → lista TODOS, o filtra por categoría si viene ?id_categoria=X.
+    public function index(Request $request): JsonResponse
+    {
+        // Si el frontend manda ?id_categoria=3, filtra. Si no, lista todo.
+        if ($request->has('id_categoria')) {
+            return response()->json($this->service->listarPorCategoria((int) $request->id_categoria));
+        }
+        return response()->json($this->service->listar());
+    }
+
+    // GET /productos/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /productos/stock-bajo → solo los que tienen stock_actual <= stock_minimo.
+    public function stockBajo(): JsonResponse
+    {
+        return response()->json($this->service->listarStockBajo());
+    }
+
+    // GET /productos/por-categoria/{idCategoria} → filtrados por categoría (ruta).
+    public function porCategoria(int $idCategoria): JsonResponse
+    {
+        return response()->json($this->service->listarPorCategoria($idCategoria));
+    }
+
+    // GET /productos/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /productos → crea un producto nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `precio_venta` es obligatorio. `stock_minimo` por defecto será 10.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'descripcion' => 'nullable|string|max:255',
+            'id_categoria_producto' => 'nullable|exists:categorias_producto,id_categoria_producto',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
+            'codigo_barra' => 'nullable|string|max:50',
+            'precio_compra' => 'nullable|numeric|min:0',
+            'precio_venta' => 'required|numeric|min:0',
+            'stock_actual' => 'nullable|integer|min:0',
+            'stock_minimo' => 'nullable|integer|min:0',
+            'unidad_medida' => 'nullable|string|max:20',
+            'imagen' => 'nullable|string|max:255',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Producto creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /productos/{id} → actualiza. `precio_venta` es el único required si viene.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:100',
+            'descripcion' => 'nullable|string|max:255',
+            'id_categoria_producto' => 'nullable|exists:categorias_producto,id_categoria_producto',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
+            'codigo_barra' => 'nullable|string|max:50',
+            'precio_compra' => 'nullable|numeric|min:0',
+            'precio_venta' => 'sometimes|numeric|min:0',
+            'stock_actual' => 'nullable|integer|min:0',
+            'stock_minimo' => 'nullable|integer|min:0',
+            'unidad_medida' => 'nullable|string|max:20',
+            'imagen' => 'nullable|string|max:255',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Producto actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /productos/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Producto desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /productos/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Producto reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /productos/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Producto eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\PromocionClienteController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\PromocionClienteService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class PromocionClienteController extends Controller
+{
+    // Inyecta el Service que maneja las promociones asignadas a clientes.
+    public function __construct(private PromocionClienteService $service) {}
+
+    // GET /promociones-cliente → lista TODAS las asignaciones del sistema.
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /clientes/{idCliente}/promociones → solo las de un cliente.
+    public function porCliente(int $idCliente): JsonResponse
+    {
+        return response()->json($this->service->listarPorCliente($idCliente));
+    }
+
+    // GET /promociones/{idPromocion}/clientes → solo las de una promoción.
+    public function porPromocion(int $idPromocion): JsonResponse
+    {
+        return response()->json($this->service->listarPorPromocion($idPromocion));
+    }
+
+    // GET /promociones-cliente/{id} → una asignación por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /promociones-cliente → asigna una promoción a un cliente.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida que la promoción y el cliente existan en sus tablas.
+        $datos = $request->validate([
+            'id_promocion' => 'required|exists:promociones,id_promocion',
+            'id_cliente' => 'required|exists:clientes,id_cliente',
+            'codigo_personalizado' => 'nullable|string|max:50',
+            'fecha_vencimiento' => 'nullable|date',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Promoción asignada al cliente',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PATCH /promociones-cliente/{id}/usar → marca la promo como usada.
+    public function marcarUsado(int $id): JsonResponse
+    {
+        // El Service setea `usado = true` y guarda `fecha_uso = now()`.
+        return response()->json([
+            'mensaje' => 'Promoción marcada como usada',
+            'data' => $this->service->marcarUsado($id),
+        ]);
+    }
+
+    // DELETE /promociones-cliente/{id} → elimina la asignación.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Asignación eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\PromocionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\PromocionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class PromocionController extends Controller
+{
+    // Inyecta el Service que maneja el catálogo de promociones.
+    public function __construct(private PromocionService $service) {}
+
+    // GET /promociones → lista TODAS (activas e inactivas).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /promociones/activas → solo las que tienen activo = true.
+    public function activas(): JsonResponse
+    {
+        return response()->json($this->service->listarActivas());
+    }
+
+    // GET /promociones/vigentes → solo las vigentes HOY (fecha_inicio <= hoy <= fecha_fin).
+    public function vigentes(): JsonResponse
+    {
+        return response()->json($this->service->listarVigentes());
+    }
+
+    // GET /promociones/por-categoria/{id} → filtradas por categoría.
+    public function porCategoria(int $idCategoria): JsonResponse
+    {
+        return response()->json($this->service->listarPorCategoria($idCategoria));
+    }
+
+    // GET /promociones/{id} → una por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /promociones → crea una promoción nueva.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `tipo` está restringido a 4 opciones. `valor` es obligatorio.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'descripcion' => 'nullable|string|max:255',
+            'id_categoria_promocion' => 'nullable|exists:categorias_promocion,id_categoria_promocion',
+            'tipo' => 'required|in:PORCENTAJE,MONTO_FIJO,NOCHE_GRATIS,OTRO',
+            'valor' => 'required|numeric|min:0',
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+            'dias_semana' => 'nullable|string|max:50',
+            'hora_inicio' => 'nullable|date_format:H:i',
+            'hora_fin' => 'nullable|date_format:H:i',
+            'id_tipo_habitacion' => 'nullable|exists:tipos_habitacion,id_tipo',
+            'monto_minimo' => 'nullable|numeric|min:0',
+            'requiere_codigo' => 'boolean',
+            'codigo' => 'nullable|string|max:50',
+            'limite_uso' => 'nullable|integer|min:1',
+            'limite_por_cliente' => 'nullable|integer|min:1',
+            'acumulable' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Promoción creada',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /promociones/{id} → actualiza (sin `after_or_equal` en fecha_fin).
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:100',
+            'descripcion' => 'nullable|string|max:255',
+            'id_categoria_promocion' => 'nullable|exists:categorias_promocion,id_categoria_promocion',
+            'tipo' => 'sometimes|in:PORCENTAJE,MONTO_FIJO,NOCHE_GRATIS,OTRO',
+            'valor' => 'sometimes|numeric|min:0',
+            'fecha_inicio' => 'nullable|date',
+            'fecha_fin' => 'nullable|date',
+            'dias_semana' => 'nullable|string|max:50',
+            'hora_inicio' => 'nullable|date_format:H:i',
+            'hora_fin' => 'nullable|date_format:H:i',
+            'id_tipo_habitacion' => 'nullable|exists:tipos_habitacion,id_tipo',
+            'monto_minimo' => 'nullable|numeric|min:0',
+            'requiere_codigo' => 'boolean',
+            'codigo' => 'nullable|string|max:50',
+            'limite_uso' => 'nullable|integer|min:1',
+            'limite_por_cliente' => 'nullable|integer|min:1',
+            'acumulable' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Promoción actualizada',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /promociones/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Promoción desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /promociones/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Promoción reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /promociones/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Promoción eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ProveedorController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ProveedorService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class ProveedorController extends Controller
+{
+    // Inyecta el Service que maneja los proveedores.
+    public function __construct(private ProveedorService $service) {}
+
+    // GET /proveedores → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /proveedores/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /proveedores/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /proveedores → crea un proveedor nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // Solo `razon_social` es obligatoria. El resto es opcional.
+        $datos = $request->validate([
+            'razon_social' => 'required|string|max:100',
+            'nombre_comercial' => 'nullable|string|max:100',
+            'ruc' => 'nullable|string|max:20',
+            'telefono' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:150',
+            'direccion' => 'nullable|string|max:255',
+            'contacto' => 'nullable|string|max:100',
+            'tipo' => 'nullable|string|max:30',
+            'notas' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Proveedor creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /proveedores/{id} → actualiza.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'razon_social' => 'sometimes|string|max:100',
+            'nombre_comercial' => 'nullable|string|max:100',
+            'ruc' => 'nullable|string|max:20',
+            'telefono' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:150',
+            'direccion' => 'nullable|string|max:255',
+            'contacto' => 'nullable|string|max:100',
+            'tipo' => 'nullable|string|max:30',
+            'notas' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Proveedor actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /proveedores/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Proveedor desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /proveedores/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Proveedor reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /proveedores/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Proveedor eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\ReservaController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\ReservaService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
+
+class ReservaController extends Controller
+{
+    // Inyecta el Service que maneja toda la lógica de reservas.
+    public function __construct(private ReservaService $service) {}
+
+    // ========================================================================
+    // CRUD BÁSICO
+    // ========================================================================
+
+    // GET /reservas → lista TODAS las reservas (WK-, RES-, DEC-).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /reservas/{id} → una reserva con todas sus relaciones.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // ========================================================================
+    // CREACIÓN: WALK-IN vs RESERVA FUTURA
+    // ========================================================================
+
+    // POST /reservas/walk-in → cliente físico que llega ahora.
+    public function walkIn(Request $request): JsonResponse
+    {
+        // Valida. `id_cliente`, `id_habitacion` e `id_tarifa` son obligatorios.
+        // `pagos[]` es para pago mixto (varios métodos).
+        $datos = $request->validate([
+            'id_cliente' => 'required|exists:clientes,id_cliente',
+            'id_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            'id_tarifa' => 'required|exists:tarifas,id_tarifa',
+            'cantidad_personas' => 'nullable|integer|min:1',
+            'fecha_entrada' => 'nullable|date',
+            'adelanto' => 'nullable|numeric|min:0',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            // Pago mixto: array de pagos con método y monto.
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
+            'telefono' => 'nullable|string|max:20',
+            'notas' => 'nullable|string',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        try {
+            // Crea la reserva con estado ACTIVA + check-in automático.
+            // Genera código WK-XXXXXX.
+            // Crea el pago inicial (único o mixto).
+            // Registra la visita al cliente (sube su nivel).
+            $reserva = $this->service->crearWalkIn($datos, Auth::id());
+            return response()->json([
+                'mensaje' => 'Walk-in registrado',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: cliente ya tiene reserva activa (R-CLI-7).
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // POST /reservas → reserva futura (cliente reserva para después).
+    public function store(Request $request): JsonResponse
+    {
+        // Diferencia clave con walkIn: `fecha_entrada` es OBLIGATORIA y debe ser futura.
+        // También acepta `con_decoracion` (boolean).
+        $datos = $request->validate([
+            'id_cliente' => 'required|exists:clientes,id_cliente',
+            'id_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            'id_tarifa' => 'required|exists:tarifas,id_tarifa',
+            'cantidad_personas' => 'nullable|integer|min:1',
+            'fecha_entrada' => 'required|date|after:now',  // ← debe ser futura
+            'con_decoracion' => 'nullable|boolean',
+            'adelanto' => 'nullable|numeric|min:0',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
+            'telefono' => 'nullable|string|max:20',
+            'notas' => 'nullable|string',
+            'observaciones' => 'nullable|string',
+            'descuento_manual_aniversario' => 'nullable|boolean',
+            'descuento_manual_cumpleanos' => 'nullable|boolean',
+            'descuento_manual_motivo' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Crea la reserva con estado CONFIRMADA.
+            // Genera código RES-XXXXXX o DEC-XXXXXX (si con_decoracion).
+            // Bloquea el rango en `ocupacion_habitacion`.
+            // Si con_decoracion → crea la decoración + CuentaPagar al proveedor.
+            $reserva = $this->service->crearReserva($datos, Auth::id());
+            return response()->json([
+                'mensaje' => 'Reserva creada',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplos:
+            // - La habitación no está disponible en ese rango.
+            // - Falta la anticipación mínima (30 min o 24h para decoración).
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // CICLO DE VIDA DE LA RESERVA
+    // ========================================================================
+
+    // PATCH /reservas/{id}/check-in → activa una reserva confirmada.
+    public function checkIn(int $id): JsonResponse
+    {
+        try {
+            // Cambia estado a ACTIVA. Crea `registro_estadia`.
+            // Registra la visita al cliente.
+            $reserva = $this->service->checkIn($id, Auth::id());
+            return response()->json([
+                'mensaje' => 'Check-in realizado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /reservas/{id}/check-out → finaliza la estadía.
+    public function checkOut(Request $request, int $id): JsonResponse
+    {
+        // `monto_final` es opcional. Si no viene, usa el `total` de la reserva.
+        $datos = $request->validate([
+            'monto_final' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            // Cambia estado a FINALIZADA.
+            // Crea LIMPIEZA automática para la habitación.
+            // Libera la ocupación.
+            $reserva = $this->service->checkOut($id, Auth::id(), $datos['monto_final'] ?? null);
+            return response()->json([
+                'mensaje' => 'Check-out realizado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /reservas/{id}/cancelar → el cliente canceló.
+    public function cancelar(Request $request, int $id): JsonResponse
+    {
+        // Motivo OBLIGATORIO (queda en auditoría).
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        try {
+            // Cambia estado a CANCELADA.
+            // Libera la ocupación.
+            // NO anula los pagos (el cliente pierde el adelanto).
+            $reserva = $this->service->cancelar($id, Auth::id(), $datos['motivo']);
+            return response()->json(['mensaje' => 'Reserva cancelada', 'data' => $reserva]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /reservas/{id}/anular → error del recepcionista.
+    public function anular(Request $request, int $id): JsonResponse
+    {
+        // Motivo OBLIGATORIO.
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        try {
+            // Cambia estado a ANULADA.
+            // ANULA TODOS los pagos asociados (no se cobra al cliente).
+            // Libera la ocupación.
+            // No cuenta para SUNAT.
+            $reserva = $this->service->anular($id, Auth::id(), $datos['motivo']);
+            return response()->json(['mensaje' => 'Reserva anulada', 'data' => $reserva]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // CAMBIO DE HABITACIÓN
+    // ========================================================================
+
+    // PATCH /reservas/{id}/cambiar-habitacion
+    public function cambiarHabitacion(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_nueva_habitacion' => 'required|exists:habitaciones,id_habitacion',
+            // Modo de manejo de la diferencia de precio:
+            'modo_diferencia' => 'nullable|in:AHORA,AL_FINAL',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+        ]);
+
+        try {
+            // Al cambiar:
+            // - La hab. VIEJA va a LIMPIEZA.
+            // - El tiempo NO se resetea (regla RG5).
+            // - Crea `reserva_ajuste` con la diferencia.
+            // - Si modo=AHORA y diferencia positiva → registra pago.
+            // - Si modo=AHORA y diferencia negativa → ajusta `pagado`.
+            $reserva = $this->service->cambiarHabitacion(
+                $id,
+                $datos['id_nueva_habitacion'],
+                Auth::id(),
+                $datos['modo_diferencia'] ?? 'AL_FINAL',  // default
+                $datos['id_metodo_pago'] ?? null
+            );
+            return response()->json(['mensaje' => 'Habitación cambiada', 'data' => $reserva]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: la nueva habitación no está disponible en ese rango.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // CONSUMOS
+    // ========================================================================
+
+    // POST /reservas/{id}/consumos → agrega UN consumo.
+    public function agregarConsumo(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_producto' => 'required|exists:productos,id_producto',
+            'cantidad' => 'required|integer|min:1',
+            'pagado' => 'boolean',  // true → paga ahora, false → suma a la cuenta
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        try {
+            // Si pagado=true → registra pago + NO suma a monto_consumos.
+            // Si pagado=false → suma a monto_consumos.
+            // Descuenta stock (regla R41).
+            $consumo = $this->service->agregarConsumo(
+                $id,
+                $datos['id_producto'],
+                $datos['cantidad'],
+                $datos['pagado'] ?? false,
+                Auth::id(),
+                $datos['id_metodo_pago'] ?? null,
+                $datos['observaciones'] ?? null
+            );
+
+            // Devuelve la reserva actualizada para que el frontend recargue.
+            $reserva = $this->service->obtener($id);
+
+            return response()->json([
+                'mensaje' => 'Consumo agregado',
+                'consumo' => $consumo,
+                'reserva' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: no hay stock suficiente.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // DELETE /reservas/{id}/consumos/{idConsumo} → elimina un consumo.
+    public function eliminarConsumo(int $idReserva, int $idConsumo): JsonResponse
+    {
+        try {
+            // Devuelve stock al inventario.
+            // Revierte montos de la reserva.
+            $this->service->eliminarConsumo($idConsumo, Auth::id());
+            return response()->json(['mensaje' => 'Consumo eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // EXTENSIONES DE TIEMPO
+    // ========================================================================
+
+    // GET /reservas/{id}/calculo-extension → previsualiza el cobro de horas extra.
+    public function calculoExtension(int $id): JsonResponse
+    {
+        // Carga la reserva.
+        $reserva = $this->service->obtener($id);
+
+        // Usa el ExtensionService directamente (con app() helper).
+        $service = app(\App\Services\ExtensionService::class);
+
+        // Devuelve el cálculo (opciones de horas extra, montos, si excede máximo).
+        return response()->json($service->calcular($reserva));
+    }
+
+    // POST /reservas/{id}/extensiones → aplica una extensión.
+    public function agregarExtension(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'horas_extra' => 'required|integer|min:0',
+            'cargar_a_cuenta' => 'boolean',  // true → suma a la cuenta, false → pago ahora
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'es_turno_adicional' => 'boolean',  // true → cobra turno completo
+            'observaciones' => 'nullable|string',
+        ]);
+
+        try {
+            // Registra en `extensiones_reserva`.
+            // Actualiza `reserva.horas_extra` y `monto_horas_extra`.
+            // Si cargar_a_cuenta → no paga ahora.
+            // Si NO cargar_a_cuenta → registra pago inmediato.
+            $reserva = $this->service->agregarExtension(
+                $id,
+                $datos['horas_extra'],
+                $datos['cargar_a_cuenta'] ?? true,
+                Auth::id(),
+                $datos['id_metodo_pago'] ?? null,
+                $datos['es_turno_adicional'] ?? false,
+                $datos['observaciones'] ?? null
+            );
+            return response()->json([
+                'mensaje' => 'Extensión aplicada',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: excede el máximo de horas extra.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // GET /reservas/{id}/extensiones → historial de extensiones.
+    public function listarExtensiones(int $id): JsonResponse
+    {
+        return response()->json($this->service->listarExtensiones($id));
+    }
+
+    // ========================================================================
+    // PAGOS Y VUELTOS
+    // ========================================================================
+
+    // POST /reservas/{id}/pagos → agrega un pago adicional.
+    public function agregarPago(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+            'monto' => 'required|numeric|min:0.01',
+            'observaciones' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Recalcula `pagado` y `saldo` de la reserva.
+            $reserva = $this->service->agregarPago($id, $datos, $request->user()->id);
+            return response()->json([
+                'mensaje' => 'Pago registrado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // DELETE /reservas/{id}/pagos/{idPago} → anula un pago específico.
+    public function anularPago(Request $request, int $id, int $idPago): JsonResponse
+    {
+        $datos = $request->validate([
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        try {
+            // Marca `anulado = true` + guarda motivo.
+            // Recalcula `pagado` y `saldo`.
+            $reserva = $this->service->anularPago($idPago, $request->user()->id, $datos['motivo']);
+            return response()->json([
+                'mensaje' => 'Pago anulado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // POST /reservas/{id}/entregar-vuelto → entrega vuelto (registra pago NEGATIVO).
+    public function entregarVuelto(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'id_metodo_pago' => 'required|exists:metodos_pago,id_metodo',
+        ]);
+
+        try {
+            // Registra un pago con monto NEGATIVO (R-DINERO-1).
+            // `pagado` = SUM(pagos) → baja.
+            $reserva = $this->service->entregarVuelto(
+                $id,
+                (float) $datos['monto'],
+                (int) $datos['id_metodo_pago'],
+                $request->user()->id
+            );
+
+            return response()->json([
+                'mensaje' => 'Vuelto entregado',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplo: no hay vuelto pendiente.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /reservas/{id}/check-out-con-vuelto → check-out con decisión sobre vuelto.
+    public function checkOutConVuelto(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto_final' => 'nullable|numeric|min:0',
+            // Decisión: ENTREGADO, NO_RECLAMADO, OTRO.
+            'decision_tipo' => 'required|in:ENTREGADO,NO_RECLAMADO,OTRO',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Ejecuta check-out + maneja el vuelto pendiente según decisión:
+            // - ENTREGADO → registra pago negativo (vuelto).
+            // - NO_RECLAMADO → deja el vuelto como saldo a favor del cliente.
+            // - OTRO → requiere observación.
+            $reserva = $this->service->checkOutConVuelto(
+                $id,
+                Auth::id(),
+                $datos['monto_final'] ?? null,
+                $datos['decision_tipo'],
+                $datos['id_metodo_pago'] ?? null,
+                $datos['observaciones'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Check-out realizado con decisión de vuelto',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // PATCH /reservas/{id}/check-out-con-deuda → check-out con decisión sobre deuda.
+    public function checkOutConDeuda(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'monto_final' => 'nullable|numeric|min:0',
+            // Decisión: PAGO (cobrar ahora) o NO_PAGO (queda como deuda).
+            'decision_tipo' => 'required|in:PAGO,NO_PAGO',
+            'monto_pago' => 'nullable|numeric|min:0.01',
+            'id_metodo_pago' => 'nullable|exists:metodos_pago,id_metodo',
+            'id_gravedad' => 'nullable|exists:gravedades_observacion,id_gravedad',
+            'motivo' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Ejecuta check-out + maneja la deuda:
+            // - PAGO → registra pago ahora.
+            // - NO_PAGO → crea observación de tipo "Deuda" con gravedad y motivo.
+            $reserva = $this->service->checkOutConDeuda(
+                $id,
+                Auth::id(),
+                $datos['monto_final'] ?? null,
+                $datos['decision_tipo'],
+                $datos['monto_pago'] ?? null,
+                $datos['id_metodo_pago'] ?? null,
+                $datos['id_gravedad'] ?? null,
+                $datos['motivo'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Check-out realizado con decisión de deuda',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // CONSUMOS MÚLTIPLES
+    // ========================================================================
+
+    // POST /reservas/{id}/consumos-multiple → agrega N consumos en una sola operación.
+    public function agregarConsumosMultiple(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'consumos' => 'required|array|min:1',
+            'consumos.*.id_producto' => 'required|exists:productos,id_producto',
+            'consumos.*.cantidad' => 'required|integer|min:1',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_metodo_pago' => 'required_with:pagos|exists:metodos_pago,id_metodo',
+            'pagos.*.monto' => 'required_with:pagos|numeric|min:0.01',
+            'cargar_a_cuenta' => 'boolean',
+            'observaciones' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            // Transacción atómica: valida stock de TODOS antes de crear.
+            // Si `cargar_a_cuenta = false` y hay saldo → error 422.
+            $reserva = $this->service->agregarConsumosMultiple(
+                $id,
+                $datos['consumos'],
+                $datos['pagos'] ?? [],
+                $datos['cargar_a_cuenta'] ?? true,
+                Auth::id(),
+                $datos['observaciones'] ?? null
+            );
+
+            return response()->json([
+                'mensaje' => 'Consumos agregados correctamente',
+                'data' => $reserva,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // ========================================================================
+    // MÓDULO 09B — RESERVAS FUTURAS
+    // ========================================================================
+
+    // GET /reservas/disponibles?fecha=X&horas=Y
+    // Devuelve habitaciones libres + con conflicto en un rango.
+    public function reservasDisponibles(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'fecha' => 'required|date',
+            'horas' => 'required|integer|min:1|max:24',
+            'con_decoracion' => 'nullable|boolean',
+        ]);
+
+        // Calcula el rango de la reserva.
+        $inicio = \Carbon\Carbon::parse($datos['fecha']);
+        $fin = $inicio->copy()->addHours((int) $datos['horas']);
+
+        // Si es con decoración, el proveedor necesita X horas antes.
+        $horasAntesDecoracion = ($datos['con_decoracion'] ?? false)
+            ? \App\Models\Configuracion::obtener('horas_antes_decoracion', 5)
+            : 0;
+
+        // Lista libres + con conflicto (ambas con datos del por qué no están libres).
+        $libres = $this->service->listarDisponiblesEnRango($inicio, $fin, (int) $datos['horas'], $horasAntesDecoracion);
+        $conflicto = $this->service->listarConConflictoEnRango($inicio, $fin, $horasAntesDecoracion);
+
+        return response()->json([
+            'fecha_inicio' => $inicio->toIso8601String(),
+            'fecha_fin' => $fin->toIso8601String(),
+            'horas' => (int) $datos['horas'],
+            'total_libres' => $libres->count(),
+            'total_conflicto' => $conflicto->count(),
+            'libres' => $libres,
+            'con_conflicto' => $conflicto,
+        ]);
+    }
+
+    // GET /reservas/proximas → reservas dentro de la ventana de bloqueo (4h).
+    public function proximas(): JsonResponse
+    {
+        $reservas = $this->service->listarProximasConAlerta();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+
+    // GET /reservas/hoy → reservas con fecha_entrada HOY.
+    public function hoy(): JsonResponse
+    {
+        $reservas = $this->service->listarHoy();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+
+    // GET /reservas/proximas-check-in → reservas listas para check-in.
+    public function proximasCheckIn(): JsonResponse
+    {
+        $reservas = $this->service->listarProximasCheckIn();
+        return response()->json([
+            'total' => $reservas->count(),
+            'reservas' => $reservas,
+        ]);
+    }
+
+    // ========================================================================
+    // FILTRADO POR TIPO DE RESERVA
+    // ========================================================================
+
+    // GET /reservas/solo-reservas → solo códigos RES-.
+    public function soloReservas(): JsonResponse
+    {
+        return response()->json($this->service->listarSoloReservas());
+    }
+
+    // GET /reservas/solo-walk-ins → solo códigos WK-.
+    public function soloWalkIns(): JsonResponse
+    {
+        return response()->json($this->service->listarSoloWalkIns());
+    }
+
+    // GET /reservas/historial → historial completo (todas).
+    public function historial(): JsonResponse
+    {
+        return response()->json($this->service->listarHistorialCompleto());
+    }
+
+    // ========================================================================
+    // CHECK-IN DE RESERVA FUTURA
+    // ========================================================================
+
+    // GET /reservas/{id}/info-check-in → info completa para la pantalla.
+    public function infoCheckIn(int $id): JsonResponse
+    {
+        try {
+            // Devuelve: reserva, cliente, habitación, pagos, si puede hacer check-in, minutos tarde, etc.
+            return response()->json($this->service->obtenerInfoCheckIn($id));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // 404 si la reserva no existe.
+            return response()->json(['mensaje' => 'Reserva no encontrada'], 404);
+        }
+    }
+
+    // POST /reservas/{id}/check-in-validado → check-in con validaciones completas.
+    public function checkInValidado(int $id): JsonResponse
+    {
+        try {
+            // Valida: estado, que no tenga check-in previo, que la hab. no esté ocupada por otra.
+            // MANTIENE la fecha_entrada ORIGINAL (regla 09B-15).
+            // Crea registro_estadia con fecha original.
+            // Registra la visita al cliente.
+            $reserva = $this->service->checkInValidado($id, Auth::id());
+            return response()->json([
+                'mensaje' => 'Check-in realizado correctamente',
+                'data' => $reserva,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Ejemplos: la hab. está ocupada, o la reserva ya tiene check-in.
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    // GET /reservas/solo-decoraciones → solo códigos DEC-.
+    public function soloDecoraciones(): JsonResponse
+    {
+        return response()->json($this->service->listarSoloDecoraciones());
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\RolController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\RolService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class RolController extends Controller
+{
+    public function __construct(private RolService $service) {}
+
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:roles,nombre',
+            'descripcion' => 'nullable|string|max:255',
+            'activo' => 'boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Rol creado',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:roles,nombre,' . $id,
+            'descripcion' => 'nullable|string|max:255',
+            'activo' => 'sometimes|boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Rol actualizado',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function desactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Rol desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function reactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Rol reactivado',
+                'data' => $this->service->reactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Rol eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+================================================================================
+=== app\Http\Controllers\TarifaController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TarifaService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TarifaController extends Controller
+{
+    // Inyecta el Service que maneja las tarifas (precios por tipo y horas).
+    public function __construct(
+        private TarifaService $service
+    ) {}
+
+    // GET /tarifas → lista TODAS (activas e inactivas).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /tarifas/activos → solo las activas.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /tarifas/por-tipo/{idTipo} → tarifas de un tipo de habitación.
+    public function porTipo(int $idTipo): JsonResponse
+    {
+        // Ej: /tarifas/por-tipo/7 → devuelve las tarifas de "Jacuzzi VIP" (8h, 12h).
+        // Es el endpoint que usa el frontend al crear reservas.
+        return response()->json($this->service->listarPorTipo($idTipo));
+    }
+
+    // GET /tarifas/{id} → una por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /tarifas → crea una tarifa nueva.
+    public function store(Request $request): JsonResponse
+    {
+        // Valida. `id_tipo`, `horas`, `monto`, `precio_hora_extra`
+        // y `precio_turno_adicional` son obligatorios.
+        $datos = $request->validate([
+            'id_tipo' => 'required|exists:tipos_habitacion,id_tipo',
+            'horas' => 'required|integer|min:1',
+            'monto' => 'required|numeric|min:0',
+            'precio_hora_extra' => 'required|numeric|min:0',
+            'max_horas_extra' => 'nullable|integer|min:1',
+            'precio_turno_adicional' => 'required|numeric|min:0',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Tarifa creada',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /tarifas/{id} → actualiza una tarifa existente.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'id_tipo' => 'sometimes|exists:tipos_habitacion,id_tipo',
+            'horas' => 'sometimes|integer|min:1',
+            'monto' => 'sometimes|numeric|min:0',
+            'precio_hora_extra' => 'sometimes|numeric|min:0',
+            'max_horas_extra' => 'nullable|integer|min:1',
+            'precio_turno_adicional' => 'sometimes|numeric|min:0',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Tarifa actualizada',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /tarifas/{id}/desactivar → soft delete (activo = false).
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tarifa desactivada',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /tarifas/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tarifa reactivada',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /tarifas/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // El Service puede proteger la eliminación si la tarifa está en uso.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Tarifa eliminada']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\TipoDocumentoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TipoDocumentoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TipoDocumentoController extends Controller
+{
+    // Inyecta el Service que maneja los tipos de documento.
+    public function __construct(
+        private TipoDocumentoService $service
+    ) {}
+
+    // GET /tipos-documento → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /tipos-documento/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /tipos-documento/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /tipos-documento → crea uno nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `abreviatura` únicos. `longitud` opcional.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:tipos_documento,nombre',
+            'abreviatura' => 'required|string|max:10|unique:tipos_documento,abreviatura',
+            'longitud' => 'nullable|integer|min:1',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Tipo de documento creado',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /tipos-documento/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:tipos_documento,nombre,' . $id . ',id_documento',
+            'abreviatura' => 'sometimes|string|max:10|unique:tipos_documento,abreviatura,' . $id . ',id_documento',
+            'longitud' => 'nullable|integer|min:1',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Tipo de documento actualizado',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /tipos-documento/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de documento desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /tipos-documento/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de documento reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /tipos-documento/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // El Service puede proteger la eliminación si el tipo está en uso.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Tipo de documento eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\TipoHabitacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TipoHabitacionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TipoHabitacionController extends Controller
+{
+    // Inyecta el Service que maneja los tipos de habitación.
+    public function __construct(
+        private TipoHabitacionService $service
+    ) {}
+
+    // GET /tipos-habitacion → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /tipos-habitacion/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /tipos-habitacion/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /tipos-habitacion → crea un tipo nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `capacidad` y `camas` opcionales.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:tipos_habitacion,nombre',
+            'slug' => 'required|string|max:50|unique:tipos_habitacion,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'capacidad' => 'nullable|integer|min:1',
+            'camas' => 'nullable|integer|min:1',
+            'tiene_jacuzzi' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->crear($datos);
+        return response()->json([
+            'mensaje' => 'Tipo de habitación creado',
+            'data' => $item,
+        ], 201);
+    }
+
+    // PUT /tipos-habitacion/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:tipos_habitacion,nombre,' . $id . ',id_tipo',
+            'slug' => 'sometimes|string|max:50|unique:tipos_habitacion,slug,' . $id . ',id_tipo',
+            'descripcion' => 'nullable|string|max:255',
+            'capacidad' => 'nullable|integer|min:1',
+            'camas' => 'nullable|integer|min:1',
+            'tiene_jacuzzi' => 'boolean',
+            'activo' => 'boolean',
+        ]);
+
+        $item = $this->service->actualizar($id, $datos);
+        return response()->json([
+            'mensaje' => 'Tipo de habitación actualizado',
+            'data' => $item,
+        ]);
+    }
+
+    // PATCH /tipos-habitacion/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de habitación desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /tipos-habitacion/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de habitación reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /tipos-habitacion/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // El Service puede proteger la eliminación si hay habitaciones o tarifas asociadas.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Tipo de habitación eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\TipoMantenimientoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TipoMantenimientoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TipoMantenimientoController extends Controller
+{
+    // Inyecta el Service que maneja los tipos de mantenimiento.
+    public function __construct(private TipoMantenimientoService $service) {}
+
+    // GET /tipos-mantenimiento → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /tipos-mantenimiento/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /tipos-mantenimiento/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /tipos-mantenimiento → crea un tipo nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `icono` y `color` opcionales.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:60|unique:tipos_mantenimiento,nombre',
+            'slug' => 'required|string|max:60|unique:tipos_mantenimiento,slug',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Tipo de mantenimiento creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /tipos-mantenimiento/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:60|unique:tipos_mantenimiento,nombre,' . $id . ',id_tipo_mantenimiento',
+            'slug' => 'sometimes|string|max:60|unique:tipos_mantenimiento,slug,' . $id . ',id_tipo_mantenimiento',
+            'descripcion' => 'nullable|string|max:255',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Tipo actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /tipos-mantenimiento/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /tipos-mantenimiento/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /tipos-mantenimiento/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // El Service puede proteger la eliminación si hay reportes asociados.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Tipo eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\TipoObservacionController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TipoObservacionService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TipoObservacionController extends Controller
+{
+    // Inyecta el Service que maneja los tipos de observación.
+    public function __construct(private TipoObservacionService $service) {}
+
+    // GET /tipos-observacion → lista TODOS (activos e inactivos).
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    // GET /tipos-observacion/activos → solo los activos.
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    // GET /tipos-observacion/{id} → uno por ID.
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    // POST /tipos-observacion → crea un tipo nuevo.
+    public function store(Request $request): JsonResponse
+    {
+        // `nombre` y `slug` únicos. `icono` y `color` opcionales.
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:tipos_observacion,nombre',
+            'slug' => 'required|string|max:50|unique:tipos_observacion,slug',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Tipo de observación creado',
+            'data' => $this->service->crear($datos),
+        ], 201);
+    }
+
+    // PUT /tipos-observacion/{id} → actualiza. `unique` ignora el propio ID.
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:tipos_observacion,nombre,' . $id . ',id_tipo_observacion',
+            'slug' => 'sometimes|string|max:50|unique:tipos_observacion,slug,' . $id . ',id_tipo_observacion',
+            'icono' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:20',
+            'descripcion' => 'nullable|string|max:255',
+            'orden' => 'nullable|integer',
+            'activo' => 'boolean',
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Tipo de observación actualizado',
+            'data' => $this->service->actualizar($id, $datos),
+        ]);
+    }
+
+    // PATCH /tipos-observacion/{id}/desactivar → soft delete.
+    public function desactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de observación desactivado',
+            'data' => $this->service->desactivar($id),
+        ]);
+    }
+
+    // PATCH /tipos-observacion/{id}/reactivar → activo = true.
+    public function reactivar(int $id): JsonResponse
+    {
+        return response()->json([
+            'mensaje' => 'Tipo de observación reactivado',
+            'data' => $this->service->reactivar($id),
+        ]);
+    }
+
+    // DELETE /tipos-observacion/{id} → elimina físicamente.
+    public function destroy(int $id): JsonResponse
+    {
+        // El Service puede proteger la eliminación si hay observaciones asociadas.
+        $this->service->eliminar($id);
+        return response()->json(['mensaje' => 'Tipo de observación eliminado']);
+    }
+}
+
+
+================================================================================
+=== app\Http\Controllers\TurnoController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\TurnoService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class TurnoController extends Controller
+{
+    public function __construct(private TurnoService $service) {}
+
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:50|unique:turnos,nombre',
+            'hora_inicio' => 'required',
+            'hora_fin' => 'required',
+            'descripcion' => 'nullable|string|max:255',
+            'activo' => 'boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Turno creado',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:50|unique:turnos,nombre,' . $id,
+            'hora_inicio' => 'sometimes',
+            'hora_fin' => 'sometimes',
+            'descripcion' => 'nullable|string|max:255',
+            'activo' => 'sometimes|boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Turno actualizado',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function desactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Turno desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function reactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Turno reactivado',
+                'data' => $this->service->reactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Turno eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+
+================================================================================
+=== app\Http\Controllers\UsuarioController.php ===
+================================================================================
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\UsuarioService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class UsuarioController extends Controller
+{
+    public function __construct(private UsuarioService $service) {}
+
+    public function index(): JsonResponse
+    {
+        return response()->json($this->service->listar());
+    }
+
+    public function activos(): JsonResponse
+    {
+        return response()->json($this->service->listarActivos());
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        return response()->json($this->service->obtener($id));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'apellido' => 'required|string|max:100',
+            'nombre_usuario' => 'required|string|max:50|unique:usuarios,nombre_usuario',
+            'password' => 'required|string|min:6',
+            'id_rol' => 'required|exists:roles,id',
+            'id_turno' => 'nullable|exists:turnos,id',
+            'activo' => 'boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario creado',
+                'data' => $this->service->crear($datos),
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombre' => 'sometimes|string|max:100',
+            'apellido' => 'sometimes|string|max:100',
+            'nombre_usuario' => 'sometimes|string|max:50|unique:usuarios,nombre_usuario,' . $id,
+            'password' => 'sometimes|string|min:6',
+            'id_rol' => 'sometimes|exists:roles,id',
+            'id_turno' => 'nullable|exists:turnos,id',
+            'activo' => 'sometimes|boolean',
+        ]);
+
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario actualizado',
+                'data' => $this->service->actualizar($id, $datos),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function desactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario desactivado',
+                'data' => $this->service->desactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function reactivar(int $id): JsonResponse
+    {
+        try {
+            return response()->json([
+                'mensaje' => 'Usuario reactivado',
+                'data' => $this->service->reactivar($id),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $this->service->eliminar($id);
+            return response()->json(['mensaje' => 'Usuario eliminado']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['mensaje' => $e->getMessage()], 422);
+        }
+    }
+}
+

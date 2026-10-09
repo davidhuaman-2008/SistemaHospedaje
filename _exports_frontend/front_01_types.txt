@@ -1,4 +1,7 @@
-
+================================================================================
+=== front_01_types.txt ===
+=== TOTAL: 16 archivos ===
+================================================================================
 
 ================================================================================
 === src/types/cliente.ts ===
@@ -17,6 +20,7 @@ export interface Cliente {
   email: string | null
   fecha_nacimiento: string | null
   fecha_aniversario: string | null
+  casado: boolean
   direccion: string | null
   visitas: number
   ultima_visita: string | null
@@ -40,6 +44,7 @@ export interface ClienteRequest {
   email?: string | null
   fecha_nacimiento?: string | null
   fecha_aniversario?: string | null
+  casado?: boolean
   direccion?: string | null
   id_nivel?: number | null
   activo?: boolean
@@ -92,6 +97,7 @@ export interface BuscarClienteResponse {
   cliente: Cliente | null
   reserva_activa?: ReservaActiva | null
 }
+
 export interface ReservaActiva {
   id_reserva: number
   codigo_reserva: string
@@ -124,7 +130,7 @@ export interface ReservaActiva {
 === src/types/configuracion.ts ===
 ================================================================================
 // ============================================================================
-// Tipos para el mÃ³dulo de ConfiguraciÃ³n Base
+// Tipos para el módulo de Configuración Base
 // ============================================================================
 
 // ---------- Piso ----------
@@ -145,7 +151,7 @@ export interface PisoRequest {
   activo?: boolean
 }
 
-// ---------- Tipo de HabitaciÃ³n ----------
+// ---------- Tipo de Habitación ----------
 export interface TipoHabitacion {
   id_tipo: number
   nombre: string
@@ -187,7 +193,7 @@ export interface TipoDocumentoRequest {
   activo?: boolean
 }
 
-// ---------- MÃ©todo de Pago ----------
+// ---------- Método de Pago ----------
 export interface MetodoPago {
   id_metodo: number
   nombre: string
@@ -211,7 +217,7 @@ export interface MetodoPagoRequest {
   activo?: boolean
 }
 
-// ---------- CategorÃ­a de Movimiento ----------
+// ---------- Categoría de Movimiento ----------
 export type TipoMovimiento = 'Ingreso' | 'Egreso'
 
 export interface CategoriaMovimiento {
@@ -366,8 +372,8 @@ export interface RegistrarPagoProveedorRequest {
 ================================================================================
 === src/types/decoracion.ts ===
 ================================================================================
-import type { Cliente } from "./cliente"
-import type { Habitacion } from "./habitacion"
+
+
 import type { Reserva } from "./reserva"
 import type { PaqueteDecoracion } from "./paqueteDecoracion"
 import type { CuentaPagar } from "./cuentaPagar"
@@ -430,6 +436,44 @@ export interface DecoracionRequest {
   frase_personalizada?: string | null
   musica?: string | null
   notas?: string | null
+}
+
+================================================================================
+=== src/types/descuento.ts ===
+================================================================================
+// ============================================================================
+// Tipos para el sistema de descuentos automaticos y manuales
+// R1: Los valores vienen del backend, no hardcodeados
+// ============================================================================
+
+export interface DescuentoConfig {
+  descuento_cumpleanos_porcentaje: number
+  descuento_aniversario_porcentaje: number
+  descuento_cumpleanos_activo: boolean
+  descuento_aniversario_activo: boolean
+  descuento_aplica_a: 'mayor' | 'suma'
+}
+
+export interface ResultadoDescuento {
+  porcentaje: number
+  motivo: string | null
+  monto: number
+  tipo: string | null
+}
+
+export interface DescuentoManualOpcion {
+  tipo: 'aniversario' | 'cumpleanos'
+  label: string
+  emoji: string
+  porcentaje: number
+  descripcion: string
+}
+
+export interface DescuentoManualesConfig {
+  habilitado: boolean
+  motivo_requerido: boolean
+  max_porcentaje: number
+  opciones: DescuentoManualOpcion[]
 }
 
 ================================================================================
@@ -915,7 +959,7 @@ export interface PromocionClienteRequest {
 import type { Cliente } from "./cliente"
 import type { Habitacion } from "./habitacion"
 import type { Tarifa } from "./tarifa"
-import type { MetodoPago } from "./configuracion"
+
 
 export interface EstadoReserva {
   id_estado: number
@@ -1209,7 +1253,7 @@ export interface Configuracion {
   updated_at?: string
 }
 // ============================================================================
-// MODULO 09B â€” RESERVAS FUTURAS
+// MODULO 09B — RESERVAS FUTURAS
 // ============================================================================
 
 export interface HabitacionLibre {
@@ -1370,3 +1414,4 @@ export interface TipoObservacionRequest {
   orden?: number
   activo?: boolean
 }
+
